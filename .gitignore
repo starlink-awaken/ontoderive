@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.DS_Store
+*.plugin
+_derivation_logs/
+demo-project/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/

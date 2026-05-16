@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "version": "1.0",
+    "name": "OntoDerive·默认规约集",
+    "rule_count": 19,
+    "categories": {
+      "SSOT_INTEGRITY": "基座完整性:文件存在、ID合规、关系连续性",
+      "SCHEME_COMPLIANCE": "方案合规性:断言可追溯、可证伪、篇幅合规",
+      "CROSS_LAYER": "跨层一致性:推论→方案的双向映射",
+      "DERIVATION_HEALTH": "推导健康度:规则执行状态、缺口闭环率"
+    }
+  },
+  "protocols": [
+    {"id":"P-001","name":"文件完整性","category":"SSOT_INTEGRITY","severity":"BLOCKER","check_type":"file_exists","expectation":"facts/entities/inferences/scheme全部存在"},
+    {"id":"P-002","name":"实体ID合规性","category":"SSOT_INTEGRITY","severity":"WARN","check_type":"id_pattern","expectation":"实体使用标准前缀 ORG-/ROL-/PRJ-"},
+    {"id":"P-003","name":"推论必须有derives_from","category":"SSOT_INTEGRITY","severity":"ERROR","check_type":"inference_has_derives","expectation":"每条INF推论标注derives_from"},
+    {"id":"P-004","name":"SSOT→方案映射覆盖率","category":"CROSS_LAYER","severity":"ERROR","check_type":"mapping_coverage","expectation":"映射率>=90%"},
+    {"id":"P-005","name":"INF引用可追溯","category":"CROSS_LAYER","severity":"WARN","check_type":"inf_traceability","expectation":"方案中INF引用在映射索引可查"},
+    {"id":"P-006","name":"篇幅合规","category":"SCHEME_COMPLIANCE","severity":"WARN","check_type":"word_count_ratio","expectation":"铺垫层占比20-30%"},
+    {"id":"P-007","name":"断言可追溯编号","category":"SCHEME_COMPLIANCE","severity":"ERROR","check_type":"assertion_traceable","expectation":"断言70%以上有编号引用"},
+    {"id":"P-008","name":"关键判断可证伪","category":"SCHEME_COMPLIANCE","severity":"WARN","check_type":"falsifiable","expectation":"核心预测附带如果/则条件"},
+    {"id":"P-009","name":"3W格式","category":"SCHEME_COMPLIANCE","severity":"WARN","check_type":"three_w_format","expectation":"每章以是什么/为什么/怎么做开头"},
+    {"id":"P-010","name":"架构图","category":"SCHEME_COMPLIANCE","severity":"WARN","check_type":"ascii_diagram","expectation":"每章至少1个ASCII架构图"},
+    {"id":"P-011","name":"Phase规格","category":"SCHEME_COMPLIANCE","severity":"ERROR","check_type":"phase_completeness","expectation":"每阶段有MoSCoW+验收+可证伪"},
+    {"id":"P-012","name":"运营体系完整性","category":"SCHEME_COMPLIANCE","severity":"ERROR","check_type":"ops_completeness","expectation":"运营含SOP+指标+预警"},
+    {"id":"P-013","name":"推论置信度","category":"DERIVATION_HEALTH","severity":"WARN","check_type":"inference_confidence","expectation":"所有推论标注confidence"},
+    {"id":"P-014","name":"ADR完整性","category":"DERIVATION_HEALTH","severity":"WARN","check_type":"adr_completeness","expectation":"ADR标注derives_from推导"},
+    {"id":"P-015","name":"推导链连续性","category":"DERIVATION_HEALTH","severity":"ERROR","check_type":"chain_continuity","expectation":"推导链节点无断裂"},
+    {"id":"P-016","name":"引擎健康度","category":"DERIVATION_HEALTH","severity":"BLOCKER","check_type":"engine_self_test","expectation":"引擎正常可运行"},
+    {"id":"P-017","name":"场景驱动设计","category":"SCHEME_COMPLIANCE","severity":"WARN","check_type":"scene_driven","expectation":"功能设计有场景推导依据"},
+    {"id":"P-018","name":"版本状态标记","category":"SCHEME_COMPLIANCE","severity":"WARN","check_type":"version_tag","expectation":"文档有status+version标记"},
+    {"id":"P-019","name":"对标分析覆盖","category":"SCHEME_COMPLIANCE","severity":"WARN","check_type":"benchmark_coverage","expectation":"核心设计有对标参照"}
+  ]
+}
