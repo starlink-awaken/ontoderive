@@ -1,0 +1,140 @@
+"""OntoDerive CLI — pip install 入口点
+
+用法:
+    ontoderive init my-project
+    ontoderive derive --project .
+    ontoderive check --project .
+    ontoderive toolforge "分析市场" --inference-guide
+"""
+
+import sys
+from pathlib import Path
+
+# 确保 engine 目录可导入
+_ENGINE_DIR = Path(__file__).parent
+if str(_ENGINE_DIR) not in sys.path:
+    sys.path.insert(0, str(_ENGINE_DIR))
+
+
+def main():
+    """统一 CLI 入口"""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="OntoDerive v2.0.0 — 事实驱动知识工程引擎",
+        epilog="示例: ontoderive init my-project --with-tools --derive --check",
+    )
+    sub = parser.add_subparsers(dest="command", help="子命令")
+
+    # init
+    p_init = sub.add_parser("init", help="初始化新项目")
+    p_init.add_argument("name", help="项目名称")
+
+    # derive
+    p_derive = sub.add_parser("derive", help="正向推导")
+    p_derive.add_argument("--project", default=".", help="项目路径")
+    p_derive.add_argument("--with-tools", action="store_true", help="前置 ToolForge 匹配")
+    p_derive.add_argument("--goal", help="目标描述")
+    p_derive.add_argument("--tool-context", default="", help="ToolForge 上下文关键词")
+
+    # check
+    p_check = sub.add_parser("check", help="规约检查")
+    p_check.add_argument("--project", default=".", help="项目路径")
+
+    # rounds
+    p_rounds = sub.add_parser("rounds", help="多轮迭代")
+    p_rounds.add_argument("--project", default=".", help="项目路径")
+    p_rounds.add_argument("n", type=int, default=3, help="迭代轮数")
+
+    # toolforge
+    p_tf = sub.add_parser("toolforge", help="思维工具匹配")
+    p_tf.add_argument("goal", help="目标描述")
+    p_tf.add_argument("--context", default="", help="上下文关键词")
+    p_tf.add_argument("--inference-guide", action="store_true", help="输出推导指导")
+    p_tf.add_argument("--json", action="store_true", help="JSON输出")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return
+
+    # 路由到对应功能
+    if args.command == "init":
+        from derive import OntoDerive
+
+        root = Path(args.name)
+        for d in ["facts", "entities", "inferences", "protocols", "scheme", "_logs"]:
+            (root / d).mkdir(parents=True, exist_ok=True)
+        (root / "facts" / "data.md").write_text(
+            "| 编号 | 数据 | 数值 | 来源 |\n|------|------|------|------|\n| D-F1 | 待填充 | — | — |\n"
+        )
+        (root / "facts" / "policy.md").write_text(
+            "| 编号 | 政策 | 发布主体 | 日期 |\n|------|------|---------|------|\n| P-F1 | 待填充 | — | — |\n"
+        )
+        (root / "entities" / "actors.md").write_text(
+            "| 实体 | 类型 | 角色 |\n|------|------|------|\n| ORG-待填充 | 组织 | — |\n"
+        )
+        (root / "inferences" / "analysis.md").write_text(
+            "## INF-L1：待推导\n\n- derives_from: [D-F1]\n"
+        )
+        (root / "scheme" / "report.md").write_text("# 分析报告\n\n待补充。\n")
+        (root / "README.md").write_text(
+            f"# {args.name}\n\n> OntoDerive v2.0.0\n\n```bash\nontoderive derive --project .\nontoderive check --project .\n```\n"
+        )
+        print(f"✅ 项目 '{args.name}' 已初始化")
+
+    elif args.command in ("derive", "check", "rounds"):
+        from derive import OntoDerive
+
+        od = OntoDerive(args.project)
+
+        # ToolForge 前置
+        if getattr(args, "with_tools", False):
+            from engine.toolforge import ToolForge
+
+            tf = ToolForge()
+            goal = getattr(args, "goal", "") or ""
+            context = getattr(args, "tool_context", "") or ""
+            print(f"\n{'━' * 50}")
+            print(f"  🧰 ToolForge 前置匹配")
+            print(f"     目标: {goal or '(未指定)'}")
+            print(f"{'━' * 50}")
+            guide = tf.to_inference_guide(goal, context)
+            guide_path = Path(args.project) / "inferences" / "_toolforge_guide.md"
+            guide_path.parent.mkdir(parents=True, exist_ok=True)
+            guide_path.write_text(guide)
+            top = tf.select(goal, context, top_n=3)
+            if top:
+                for t in top:
+                    print(f"      {t['id']} {t['name']} (匹配度:{t['score']})")
+
+        if args.command == "derive":
+            od.derive()
+        elif args.command == "check":
+            od.check()
+        elif args.command == "rounds":
+            od.run_rounds(args.n)
+
+    elif args.command == "toolforge":
+        from engine.toolforge import ToolForge
+
+        tf = ToolForge()
+        if args.inference_guide:
+            print(tf.to_inference_guide(args.goal, args.context))
+        elif args.json:
+            import json
+
+            print(
+                json.dumps(
+                    tf.select(args.goal, args.context, 5),
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        else:
+            tf.report(args.goal, args.context)
+
+
+if __name__ == "__main__":
+    main()
