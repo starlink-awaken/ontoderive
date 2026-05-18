@@ -2,7 +2,7 @@
   "mcpServers": {
     "ontoderive": {
       "command": "python3",
-      "args": ["${workspaceFolder}/engine/mcp-server.py"],
+      "args": ["${workspaceFolder}/engine/mcp_server.py"],
       "description": "OntoDerive 推导引擎 — 事实驱动方案推导",
       "env": {"PYTHONPATH": "${workspaceFolder}/engine"}
     }

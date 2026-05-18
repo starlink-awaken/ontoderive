@@ -1,167 +1,214 @@
 """
-ToolForge — 思维工具匹配模块（原 MindForge，已并入 OntoDerive）
+ToolForge v2 — 思维工具匹配（原 MindForge，已并入 OntoDerive）
 =============================================================
-输入: 目标描述 + 上下文关键词
-输出: 匹配的方法论/策略/模式/原则/理论/技能 + 使用建议
-
-用法:
-    python3 -m ontoderive.engine.toolforge.matcher "分析新能源汽车市场"
-    python3 -m ontoderive.engine.toolforge.matcher --goal "设计数字化平台" --context "政府,教育"
+支持 TF-IDF 语义匹配 + 关键词 fallback。
+输出: 匹配的方法论/策略/模式/原则/理论/技能 + 使用建议 + 匹配原因
 """
-
-import json
+import json, re, math
+from collections import defaultdict
 from pathlib import Path
 
 CATALOG_PATH = Path(__file__).parent / "catalog.json"
 
 
+def _tokenize(text):
+    return re.findall(r'[一-鿿]+|[a-zA-Z]+', text.lower())
+
+
+def _build_vocab(docs):
+    vocab = {}
+    for tokens in docs:
+        for t in set(tokens):
+            vocab[t] = vocab.get(t, 0) + 1
+    return {term: idx for idx, term in enumerate(sorted(vocab))}
+
+
+def _compute_tf(tokens, vocab_size):
+    tf = defaultdict(float)
+    total = len(tokens) or 1
+    for t in tokens:
+        tf[t] += 1.0 / total
+    return tf
+
+
+def _compute_idf(docs, vocab):
+    n = len(docs)
+    idf = {}
+    for term, idx in vocab.items():
+        df = sum(1 for d in docs if term in d)
+        idf[term] = math.log((n + 1) / (df + 1)) + 1
+    return idf
+
+
 class ToolForge:
-    """思维工具匹配引擎 — OntoDerive 前置模块"""
+    """思维工具匹配引擎 v2 — TF-IDF + 关键词双模式"""
 
     def __init__(self, catalog_path=None):
         path = Path(catalog_path) if catalog_path else CATALOG_PATH
         self.catalog = json.loads(path.read_text()) if path.exists() else {"tools": []}
+        self._tools = self.catalog.get("tools", [])
+        self._tool_by_id = {t["id"]: t for t in self._tools}
+        self._build_tfidf_index()
 
-    def match(self, goal, context="", limit=3):
-        """根据目标+上下文匹配工具，返回按类别分组的结果"""
+    def _build_tfidf_index(self):
+        self._tool_docs = []
+        for t in self._tools:
+            doc = " ".join(t.get("keywords", [])) + " " + t["name"] + " " + t.get("description", "")
+            self._tool_docs.append(_tokenize(doc))
+        self._vocab = _build_vocab(self._tool_docs)
+        self._idf = _compute_idf(self._tool_docs, self._vocab)
+        # 为每个工具预计算TF-IDF向量（稠密列表）
+        vocab_size = len(self._vocab)
+        self._tool_vecs = []
+        for tokens in self._tool_docs:
+            tf = _compute_tf(tokens, vocab_size)
+            vec = [0.0] * vocab_size
+            for term, freq in tf.items():
+                if term in self._vocab:
+                    vec[self._vocab[term]] = freq * self._idf.get(term, 1.0)
+            self._tool_vecs.append(vec)
+
+    def _tfidf_vector(self, tokens):
+        tf = _compute_tf(tokens, len(self._vocab))
+        vec = [0.0] * len(self._vocab)
+        for term, freq in tf.items():
+            if term in self._vocab:
+                vec[self._vocab[term]] = freq * self._idf.get(term, 1.0)
+        return vec
+
+    def _cosine(self, a, b):
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x * x for x in a)) or 1
+        norm_b = math.sqrt(sum(x * x for x in b)) or 1
+        return dot / (norm_a * norm_b)
+
+    def _tfidf_match(self, goal, context=""):
+        query_tokens = _tokenize(f"{goal} {context}")
+        if not query_tokens:
+            return []
+        query_vec = self._tfidf_vector(query_tokens)
+        results = []
+        for i, t in enumerate(self._tools):
+            score = self._cosine(query_vec, self._tool_vecs[i])
+            if score > 0:
+                results.append((t, score))
+        results.sort(key=lambda x: x[1], reverse=True)
+        return results
+
+    def _keyword_match(self, goal, context=""):
         search_text = f"{goal} {context}".lower()
-        results = {
-            "methodologies": [],
-            "strategies": [],
-            "patterns": [],
-            "principles": [],
-            "theories": [],
-            "skills": [],
-        }
-
-        for tool in self.catalog.get("tools", []):
+        results = []
+        for tool in self._tools:
             score = 0
-            matched_keywords = []
+            matched = []
             for kw in tool.get("keywords", []):
                 if kw.lower() in search_text:
                     score += 1
-                    matched_keywords.append(kw)
-
-            # 标题部分匹配额外加分
+                    matched.append(kw)
             name_chars = [c for c in tool["name"] if c in search_text]
             if len(name_chars) >= 2:
                 score += 0.5
-
             if score > 0:
-                category = tool["category"]
-                if category in results:
-                    results[category].append(
-                        {
-                            "id": tool["id"],
-                            "name": tool["name"],
-                            "score": round(score, 1),
-                            "matched": matched_keywords,
-                            "description": tool.get("description", ""),
-                            "applies_to": tool.get("applies_to", ""),
-                            "source": tool.get("source", ""),
-                        }
-                    )
-
-        for cat in results:
-            results[cat].sort(key=lambda t: t["score"], reverse=True)
-            results[cat] = results[cat][:limit]
-
+                results.append((tool, round(score, 1), matched))
+        results.sort(key=lambda x: x[1], reverse=True)
         return results
 
-    def select(self, goal, context="", top_n=5):
-        """返回跨类别的 Top-N 工具列表（扁平排序）"""
-        matched = self.match(goal, context)
+    def match(self, goal, context="", limit=3, mode="keyword"):
+        """匹配工具，按类别分组，返回含 why_matched 的结果"""
+        if mode == "tfidf" or mode == "hybrid":
+            tfidf_results = self._tfidf_match(goal, context)
+        else:
+            tfidf_results = []
+
+        if mode == "keyword" or mode == "hybrid":
+            kw_results = self._keyword_match(goal, context)
+        else:
+            kw_results = []
+
+        # 混合模式：合并两种结果
+        if mode == "hybrid":
+            scored = {}
+            for t, s in tfidf_results:
+                scored[t["id"]] = {"tool": t, "score": s * 0.7, "why": f"TF-IDF语义匹配 (cos={s:.2f})"}
+            for t, s, matched in kw_results:
+                bonus = s * 0.3
+                if t["id"] in scored:
+                    scored[t["id"]]["score"] += bonus
+                    scored[t["id"]]["why"] += f" + 关键词({','.join(matched[:3])})"
+                else:
+                    scored[t["id"]] = {"tool": t, "score": bonus, "why": f"关键词匹配: {','.join(matched[:5])}"}
+            combined = sorted(scored.values(), key=lambda x: x["score"], reverse=True)
+        elif mode == "tfidf":
+            combined = [{"tool": t, "score": round(s, 2), "why": f"TF-IDF语义匹配 (cos={s:.2f})"} for t, s in tfidf_results]
+        else:
+            combined = [{"tool": t, "score": s, "why": f"关键词匹配: {','.join(m[:5])}"} for t, s, m in kw_results]
+
+        results = {
+            "methodologies": [], "strategies": [], "patterns": [],
+            "principles": [], "theories": [], "skills": [],
+        }
+        for item in combined:
+            t = item["tool"]
+            category = t.get("category", "")
+            if category in results and len(results[category]) < limit:
+                results[category].append({
+                    "id": t["id"], "name": t["name"], "score": item["score"],
+                    "matched": item["why"], "description": t.get("description", ""),
+                    "applies_to": t.get("applies_to", ""), "source": t.get("source", ""),
+                })
+        return results
+
+    def select(self, goal, context="", top_n=5, mode="keyword"):
+        """跨类别 Top-N 扁平列表"""
+        matched = self.match(goal, context, limit=top_n, mode=mode)
         all_tools = []
         for cat_tools in matched.values():
             all_tools.extend(cat_tools)
-        all_tools.sort(key=lambda t: t["score"], reverse=True)
+        all_tools.sort(key=lambda x: x["score"], reverse=True)
         return all_tools[:top_n]
 
-    def to_ontoderive(self, goal, context=""):
-        """输出为 OntoDerive 兼容的推导框架约束"""
-        matched = self.match(goal, context)
-        lines = [f"# ToolForge 思维工具匹配 — {goal}", ""]
-
-        for category, tools in matched.items():
-            if not tools:
-                continue
-            cat_name = self.catalog.get("categories", {}).get(category, category)
-            lines.append(f"## {category} — {cat_name}")
-            for t in tools:
-                lines.append(f"\n### {t['id']}: {t['name']} (匹配度: {t['score']})")
-                lines.append(f"- 描述: {t['description']}")
-                lines.append(f"- 适用: {t['applies_to']}")
-                if t.get("source"):
-                    lines.append(f"- 来源: {t['source']}")
-                lines.append(f"- 匹配关键词: {', '.join(t['matched'])}")
-            lines.append("")
-        return "\n".join(lines)
-
-    def to_inference_guide(self, goal, context=""):
-        """生成 OntoDerive 推导指导：将匹配的工具映射为推导建议"""
-        matched = self.match(goal, context)
+    def to_inference_guide(self, goal, context="", mode="tfidf"):
+        """生成推导指导 — framework_map 从 catalog 动态构建"""
+        matched = self.match(goal, context, limit=5, mode=mode)
         lines = [
             "# ToolForge → OntoDerive 推导指导",
             f"## 目标: {goal}",
             f"## 上下文: {context or '未指定'}",
+            f"## 匹配模式: {mode}",
             "",
             "## 推荐推导框架",
         ]
 
-        framework_map = {
-            "M-001": "使用波特五力框架分解 facts/competitive.md，识别五力要素 → 推论竞争格局",
-            "M-002": "使用SWOT框架，在 inferences/ 中分别建立优势、劣势、机会、威胁推论",
-            "M-003": "使用C-T-F七阶演绎，从核心矛盾出发逐层推导方案",
-            "M-004": "使用金字塔原理组织 scheme/ 的结构，结论先行",
-            "M-005": "在 facts/policy.md 中按P-E-S-T四维度建立宏观环境事实表",
-            "M-006": "使用TOGAF的BDAT四层建立 scheme/architecture/ 的结构",
-            "M-007": "在 entities/stakeholders.md 中建立利益相关者权力-利益矩阵",
-            "M-008": "使用ADDIE五阶段设计 scheme/curriculum/ 的培训方案结构",
-            "M-009": "在 inferences/business-model.md 中推导九要素商业模式",
-            "M-010": "在 inferences/policy-window.md 中分析问题流、政策流、政治流的汇合时机",
-            "S-001": "在 inferences/strategy.md 中推导差异化路径",
-            "S-002": "在 facts/cost.md 中建立成本结构事实表，推导成本优势策略",
-            "S-003": "在 inferences/market-first.md 中推导先市场后技术的验证路径",
-            "S-004": "使用平台策略框架，在 inferences/platform.md 中推导平台增长模型",
-            "S-005": "在 inferences/incremental.md 中记录渐进式推进的阶段划分和调整机制",
-            "S-006": "在 facts/industry-education.md 中建立产业需求-教育资源匹配表",
-            "S-007": "在 facts/cluster.md 中建立区域产业链和配套能力事实表",
-            "S-008": "在 inferences/lean-startup.md 中建立构建-测量-学习循环模型",
-            "P-001": "在 inferences/flywheel.md 中建立飞轮增强回路模型",
-            "P-002": "在 scheme/ 中分别设计探索性单元和利用性单元",
-            "P-006": "在 entities/innovation-system.md 中建立大学-产业-政府三方角色和互动关系模型",
-            "P-007": "在 scheme/incubator.md 中设计孵化服务链（空间→资金→导师→网络）",
-            "P-008": "在 inferences/tech-transfer.md 中推导技术转移路径和产业化方案",
-            "T-001": "在 inferences/bayesian.md 中标注每个关键推论的先验概率和后验更新",
-            "T-002": "在 inferences/game-theory.md 中建立多主体博弈矩阵",
-            "T-003": "在 inference 中标注系统层次关系，使用系统论的整体涌现原则",
-            "T-006": "在 facts/ 中增加制度环境事实表，推导制度约束对方案的影响",
-            "T-008": "在 facts/cluster.md 中按钻石模型四要素建立产业集群竞争事实表",
-            "T-009": "在 inferences/diffusion.md 中建立创新扩散S曲线和采纳者分类",
-            "T-010": "在 scheme/learning.md 中基于建构主义设计情境化学习环境",
-            "T-011": "在 entities/regional-innovation.md 中建立各创新主体和制度环境的实体关系",
-            "T-012": "在 facts/technology.md 中对关键技术标注TRL等级并推导成熟路径",
-            "PR-001": "每个推论必须以具体事实为支撑，标注来源引用",
-            "PR-002": "在 inferences/first-principles.md 中记录从根本原理出发的推导链",
-            "PR-005": "在 inferences/public-value.md 中评估方案对公共价值的贡献度和可问责性",
-            "PR-006": "在 facts/ 中为每个关键决策标注证据等级（强/中/弱）和来源",
-            "SK-005": "在 inferences/policy-options.md 中建立政策方案比较矩阵",
-            "SK-007": "在 scheme/project-plan.md 中建立WBS分解和里程碑计划",
-        }
+        framework_map = {}
+        for t in self._tools:
+            tid = t["id"]
+            guide = t.get("derivation_guide", "")
+            if guide:
+                framework_map[tid] = f"使用{t['name']}框架：{guide}"
+            else:
+                cat_map = {
+                    "methodologies": f"在 inferences/ 中运用{t['name']}方法建立推导结构",
+                    "strategies": f"在 inferences/ 中推导{t['name']}路径",
+                    "patterns": f"在 scheme/ 中设计{t['name']}模式",
+                    "principles": f"在推导中遵循{t['name']}原则，标注来源引用",
+                    "theories": f"在 inferences/ 中以{t['name']}为理论基础进行推导",
+                    "skills": f"在 scheme/ 中输出{t['name']}相关方案",
+                }
+                framework_map[tid] = cat_map.get(t.get("category", ""), f"参考{t['name']}进行推导")
 
         for category, tools in matched.items():
             for t in tools:
                 tid = t["id"]
-                if tid in framework_map:
-                    lines.append(f"- **{t['name']}** ({t['id']}): {framework_map[tid]}")
+                line = f"- **{t['name']}** ({tid}): {framework_map.get(tid, '')}"
+                lines.append(line)
 
         return "\n".join(lines)
 
-    def report(self, goal, context=""):
+    def report(self, goal, context="", mode="tfidf"):
         """终端输出匹配报告"""
-        matched = self.match(goal, context)
+        matched = self.match(goal, context, mode=mode)
         print(f"\n{'═' * 50}")
-        print(f"  ToolForge 思维工具匹配")
+        print(f"  ToolForge v2 思维工具匹配 (mode={mode})")
         print(f"  目标: {goal}")
         if context:
             print(f"  上下文: {context}")
@@ -175,9 +222,8 @@ class ToolForge:
             print(f"  📂 {category} — {cat_name}")
             for t in tools:
                 desc = t["description"][:50]
-                print(
-                    f"    {t['id']} {t['name']} (匹配度:{t['score']}) — {desc}"
-                )
+                print(f"    {t['id']} {t['name']} (匹配度:{t['score']:.2f}) — {desc}")
+                print(f"      原因: {t['matched']}")
                 total += 1
 
         print(f"\n  共匹配 {total} 个工具")
@@ -186,15 +232,12 @@ class ToolForge:
 
 if __name__ == "__main__":
     import argparse
-
-    parser = argparse.ArgumentParser(description="ToolForge 思维工具匹配引擎")
+    parser = argparse.ArgumentParser(description="ToolForge v2 思维工具匹配引擎")
     parser.add_argument("goal", nargs="?", default="", help="目标描述")
     parser.add_argument("--goal", dest="goal2", help="目标描述（命名参数）")
     parser.add_argument("--context", help="上下文/领域描述")
-    parser.add_argument("--ontoderive", action="store_true", help="输出 OntoDerive 兼容格式")
-    parser.add_argument(
-        "--inference-guide", action="store_true", help="输出推导指导格式"
-    )
+    parser.add_argument("--mode", choices=["tfidf", "keyword", "hybrid"], default="tfidf")
+    parser.add_argument("--inference-guide", action="store_true", help="输出推导指导")
     parser.add_argument("--top", type=int, default=5, help="Top-N 工具数")
     parser.add_argument("--json", action="store_true", help="JSON 输出")
     args = parser.parse_args()
@@ -204,15 +247,10 @@ if __name__ == "__main__":
     context = args.context or ""
 
     if args.inference_guide:
-        print(tf.to_inference_guide(goal, context))
-    elif args.ontoderive:
-        print(tf.to_ontoderive(goal, context))
+        print(tf.to_inference_guide(goal, context, mode=args.mode))
     elif args.json:
-        print(json.dumps(tf.select(goal, context, args.top), ensure_ascii=False, indent=2))
+        print(json.dumps(tf.select(goal, context, args.top, mode=args.mode), ensure_ascii=False, indent=2))
     else:
-        matched = tf.report(goal, context)
+        matched = tf.report(goal, context, mode=args.mode)
         if matched:
-            print(
-                "\n💡 使用建议: 将以上工具作为分析框架，"
-                "在 OntoDerive 的 inferences/ 中建立对应的推导结构"
-            )
+            print("\n💡 使用建议: 将以上工具作为分析框架，在 OntoDerive 的 inferences/ 中建立对应的推导结构")
