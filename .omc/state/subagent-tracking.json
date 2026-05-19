@@ -104,7 +104,9 @@
       "agent_type": "oh-my-claudecode:code-reviewer",
       "started_at": "2026-05-19T07:24:24.081Z",
       "parent_mode": "none",
-      "status": "running"
+      "status": "completed",
+      "completed_at": "2026-05-19T07:36:14.520Z",
+      "duration_ms": 710439
     },
     {
       "agent_id": "a4b7ea9bb8cac6d3f",
@@ -126,7 +128,7 @@
     }
   ],
   "total_spawned": 9,
-  "total_completed": 13,
+  "total_completed": 14,
   "total_failed": 0,
-  "last_updated": "2026-05-19T07:31:26.311Z"
+  "last_updated": "2026-05-19T07:36:14.623Z"
 }
