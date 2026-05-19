@@ -47,6 +47,10 @@ class MetricsLayer:
         return fact_confs, inf_confs, len(facts), len(inferences)
 
     def compute_kqi(self, use_bayesian=True, precomputed_confs=None):
+        """
+        KQI知识质量指数。公式: 0.25*熵 + 0.25*覆盖 + 0.20*密度 + 0.15*实体 + 0.15*方案。
+        ⚠️ 权重未经经验校准，仅供参考。基准值: 空项目KQI≈0.5, z-park KQI≈0.44。
+        """
         facts_text = ""
         for f in all_md(self.facts_dir):
             facts_text += rf(f)

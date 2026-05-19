@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"git add src/agora/registry.py && git commit -m \\\"fix: whitebox — dead code removal + _try_half_open integration\\n\\n- Remove unreachable 'return True' in _is_safe_url (line 41 dead code)\\n-...",
-  "error": "Exit code 128\nfatal: pathspec 'src/agora/registry.py' did not match any files",
-  "timestamp": "2026-05-19T07:28:43.885Z",
+  "tool_input_preview": "{\"command\":\"echo \\\"=== 1. 矛盾检测LLM升级 ===\\\" && python3 -c \\\"\\nimport sys; sys.path.insert(0,'engine')\\nfrom logic import find_contradictions, EntailmentGraph\\ng = EntailmentGraph()\\ng.add_node('D-F1','f...",
+  "error": "Exit code 1\n(eval):20: unmatched \"",
+  "timestamp": "2026-05-19T08:34:27.376Z",
   "retry_count": 1
 }
