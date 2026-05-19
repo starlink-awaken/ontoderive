@@ -31,7 +31,7 @@ class LLMEnhancer:
             req = urllib.request.Request("http://localhost:1234/api/v1/chat",
                 data=json.dumps({"model": "qwopus3.6-35b-a3b-v1", "input": "hi"}).encode(),
                 headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=10) as r:
+            with urllib.request.urlopen(req, timeout=5) as r:
                 json.loads(r.read())
             self.base_url = "http://localhost:1234/api/v1/chat"
             if not self.model:
@@ -83,7 +83,7 @@ class LLMEnhancer:
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
         r = subprocess.run(
             ["ollama", "run", self.model, full_prompt],
-            capture_output=True, text=True, timeout=90
+            capture_output=True, text=True, timeout=15
         )
         if r.returncode != 0:
             return None
@@ -114,7 +114,7 @@ class LLMEnhancer:
                 data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"}
             )
-            with urllib.request.urlopen(req, timeout=90) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read())
             for item in data.get("output", []):
                 if item.get("type") == "message":
