@@ -27,9 +27,9 @@ class LLMEnhancer:
         try:
             import urllib.request, json
             req = urllib.request.Request("http://localhost:1234/api/v1/chat",
-                data=json.dumps({"model": "ping", "input": "hi"}).encode(),
+                data=json.dumps({"model": "qwopus3.6-35b-a3b-v1", "input": "hi"}).encode(),
                 headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=3) as r:
+            with urllib.request.urlopen(req, timeout=10) as r:
                 json.loads(r.read())
             self.base_url = "http://localhost:1234/api/v1/chat"
             if not self.model:
