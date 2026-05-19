@@ -75,7 +75,7 @@ python3 engine/derive.py --project self-verify/docs --check
 
 | 指标 | 数值 |
 |------|------|
-| 核心引擎 | ~3,700行 Python (16模块+4子包) |
+| 核心引擎 | ~5,200行 Python (25模块+5子包) |
 | ToolForge 匹配引擎 | TF-IDF + keyword + hybrid 三模式 |
 | 元类型 | 10 (DOMAIN/FACT/INFERENCE/STATE/DOCUMENT/CONSTRAINT/PROCESSOR) |
 | 规约 | 13条 (C-01 ~ C-13) |

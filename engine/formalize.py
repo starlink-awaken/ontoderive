@@ -90,36 +90,47 @@ class Formalizer:
 
         return knowledge
 
-    EXTRACT_PROMPT = """从以下文本中提取结构化知识。输出JSON。
+    EXTRACT_PROMPT = """你是知识工程提取专家。从以下文本中提取结构化知识。输出JSON。
 
 文本:
 {text}
 
-提取:
-1. facts: 事实数据 [{{"id":"D-F1", "description":"...", "value":"...", "source":"..."}}]
-2. entities: 关键实体 [{{"id":"ORG-xxx", "name":"...", "type":"组织", "role":"..."}}]
-3. inferences: 推论 [{{"id":"INF-L1", "title":"...", "derives_from":["D-F1"], "conclusion":"..."}}]
+提取规则:
+1. facts: 找出具体的数据事实。每条包含id(D-F1~D-Fn), description(20字内), value(含单位), source(出处)
+2. entities: 找出关键组织和角色。每条包含id(ORG-/ROL-/PRJ-), name(实体名), type(组织/角色/项目), role(职能)
+3. inferences: 找出文中的推论/结论/判断。每条包含id(INF-L1~), title, derives_from(引用的事实id), conclusion
 
-只输出JSON:"""
+输出格式(只输出JSON):
+{{"facts":[{{"id":"D-F1","description":"入驻企业","value":"240家","source":"第三章"}}],"entities":[{{"id":"ORG-国转中心","name":"国家技术转移中心","type":"组织","role":"运营主体"}}],"inferences":[{{"id":"INF-L1","title":"数字化是必然趋势","derives_from":["D-F1"],"conclusion":"需要建设平台"}}]}}"""
 
     def __init__(self, enhancer=None):
         self.enhancer = enhancer
 
-    def extract_from_text(self, text: str) -> FormalKnowledge:
-        """Phase 1: LLM提取 → 降级规则引擎"""
+    def extract_from_text(self, text: str, mode="llm_first") -> FormalKnowledge:
+        """Phase 1: LLM主提取 → 降级规则引擎
+
+        mode: llm_first (默认, LLM优先+规则降级)
+              llm_only (仅LLM, 无降级)
+              rule_only (仅规则, 零LLM)
+        """
         knowledge = FormalKnowledge()
 
-        if self.enhancer and self.enhancer.available:
-            result = self.enhancer._call(
-                self.EXTRACT_PROMPT.format(text=text[:3000]),
-                "你是知识提取专家。只输出JSON。", 0.2
-            )
-            if result:
-                try:
-                    data = json.loads(result)
-                except json.JSONDecodeError:
-                    m = re.search(r'\{[\s\S]*\}', result)
-                    data = json.loads(m.group()) if m else {}
+        # LLM主提取
+        if mode != "rule_only" and self.enhancer and self.enhancer.available:
+            print(f"[formalize] 🤖 LLM提取中 ({self.enhancer.model})...")
+            # 分块处理长文本
+            chunks = [text[i:i+2500] for i in range(0, min(len(text), 8000), 2500)]
+            for chunk in chunks:
+                result = self.enhancer._call(
+                    self.EXTRACT_PROMPT.format(text=chunk),
+                    "你是知识提取专家。只输出JSON。", 0.2
+                )
+                if result:
+                    try:
+                        data = json.loads(result)
+                    except json.JSONDecodeError:
+                        m = re.search(r'\{[\s\S]*\}', result)
+                        data = json.loads(m.group()) if m else {}
 
                 for f in data.get("facts", []):
                     knowledge.facts.append(SymbolicFact(
@@ -146,10 +157,13 @@ class Formalizer:
                         conclusion=inf.get("conclusion", ""),
                     ))
 
-        # LLM提取失败/超时 → 规则引擎降级
+        # LLM失败/超时 → 规则引擎降级 (仅llm_first模式)
         if not knowledge.facts:
-            knowledge = self._rule_extract(text)
-            print("[formalize] LLM提取为空, 已降级为规则引擎")
+            if mode == "llm_only":
+                print("[formalize] ⚠️ LLM提取为空, llm_only模式不降级, 返回空结果")
+            else:
+                print("[formalize] ⚠️ LLM提取为空/超时, 已降级为规则引擎 (覆盖约15-20%)")
+                knowledge = self._rule_extract(text)
 
         self._validate(knowledge)
         # 构建ABox/TBox
