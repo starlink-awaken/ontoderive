@@ -7,7 +7,7 @@ OntoDerive 文件监听器 — 变化检测 + 自动重推导
     python3 engine/watcher.py --project . --interval 5
     python3 engine/watcher.py --project . --auto-derive-check
 """
-import hashlib, os, subprocess, sys, time
+import hashlib, subprocess, time
 from pathlib import Path
 
 class FileWatcher:

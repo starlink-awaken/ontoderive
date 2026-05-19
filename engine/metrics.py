@@ -114,8 +114,12 @@ class MetricsLayer:
     def _estimate_chain_depth(self, n_facts, n_inferences):
         if n_facts == 0 or n_inferences == 0:
             return 0
-        # 简单估算：假设均匀DAG
-        return min(n_inferences, 10)
+        try:
+            from .logic import build_from_project
+        except ImportError:
+            from logic import build_from_project
+        g = build_from_project(self.root)
+        return g.chain_depths()["max"]
 
     def _save_history(self, kqi_data):
         history = load_json(self._history_path) or {"entries": []}

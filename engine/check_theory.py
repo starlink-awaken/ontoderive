@@ -7,11 +7,6 @@ import sys
 from pathlib import Path
 
 
-def _call_result(protocol_id, name, detail_fn):
-    """统一的结果格式"""
-    return {"protocol_id": protocol_id, "name": name, "detail_fn": detail_fn}
-
-
 def check_bayesian(root):
     """C-09: 贝叶斯信念传播"""
     try:
