@@ -2,3 +2,5 @@
 {"t":0,"agent":"ad05f4f","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
 {"t":0,"agent":"a4b7ea9","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
 {"t":0,"agent":"aa91e1f","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"aa91e1f","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":365820}
+{"t":0,"agent":"a4b7ea9","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":422075}

@@ -243,3 +243,45 @@ class InsightEngine:
         """清除LLM结果缓存（项目内容变更后调用）"""
         for f in self.cache.cache_dir.glob("insight-*.json"):
             f.unlink()
+
+    # ═══ LLM推理增强: Self-Consistency ═══
+
+    def judge_with_consensus(self, project_root, context, n_samples=3):
+        """多次采样取中位数, 减少单次随机性"""
+        scores, verdicts = [], []
+        for i in range(n_samples):
+            result = self.judge_quality(project_root, context)
+            if result.get("score"):
+                scores.append(result["score"])
+                verdicts.append(result.get("verdict", ""))
+        if not scores:
+            return {"verdict": "eval_failed", "score": None}
+        return {
+            "score": sorted(scores)[len(scores)//2],
+            "min": min(scores), "max": max(scores),
+            "consensus": len(set(verdicts)) == 1, "samples": n_samples,
+        }
+
+    # ═══ LLM推理增强: Reflexion ═══
+
+    def reflect_and_refine(self, project_root, context, max_refinements=2):
+        """自我反思修正: 生成→评估→发现问题→修正"""
+        import re
+        initial = self.judge_quality(project_root, context)
+        if not initial.get("score"):
+            return initial
+        for i in range(max_refinements):
+            reflection = self._call(
+                f"反思你的评审(评分{initial.get('score')}): {initial.get('verdict','')[:200]}。是否有遗漏？修正评分(1-10):",
+                "你是善于自我反思的评审专家。", 0.3
+            )
+            if not reflection:
+                break
+            m = re.search(r'(\d+)\s*分', reflection)
+            if m:
+                refined = int(m.group(1))
+                if 1 <= refined <= 10 and refined != initial["score"]:
+                    initial["refined_score"] = refined
+                    initial["reflection"] = reflection[:200]
+                    break
+        return initial
