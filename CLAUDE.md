@@ -1,61 +1,62 @@
-# OntoDerive — 渊衍框架 v3.0
+# OntoDerive — 渊衍框架 v3.1
 
-> 事实驱动的一体化知识工程与方案推导框架。
-> 核心推导链：ToolForge匹配 → 事实基座 → 类型校验 → 推论体系 → 方案产出（双向可追溯）
+> 知识工程分析平台。双模式：结构分析(无LLM) + 洞察推导(需LLM)
 
 ---
 
-## 快速开始
+## Agent 标准操作流程
+
+### 1. 快速了解项目
 
 ```bash
-# 运行检查
-python3 engine/derive.py --project . --check
-
-# 带工具匹配的完整分析
-python3 engine/derive.py --project . --with-tools --goal "分析XX" --derive --check
-
-# 运行测试
-python3 -m pytest tests/ -v
+python3 engine/derive.py --project examples/z-park --derive --check
+# 输出: 8事实, 推导结论10条, 规约检查13/13
 ```
 
-## 项目状态 (v3.0)
+### 2. 分析任意项目
+
+```bash
+# 结构分析 (无需LLM, 始终可用)
+python3 engine/cli.py derive --project <path>
+
+# 完整分析 (需要LLM, 输出洞察+评分)
+ONTODERIVE_LLM_BACKEND=local python3 engine/cli.py analyze --project <path>
+```
+
+### 3. 推理规则 (8种推理 + 13种结构检查)
+
+```python
+from engine.derive import OntoDerive
+od = OntoDerive("my-project")
+summary = od.derive()
+# summary["derived_conclusions"] → 推理结论列表
+# summary["derivation_hints"]    → 结构提示列表
+```
+
+---
+
+## 当前状态 (v3.1.1)
 
 | 指标 | 数值 |
 |------|------|
-| 引擎模块 | 16个 + 4子包(ontolang/ecosystem/toolforge/typesystem) |
-| 测试数 | 114个，全部通过 |
-| 核心引擎 | derive.py 147行（从540行削减73%） |
-| 规约检查 | 13条(C-01~C-13)，独立模块 check.py |
+| 引擎模块 | 20+5子包 (5层架构) |
+| 测试数 | 156, 全部通过 |
+| 推理模式 | 8推理规则 + 13结构检查 |
+| LLM后端 | ollama/local API/openai/anthropic |
+| MCP工具 | 11个 |
 
-## 架构概览
+---
+
+## 架构速览
 
 ```
 engine/
-├── derive.py        核心推导引擎 (147行，check委托给check.py)
-├── check.py         13条规约检查引擎 (270行)
-├── pipeline.py      六阶段管道 (ToolForge→Load→Derive→Check→Resolve→Report)
-├── typesystem.py    10元类型校验器
-├── bayesian.py      DAG信念传播 + 环检测 + DOT可视化
-├── metrics.py       KQI知识质量指数 + 历史追踪
-├── controller.py    PID反馈控制 + 收敛检测
-├── turing_k.py      知识状态机 + Delta + 停机检测
-├── logic.py         蕴含图分析
-├── ontolang/        递归下降解析器 (5文件)
-├── toolforge/       TF-IDF + keyword + hybrid 三模式工具匹配
-├── ecosystem/       Minerva/Sophia/Agora/eCOS适配器
-├── protocols.py     生态接口契约 (ABC)
-├── config.py        配置合并链
-├── models.py        7个dataclass
-├── constants.py     共享常量和预编译正则
-├── utils.py         共享工具函数
-└── mcp_server.py    统一MCP入口 (11工具)
+├── core/          核心引擎    derive/check/check_theory/pipeline
+├── reasoners/     推理引擎    reasoner(21模式)/reasoning(选择器)
+├── theories/      六论模块    bayesian/metrics/controller/logic/turing_k/ontolang
+├── intelligence/  LLM智能     llm/insight/judge/prompts/got/react
+├── foundation/    基础设施    typesystem/models/constants/utils/config/protocols
+├── toolforge/     工具匹配    TF-IDF+keyword+hybrid (73工具)
+├── ecosystem/     生态适配    Minerva/Sophia/Agora/eCOS
+└── mcp_server.py  MCP入口    11工具
 ```
-
-## 生态接口
-
-| 接口 | 说明 |
-|------|------|
-| CLI | `python3 engine/derive.py --init/--derive/--check/--rounds/--goal/--with-tools` |
-| MCP | 11工具：ontoderive_init/derive/check/rounds/generate/analyze/config/delta + toolforge_match/select/guide |
-| Python | `from engine.derive import OntoDerive; od = OntoDerive('my-project'); od.derive(); od.check()` |
-| Pipeline | `from engine.pipeline import DerivePipeline; pipe = DerivePipeline('my-project'); pipe.run()` |
