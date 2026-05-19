@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"python3 -c \\\"\\nimport sys; sys.path.insert(0, 'engine')\\nfrom llm import get_enhancer\\ne = get_enhancer(force=True)\\nprint(f'Backend: {e.backend}/{e.model}')\\n\\n# 直接调用LLM\\ninfs = open('/tm...",
-  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 9, in <module>\n    result = e._call_ollama(\n        f'你是知识工程分析专家。阅读以下推论，给出1-3条具体的推导建议。\\n每条建议不超过30字，用中文。只输出建议，每条一行，不要编号。\\n\\n推论内容:\\n{infs[:2000]}',\n        '你是严谨的知识工程分析专家。',\n        0.3\n    )\n  File \"/Users/xiamingxing/Workspace/ontoderive/engine/llm.py\", line 67, in _call_ollama\n    r = subprocess.run(\n        [\"ollama\", \"run\", self.model, full_prompt],\n        capture_output=True, text=True, timeout=60\n    )\n  File \"/opt/home...",
-  "timestamp": "2026-05-19T02:45:57.587Z",
+  "tool_input_preview": "{\"command\":\"ONTODERIVE_LLM_BACKEND=none python3 -c \\\"\\nimport sys; sys.path.insert(0,'engine')\\nfrom reasoner import RuleReasoner\\nfrom utils import rf, all_md\\nfrom pathlib import Path\\nimport re\\n\\n...",
+  "error": "Exit code 1\n<string>:18: DeprecationWarning: 'maxsplit' is passed as positional argument\nTraceback (most recent call last):\n  File \"<string>\", line 29, in <module>\n    results = rr.derive(facts, inferences)\n  File \"/Users/xiamingxing/Workspace/ontoderive/engine/reasoner.py\", line 94, in derive\n    results.extend(self._numeric_derive(facts))\n                   ~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"/Users/xiamingxing/Workspace/ontoderive/engine/reasoner.py\", line 132, in _numeric_derive\n    \"conclus...",
+  "timestamp": "2026-05-19T06:58:27.940Z",
   "retry_count": 1
 }

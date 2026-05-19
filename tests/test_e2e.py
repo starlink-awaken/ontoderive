@@ -3,11 +3,13 @@ import sys, json
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
+ZPARK = str(Path(__file__).parent.parent / "examples" / "z-park")
+
 
 def test_e2e_derive_check_roundtrip():
     """完整推导+检查+报告闭环"""
     from derive import OntoDerive
-    od = OntoDerive("examples/z-park")
+    od = OntoDerive(ZPARK)
     s = od.derive()
     assert s["facts"] >= 2
     assert "confidence_distribution" in s
@@ -20,7 +22,7 @@ def test_e2e_derive_check_roundtrip():
 def test_e2e_pipeline_full():
     """Pipeline六阶段全流程"""
     from pipeline import DerivePipeline
-    pipe = DerivePipeline("examples/z-park")
+    pipe = DerivePipeline(ZPARK)
     pipe.set_goal("分析中关村", "科技园区")
     pipe.run()
     result = pipe.to_analysis_result()
@@ -36,7 +38,7 @@ def test_e2e_toolforge_derive_link():
     assert len(tools) >= 1
     guide = tf.to_inference_guide("中关村科技园区分析")
     assert "推荐" in guide
-    od = OntoDerive("examples/z-park")
+    od = OntoDerive(ZPARK)
     s = od.derive()
     assert s["facts"] >= 2
 
