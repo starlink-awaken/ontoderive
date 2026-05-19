@@ -109,6 +109,19 @@ class OntoDerive(DeriveInterface):
         except Exception:
             pass
 
+        # v2.4: LLM增强推导提示（降级：无LLM时跳过）
+        try:
+            from llm import get_enhancer
+            enhancer = get_enhancer()
+            if enhancer.available:
+                facts_text = str(summary.get("facts", ""))
+                infs_text = "\n".join(rf(f) for f in all_md(self.inferences_dir))
+                derivation_hints = enhancer.enhance_derivation_hints(
+                    f"事实数={summary['facts']}, 推论数={summary['inferences']}",
+                    infs_text, derivation_hints)
+        except Exception:
+            pass
+
         if derivation_hints:
             summary["derivation_hints"] = derivation_hints[:15]
 
