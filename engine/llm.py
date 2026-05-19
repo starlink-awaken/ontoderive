@@ -21,9 +21,22 @@ class LLMEnhancer:
     def _detect_backend(self, backend):
         if backend != "auto":
             return backend
-        # 自动检测
         if os.environ.get("OPENAI_API_KEY"): return "openai"
         if os.environ.get("ANTHROPIC_API_KEY"): return "anthropic"
+        # 检测本地API (localhost:1234)
+        try:
+            import urllib.request, json
+            req = urllib.request.Request("http://localhost:1234/api/v1/chat",
+                data=json.dumps({"model": "ping", "input": "hi"}).encode(),
+                headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=3) as r:
+                json.loads(r.read())
+            self.base_url = "http://localhost:1234/api/v1/chat"
+            if not self.model:
+                self.model = os.environ.get("ONTODERIVE_LLM_MODEL", "qwopus3.6-35b-a3b-v1")
+            return "local"
+        except Exception:
+            pass
         try:
             import subprocess
             r = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=3)
@@ -57,6 +70,8 @@ class LLMEnhancer:
                 return self.model in models
             except Exception:
                 return False
+        if self.backend == "local":
+            return True  # 自动检测时已验证连接
         if self.backend in ("openai", "anthropic"):
             return bool(os.environ.get(f"{self.backend.upper()}_API_KEY"))
         return False
@@ -66,7 +81,7 @@ class LLMEnhancer:
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
         r = subprocess.run(
             ["ollama", "run", self.model, full_prompt],
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True, timeout=90
         )
         if r.returncode != 0:
             return None
@@ -85,6 +100,27 @@ class LLMEnhancer:
         except Exception:
             return None
 
+    def _call_local(self, prompt, system="", temperature=0.3):
+        """本地OpenAI兼容API (localhost:1234, input/output格式)"""
+        import urllib.request, json
+        payload = {"model": self.model, "input": prompt}
+        if system:
+            payload["system_prompt"] = system
+        try:
+            req = urllib.request.Request(
+                self.base_url or "http://localhost:1234/api/v1/chat",
+                data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                data = json.loads(resp.read())
+            for item in data.get("output", []):
+                if item.get("type") == "message":
+                    return item.get("content", "").strip()
+            return None
+        except Exception:
+            return None
+
     def _call(self, prompt, system="", temperature=0.3):
         if not self.available:
             return None
@@ -93,6 +129,8 @@ class LLMEnhancer:
                 return self._call_ollama(prompt, system, temperature)
             elif self.backend == "openai":
                 return self._call_openai(prompt, system, temperature)
+            elif self.backend == "local":
+                return self._call_local(prompt, system, temperature)
         except Exception:
             return None
         return None
@@ -103,19 +141,15 @@ class LLMEnhancer:
         """增强推导提示：LLM读取推论全文，生成洞察"""
         if not self.available or self.backend == "none":
             return existing_hints
-        prompt = f"""你是知识工程分析专家。阅读以下事实和推论，给出1-3条具体的推导建议。
-每条建议不超过30字，用中文。只输出建议，每条一行，不要编号。
+        prompt = f"""分析以下推论，给出1-2条推导建议。每条20字以内。只输出建议，一行一条。
 
-事实摘要: {facts_summary}
-
-推论内容:
-{inferences_text[:3000]}
-
-已有提示: {existing_hints}"""
-        result = self._call(prompt, "你是严谨的知识工程分析专家。", 0.3)
+事实: {facts_summary}
+推论:
+{inferences_text[:1500]}"""
+        result = self._call(prompt, "你是知识工程分析专家。简洁输出。", 0.3)
         if result:
-            lines = [l.strip("- 1234567890. ") for l in result.split("\n") if l.strip() and len(l.strip()) > 5]
-            return existing_hints + lines[:3]
+            lines = [l.strip("- 1234567890.*# ") for l in result.split("\n") if l.strip() and len(l.strip()) > 4]
+            return existing_hints + lines[:2]
         return existing_hints
 
     def detect_contradictions(self, inference_a, inference_b, shared_facts):

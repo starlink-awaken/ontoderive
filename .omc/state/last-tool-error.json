@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"python3 engine/cli.py derive --project ontoderive-evolution 2>&1 && echo \\\"====\\\" && python3 engine/cli.py check --project ontoderive-evolution 2>&1 && echo \\\"====\\\" && python3 engine/cli....",
-  "error": "Exit code 2\n[derive] 事实基座扫描...\n[bayesian] ✅ DAG: 15节点, 9边, 2轮收敛\n[bayesian]    DOT: ontoderive-evolution/_derivation_logs/bayesian-network.dot\n[derive] 📊 事实=11, 推论=1, 推导提示=1\n====\n[check] 执行规约检查...\n  ✅ [PASS] C-01 — 事实文件: 2 个\n  ✅ [PASS] C-02 — 推论文件: 1 个\n  ✅ [PASS] C-03 — 方案文件: 1 个\n  ✅ [PASS] C-04 — 事实11个: 推论引用9, 方案引用8 | 蕴含图: 15节点/17边, 深度1, 未追溯3个: D-F7,P-F1,D-F3\n  ✅ [PASS] C-05 — 断言0个, 可追溯0, 率100%\n  ✅ [PASS] C-06 — 预测断言0个, 可证伪0, 率100%\n  ✅ [PASS] C-07 — v2前缀26种, 校验通过: 19个ID\n  ✅ [PASS] C-08 — 引擎: ch...",
-  "timestamp": "2026-05-18T09:34:05.531Z",
+  "tool_input_preview": "{\"command\":\"python3 -c \\\"\\nimport sys; sys.path.insert(0, 'engine')\\nfrom llm import get_enhancer\\ne = get_enhancer(force=True)\\nprint(f'Backend: {e.backend}/{e.model}')\\n\\n# 直接调用LLM\\ninfs = open('/tm...",
+  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 9, in <module>\n    result = e._call_ollama(\n        f'你是知识工程分析专家。阅读以下推论，给出1-3条具体的推导建议。\\n每条建议不超过30字，用中文。只输出建议，每条一行，不要编号。\\n\\n推论内容:\\n{infs[:2000]}',\n        '你是严谨的知识工程分析专家。',\n        0.3\n    )\n  File \"/Users/xiamingxing/Workspace/ontoderive/engine/llm.py\", line 67, in _call_ollama\n    r = subprocess.run(\n        [\"ollama\", \"run\", self.model, full_prompt],\n        capture_output=True, text=True, timeout=60\n    )\n  File \"/opt/home...",
+  "timestamp": "2026-05-19T02:45:57.587Z",
   "retry_count": 1
 }
