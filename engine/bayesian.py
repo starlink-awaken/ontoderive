@@ -153,8 +153,18 @@ class BayesianLayer:
             text = rf(f)
             for m in re.finditer(r'\| (D-F\d+|P-F\d+)\s*\|([^|]+)\|([^|]+)\|', text):
                 fid = m.group(1)
-                facts[fid] = {"desc": m.group(2).strip(), "value": m.group(3).strip(),
-                               "confidence": 0.95, "type": "fact"}
+                source = m.group(3).strip() if m.lastindex and m.lastindex >= 3 else ""
+                # 基于来源可靠性差异化置信度
+                conf = 0.95
+                source_lower = source.lower()
+                if any(kw in source_lower for kw in ["gartner", "aws", "linkedin", "行业报告"]):
+                    conf = 0.92  # 外部来源，有一定偏差
+                elif any(kw in source_lower for kw in ["hr", "财务", "cmdb", "soc", "apm"]):
+                    conf = 0.97  # 内部系统数据，较可靠
+                elif any(kw in source_lower for kw in ["调研", "供应商", "预估"]):
+                    conf = 0.88  # 调研/供应商数据，需验证
+                facts[fid] = {"desc": m.group(2).strip(), "value": source,
+                               "confidence": conf, "type": "fact"}
         return facts
 
     def scan_inferences(self):

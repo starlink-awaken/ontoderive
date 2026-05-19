@@ -42,6 +42,8 @@ def main():
     p_check.add_argument("--project", default=".", help="项目路径")
 
     # rounds
+    p_generate = sub.add_parser("generate", help="生成推导报告")
+    p_generate.add_argument("--project", default=".", help="项目路径")
     p_rounds = sub.add_parser("rounds", help="多轮迭代")
     p_rounds.add_argument("--project", default=".", help="项目路径")
     p_rounds.add_argument("n", type=int, default=3, help="迭代轮数")
@@ -84,7 +86,7 @@ def main():
         )
         print(f"✅ 项目 '{args.name}' 已初始化")
 
-    elif args.command in ("derive", "check", "rounds"):
+    elif args.command in ("derive", "check", "rounds", "generate"):
         from derive import OntoDerive
 
         od = OntoDerive(args.project)
@@ -115,6 +117,8 @@ def main():
             od.check()
         elif args.command == "rounds":
             od.run_rounds(args.n)
+        elif args.command == "generate":
+            od.generate_report()
 
     elif args.command == "toolforge":
         from engine.toolforge import ToolForge

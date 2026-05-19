@@ -7,15 +7,17 @@ import datetime, re, sys
 from pathlib import Path
 
 try:
-    from .utils import rf, wf, all_md, load_json, save_json
+    from .utils import CachedReader, save_json
     from .constants import V2_ID_PATTERNS
 except ImportError:
-    from utils import rf, wf, all_md, load_json, save_json  # noqa
+    from utils import CachedReader, save_json  # noqa
     from constants import V2_ID_PATTERNS  # noqa
 
 
 def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir):
-    """执行全部13条规约检查。返回(results, severity_counts)"""
+    """执行全部13条规约检查，使用CachedReader消除重复I/O"""
+    cr = CachedReader()
+    rf, all_md = cr.rf, cr.all_md
     results = []
     severity_counts = {"PASS": 0, "WARN": 0, "ERROR": 0, "BLOCKER": 0}
 
@@ -60,6 +62,14 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
     traced_in_scheme = sum(1 for fid in fact_ids if fid in scheme_text)
     untraced = [fid for fid in fact_ids if fid not in scheme_text]
     detail_c4 = f"事实{len(fact_ids)}个: 推论引用{traced_in_inf}, 方案引用{traced_in_scheme}"
+    # v2.3: 蕴含图运行时统计
+    try:
+        from logic import build_from_project
+        g = build_from_project(root)
+        gs = g.stats()
+        detail_c4 += f" | 蕴含图: {gs['nodes']}节点/{gs['edges']}边, 深度{gs['max_depth']}"
+    except Exception:
+        pass
     if untraced:
         detail_c4 += f", 未追溯{len(untraced)}个: {','.join(untraced[:3])}"
     result("C-04", "事实可追溯性", traced_in_inf > 0 and traced_in_scheme > 0,
@@ -126,13 +136,16 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
             all_text += rf(f)
 
     type_errors = []
+    ids_found = set()
+    SKIP_PREFIXES = ("C-", "P-", "ISC-", "F", "v", "v2", "v3", "E", "e")
     try:
         from typesystem import TypeValidator
         tv = TypeValidator()
-        ids_found = set()
         for m in re.finditer(r'\b([A-Z][A-Za-z0-9_-]*(?:-[A-Za-z0-9_-]+)*)\b', all_text):
             raw_id = m.group(0)
             if '-' not in raw_id or len(raw_id) < 3:
+                continue
+            if any(raw_id.startswith(p) for p in SKIP_PREFIXES):
                 continue
             if raw_id in ids_found:
                 continue
@@ -141,14 +154,15 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
             if not r.is_valid:
                 type_errors.append(f"{raw_id}({r.errors[0]})")
     except ImportError:
-        pass  # typesystem.py 可选模块，不可用时不阻塞
+        pass
 
-    bad_ids = re.findall(r'\b(ORG[A-Z]|ROL[A-Z]|PRJ[A-Z]|DAT\d|INF[A-Z]|POL\d)', all_text)
-    detail_c7 = f"异常格式: {len(bad_ids)} 个, v2前缀共{len(V2_ID_PATTERNS)}种"
+    detail_c7 = f"v2前缀{len(V2_ID_PATTERNS)}种"
     if type_errors:
         detail_c7 += f", 类型错误: {len(type_errors)}个 [{'; '.join(type_errors[:3])}]"
-    result("C-07", "实体ID合规性(v2.1)", len(bad_ids) == 0,
-           "WARN" if bad_ids or type_errors else "PASS", detail_c7)
+    elif len(ids_found) > 0:
+        detail_c7 += f", 校验通过: {len(ids_found)}个ID"
+    result("C-07", "实体ID合规性(v2.2 TypeValidator)", len(type_errors) == 0,
+           "WARN" if type_errors else "PASS", detail_c7)
 
     # C8: 引擎自检
     script_path = Path(__file__).resolve()

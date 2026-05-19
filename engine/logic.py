@@ -119,6 +119,7 @@ class EntailmentGraph:
         cycles = self.detect_cycles()
         depths = self.chain_depths()
         bn = self.bottlenecks()
+        contradictions = self.find_contradictions()
         fact_count = sum(1 for n in self.nodes.values() if n["type"] == "fact")
         inf_count = sum(1 for n in self.nodes.values() if n["type"] == "inference")
 
@@ -133,7 +134,40 @@ class EntailmentGraph:
             "max_depth": depths["max"],
             "avg_depth": depths["avg"],
             "bottlenecks": bn,
+            "contradictions": contradictions,
         }
+
+    def find_contradictions(self):
+        """检测矛盾推论：两个推论引用相同事实但关键词方向相反"""
+        inf_nodes = [(nid, info) for nid, info in self.nodes.items() if info["type"] == "inference"]
+        opposite_pairs = [
+            ("增加", "减少"), ("增加", "控制"), ("上升", "下降"), ("增长", "衰退"),
+            ("优势", "劣势"), ("机会", "威胁"), ("成功", "失败"),
+            ("应该", "不应"), ("需要", "无需"), ("建议", "避免"),
+            ("优化", "削减"), ("扩大", "缩减"),
+        ]
+        contradictions = []
+        seen = set()
+        for i, (id1, inf1) in enumerate(inf_nodes):
+            parents1 = set(self.reverse.get(id1, []))
+            for j in range(i + 1, len(inf_nodes)):
+                id2, inf2 = inf_nodes[j]
+                if (id1, id2) in seen or (id2, id1) in seen:
+                    continue
+                parents2 = set(self.reverse.get(id2, []))
+                shared = parents1 & parents2
+                if len(shared) >= 1:
+                    t1, t2 = inf1.get("label", ""), inf2.get("label", "")
+                    for pos_word, neg_word in opposite_pairs:
+                        if (pos_word in t1 and neg_word in t2) or (neg_word in t1 and pos_word in t2):
+                            contradictions.append({
+                                "inference_a": id1, "inference_b": id2,
+                                "shared_facts": list(shared),
+                                "opposing_terms": [pos_word, neg_word],
+                            })
+                            seen.add((id1, id2))
+                            break
+        return contradictions
 
 
 def build_from_project(project_root):

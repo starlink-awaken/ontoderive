@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ontoderive"
-version = "2.0.0"
+version = "2.2.0"
 description = "OntoDerive 渊衍框架 — 事实驱动的一体化知识工程与方案推导。含 ToolForge 工具匹配模块。"
 authors = [{name = "夏明星"}]
 license = {text = "MIT"}
@@ -25,7 +25,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "pytest-cov", "ruff"]
 
 [project.scripts]
 ontoderive = "engine.cli:main"
@@ -35,5 +35,10 @@ Homepage = "https://github.com/your-org/ontoderive"
 Repository = "https://github.com/your-org/ontoderive"
 
 [tool.setuptools]
-packages = ["engine", "engine.toolforge"]
+packages = ["engine", "engine.toolforge", "engine.ontolang", "engine.ecosystem"]
 py-modules = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["engine"]
+addopts = ["-v", "--tb=short"]

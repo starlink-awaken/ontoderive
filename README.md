@@ -75,13 +75,14 @@ python3 engine/derive.py --project self-verify/docs --check
 
 | 指标 | 数值 |
 |------|------|
-| 核心引擎 | ~1,500行 Python |
-| ToolForge 匹配引擎 | ~250行 + MCP Server ~150行 |
-| 元类型 | 10 (DOMAIN/FACT/INFERENCE/...) |
+| 核心引擎 | ~3,700行 Python (16模块+4子包) |
+| ToolForge 匹配引擎 | TF-IDF + keyword + hybrid 三模式 |
+| 元类型 | 10 (DOMAIN/FACT/INFERENCE/STATE/DOCUMENT/CONSTRAINT/PROCESSOR) |
 | 规约 | 13条 (C-01 ~ C-13) |
-| ID前缀 | 26种 |
-| 思维工具目录 | 53工具 (6维度 × 3垂直领域) |
-| MCP工具总数 | 8 (OntoDerive) + 3 (ToolForge) = 11 |
+| 测试 | 114个，全部通过 |
+| 思维工具目录 | 73工具 (6维度) |
+| MCP工具总数 | 11 (统一入口) |
+| 生态适配器 | Minerva / Sophia / Agora / eCOS |
 
 ## 🔗 生态协作
 

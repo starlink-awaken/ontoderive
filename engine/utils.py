@@ -1,14 +1,38 @@
 """
-OntoDerive 共享工具函数
-=======================
+OntoDerive 共享工具函数 v2.3
+=============================
 消除各模块重复的 rf/wf/all_md/load_json/save_json 拷贝。
-所有引擎模块从这里导入，不自己实现文件读写。
+v2.3: 添加 CachedReader 消除单次 run_check 中的重复文件 I/O。
 """
 import json
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 
 
+class CachedReader:
+    """单次检查生命周期内的文件读缓存 — 每个文件只从磁盘读一次"""
+
+    def __init__(self):
+        self._files = {}     # path_str → text
+        self._listings = {}  # dir_str → [Path]
+
+    def rf(self, path):
+        key = str(path)
+        if key not in self._files:
+            p = Path(path)
+            self._files[key] = p.read_text("utf-8", errors="ignore") if p.exists() else ""
+        return self._files[key]
+
+    def all_md(self, directory):
+        key = str(directory)
+        if key not in self._listings:
+            dp = Path(directory)
+            self._listings[key] = sorted(dp.rglob("*.md")) if dp.exists() else []
+        return self._listings[key]
+
+
+# 全局无状态工具（向后兼容）
 def rf(path):
     """读文件，文件不存在返回空串"""
     p = Path(path) if isinstance(path, str) else path

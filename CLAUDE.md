@@ -1,67 +1,61 @@
-# OntoDerive — 渊衍框架
+# OntoDerive — 渊衍框架 v2.2
 
 > 事实驱动的一体化知识工程与方案推导框架。
-> 核心推导链：事实 → 本体 → 推论 → 方案（双向可追溯）
+> 核心推导链：ToolForge匹配 → 事实基座 → 类型校验 → 推论体系 → 方案产出（双向可追溯）
 
 ---
 
-## 对 agent 的标准操作流程
-
-当你被加载到此项目时，按以下顺序执行：
-
-### Step 1: 理解项目状态
+## 快速开始
 
 ```bash
-python3 engine/derive.py --project . --check
-# 如果项目未初始化，先 --init new-project
-```
-
-### Step 2: 阅读四阶段方法论
-
-依次读取：
-1. `framework/01-元模型/00-元模型定义.md` — 理解8元类型和元关系矩阵
-2. `examples/z-park/README.md` — 通过示例理解完整流程
-3. 检查当前项目的 `facts/`、`entities/`、`inferences/`、`scheme/` 目录
-
-### Step 3: 执行推导引擎
-
-```bash
-# 正向推导
-python3 engine/derive.py --project . --derive
-
-# 规约检查
+# 运行检查
 python3 engine/derive.py --project . --check
 
-# 多轮迭代(每轮检查+报告)
-python3 engine/derive.py --project . --rounds 3
+# 带工具匹配的完整分析
+python3 engine/derive.py --project . --with-tools --goal "分析XX" --derive --check
+
+# 运行测试
+python3 -m pytest tests/ -v
 ```
 
-### Step 4: 根据规约结果修复缺口
+## 项目状态 (v2.2)
 
-引擎会输出每项检查的通过/失败状态和修复建议。按优先级处理：
-- BLOCKER → 立即修复
-- ERROR → 本轮修复
-- WARN → 记录并在后续迭代中处理
+| 指标 | 数值 |
+|------|------|
+| 引擎模块 | 16个 + 4子包(ontolang/ecosystem/toolforge/typesystem) |
+| 测试数 | 114个，全部通过 |
+| 核心引擎 | derive.py 147行（从540行削减73%） |
+| 规约检查 | 13条(C-01~C-13)，独立模块 check.py |
 
----
+## 架构概览
 
-## 核心约束
+```
+engine/
+├── derive.py        核心推导引擎 (147行，check委托给check.py)
+├── check.py         13条规约检查引擎 (270行)
+├── pipeline.py      六阶段管道 (ToolForge→Load→Derive→Check→Resolve→Report)
+├── typesystem.py    10元类型校验器
+├── bayesian.py      DAG信念传播 + 环检测 + DOT可视化
+├── metrics.py       KQI知识质量指数 + 历史追踪
+├── controller.py    PID反馈控制 + 收敛检测
+├── turing_k.py      知识状态机 + Delta + 停机检测
+├── logic.py         蕴含图分析
+├── ontolang/        递归下降解析器 (5文件)
+├── toolforge/       TF-IDF + keyword + hybrid 三模式工具匹配
+├── ecosystem/       Minerva/Sophia/Agora/eCOS适配器
+├── protocols.py     生态接口契约 (ABC)
+├── config.py        配置合并链
+├── models.py        7个dataclass
+├── constants.py     共享常量和预编译正则
+├── utils.py         共享工具函数
+└── mcp_server.py    统一MCP入口 (11工具)
+```
 
-1. **事实先于推论**：没有事实编号的推论不采用
-2. **可证伪**：每个关键判断必须附带退出条件
-3. **正交分解**：维度之间互不重叠
-4. **双向闭环**：正向推导+反向校验=完整
+## 生态接口
 
----
-
-## 健壮性评估
-
-| 维度 | 当前状态 | 说明 |
-|------|---------|------|
-| 元模型 | ✅ 完备 | 8元类型×4元关系×4元约束，自指闭环 |
-| 示例 | ✅ 可运行 | z-park示例4/4检查通过 |
-| 引擎 | ⚠️ 覆盖4/19规约 | 基础检查完成，领域规约需按需补充 |
-| 插件化 | ❌ 未打包 | 需用 create-cowork-plugin 打包 |
-| MCP服务 | ❌ 未实现 | agent调用需手动执行脚本 |
-| 模板系统 | ⚠️ 基础 | --init 创建最小骨架 |
-| 文档生成 | ⚠️ 仅markdown | docx/pdf生成需扩展 |
+| 接口 | 说明 |
+|------|------|
+| CLI | `python3 engine/derive.py --init/--derive/--check/--rounds/--goal/--with-tools` |
+| MCP | 11工具：ontoderive_init/derive/check/rounds/generate/analyze/config/delta + toolforge_match/select/guide |
+| Python | `from engine.derive import OntoDerive; od = OntoDerive('my-project'); od.derive(); od.check()` |
+| Pipeline | `from engine.pipeline import DerivePipeline; pipe = DerivePipeline('my-project'); pipe.run()` |

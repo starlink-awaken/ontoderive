@@ -20,10 +20,15 @@ try:
 except ImportError:
     from utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
+
+try:
+    from .protocols import DeriveInterface
+except ImportError:
+    from protocols import DeriveInterface  # noqa
 
 
-class OntoDerive:
+class OntoDerive(DeriveInterface):
     def __init__(self, project_root):
         self.root = Path(project_root)
         self.facts_dir = self.root / "facts"
@@ -51,7 +56,7 @@ class OntoDerive:
 
         infer_count = 0
         for f in all_md(self.inferences_dir):
-            infer_count += len(re.findall(r'^##\s+\w+', rf(f)))
+            infer_count += len(re.findall(r'^##\s+INF-', rf(f), re.MULTILINE))
 
         summary = {"derived_at": datetime.datetime.now().isoformat(),
                    "facts": len(facts["data"]) + len(facts["policy"]),
@@ -74,8 +79,41 @@ class OntoDerive:
             summary["entailment_graph"] = {"nodes": g["nodes"], "edges": g["edges"], "max_depth": g["max_depth"], "cycles": g["cycles"]}
         except Exception: pass
 
+        # v2.3: 内容推导 — 规则引擎 + DAG分析
+        derivation_hints = []
+        for f in all_md(self.inferences_dir):
+            text = rf(f)
+            if "derives_from" not in text:
+                derivation_hints.append(f"{f.name}: 缺少 derives_from 声明")
+            if "理论支撑" not in text and "理论" not in text:
+                derivation_hints.append(f"{f.name}: 建议添加理论支撑")
+        for f in all_md(self.scheme_dir):
+            text = rf(f)
+            if len(re.findall(r'D-F\d+|P-F\d+', text)) == 0:
+                derivation_hints.append(f"{f.name}: 未引用任何事实编号")
+
+        # DAG分析：弱推论、矛盾检测
+        try:
+            from logic import build_from_project
+            g = build_from_project(self.root)
+            st = g.stats()
+            if st["contradictions"]:
+                for c in st["contradictions"]:
+                    derivation_hints.append(
+                        f"⚠️ 矛盾: {c['inference_a']} vs {c['inference_b']} "
+                        f"(共享事实{c['shared_facts']}, 对立词{c['opposing_terms']})")
+            if st["max_depth"] < 2 and st["inferences"] >= 3:
+                derivation_hints.append(f"推导链深度仅{st['max_depth']}，推论间缺少递进关系")
+            if st["has_cycles"]:
+                derivation_hints.append(f"检测到{st['cycles']}个循环引用，请检查 derives_from 链")
+        except Exception:
+            pass
+
+        if derivation_hints:
+            summary["derivation_hints"] = derivation_hints[:15]
+
         save_json(self.log_dir / "derive-summary.json", summary)
-        print(f"[derive] 📊 事实={summary['facts']}, 推论={summary['inferences']}")
+        print(f"[derive] 📊 事实={summary['facts']}, 推论={summary['inferences']}, 推导提示={len(derivation_hints)}")
         return summary
 
     def check(self):

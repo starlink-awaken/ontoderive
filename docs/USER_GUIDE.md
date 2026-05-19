@@ -1,125 +1,193 @@
-# OntoDerive 用户指南
+# OntoDerive v2.2 — 使用指南
 
-> 面向人类用户的完整使用说明
+> 从零开始，五分钟掌握 OntoDerive
 
 ---
 
-## 安装
+## 一、安装
 
 ```bash
-# 方式一：pip安装
-pip install ontoderive
-
-# 方式二：源码运行
-git clone https://github.com/your-org/ontoderive.git
+git clone https://github.com/starlink-awaken/ontoderive.git
 cd ontoderive
-export PYTHONPATH=$PYTHONPATH:$(pwd)/engine
+python3 -m pytest tests/ -q   # 期望：114 passed
 ```
 
-## 核心概念
+零外部依赖（Python 3.8+标准库）。
 
-| 概念 | 说明 | 类比 |
-|------|------|------|
-| 事实基座(facts/) | 可验证的数据+政策 | 案件的证据 |
-| 实体(entities/) | 关键角色+组织+项目 | 案件的角色 |
-| 推论(inferences/) | 基于事实的逻辑推导 | 律师的论证 |
-| 方案(scheme/) | 最终产出文档 | 判决书 |
-| 规约检查(check) | 验证方案的完整性 | 二审审查 |
+---
 
-## 完整工作流
-
-### 第一步：初始化
+## 二、快速体验
 
 ```bash
+# 运行内置示例
+python3 engine/derive.py --project examples/z-park --check
+# 输出：📊 规约检查: 13/13 通过
+
+# 带工具匹配的完整分析
+python3 engine/derive.py --project examples/z-park \
+  --with-tools --goal "中关村科技园区" --derive --check
+```
+
+---
+
+## 三、四种使用方式
+
+### 方式1：CLI
+
+```bash
+# 初始化新项目
 python3 engine/derive.py --init my-analysis
-cd my-analysis
+
+# 正向推导 + 规约检查
+python3 engine/derive.py --project my-analysis --derive --check
+
+# 多轮迭代（推导→检查→修复→重复至收敛）
+python3 engine/derive.py --project my-analysis --rounds 5
+
+# 生成报告
+python3 engine/derive.py --project my-analysis --generate report
 ```
 
-### 第二步：填充事实
+### 方式2：Python API
 
-编辑 `facts/data.md`：
+```python
+from engine.derive import OntoDerive
 
-```markdown
-| 编号 | 数据 | 数值 | 来源 |
-|------|------|------|------|
-| D-F1 | 总用户数 | 100万 | 2026年报 |
-| D-F2 | 月活用户 | 30万 | 产品月报 |
+od = OntoDerive("my-project")
+summary = od.derive()
+# {'facts': 10, 'inferences': 3,
+#  'confidence_distribution': {'mean': 0.85, ...},
+#  'entailment_graph': {'nodes': 25, 'max_depth': 3, ...}}
+
+results = od.check()
+passed = sum(1 for r in results if r["passed"])
+print(f"{passed}/13 通过")
 ```
 
-编辑 `facts/policy.md`（可选）：
+### 方式3：Pipeline
 
-```markdown
-| 编号 | 政策 | 发布主体 | 日期 |
-|------|------|---------|------|
-| P-F1 | 数据安全法 | 全国人大 | 2021 |
+```python
+from engine.pipeline import DerivePipeline
+
+pipe = DerivePipeline("my-project")
+pipe.set_goal("分析新能源汽车市场", "竞争格局")
+pipe.run()  # 6阶段全流程：ToolForge→Load→Derive→Check→Resolve→Report
+result = pipe.to_analysis_result()
 ```
 
-### 第三步：定义实体
-
-编辑 `entities/actors.md`：
-
-```markdown
-| 实体 | 类型 | 角色 | 数量 |
-|------|------|------|------|
-| ORG-XX公司 | 组织 | 运营主体 | 1 |
-| ROL-普通用户 | 角色 | 使用者 | 100万(D-F1) |
-```
-
-### 第四步：建立推论
-
-编辑 `inferences/analysis.md`：
-
-```markdown
-## INF-L1：活跃度不足
-
-推导过程：
-1. 总用户100万(D-F1)但月活仅30万(D-F2)
-2. 活跃率30%，低于行业均值50%
-3. 推论：产品留存存在问题
-- derives_from: [D-F1, D-F2]
-```
-
-### 第五步：编写方案
-
-编辑 `scheme/report.md`：
-
-```markdown
-# XX产品分析报告
-
-## 核心发现
-月活率30%(D-F1/D-F2)，存在留存问题(INF-L1)
-```
-
-### 第六步：执行验证
+### 方式4：MCP Server
 
 ```bash
-python3 ../engine/derive.py --project . --derive --check
-python3 ../engine/derive.py --project . --rounds 3
-python3 ../engine/derive.py --project . --generate report
-cat _derivation_logs/report.md
+python3 engine/mcp_server.py   # 启动stdio JSON-RPC，11工具就绪
 ```
 
-## CLI 命令参考
+工具列表：`ontoderive_init/derive/check/rounds/generate/analyze/config/delta` + `toolforge_match/select/guide`
 
-| 命令 | 说明 | 示例 |
+---
+
+## 四、项目结构
+
+`--init my-project` 生成：
+
+```
+my-project/
+├── facts/data.md       ← 数据事实 (| D-F1 | 描述 | 数值 | 来源 |)
+├── facts/policy.md     ← 政策事实 (| P-F1 | 政策 | 发布主体 | 日期 |)
+├── entities/actors.md  ← 实体 (**ORG-名称** : Organization)
+├── inferences/analysis.md ← 推论 (## INF-L1 标题, derives_from: [D-F1])
+├── scheme/report.md    ← 方案产出
+└── _derivation_logs/   ← 运行日志（自动生成）
+```
+
+### ID约定
+
+| 元素 | 格式 | 示例 |
 |------|------|------|
-| `--init NAME` | 初始化新项目 | `--init my-project` |
-| `--project PATH` | 指定项目路径 | `--project .` |
-| `--derive` | 正向推导 | `--derive` |
-| `--check` | 规约检查 | `--check` |
-| `--resolve` | 自动修复 | `--resolve` |
-| `--rounds N` | 多轮迭代 | `--rounds 5` |
-| `--generate report` | 生成报告 | `--generate report` |
+| 数据事实 | `D-F数字` | D-F1 |
+| 政策事实 | `P-F数字` | P-F9 |
+| 组织 | `ORG-名称` | ORG-国转中心 |
+| 角色 | `ROL-名称` | ROL-技术经理人 |
+| 项目 | `PRJ-名称` | PRJ-平台建设 |
+| 推论 | `INF-名称` | INF-L1 |
+| 推导链 | `derives_from: [D-F1]` | 推论末尾标注 |
 
-## 8条规约速查
+---
 
-| 编号 | 检查项 | 严重度 | 触发条件 |
-|------|-------|--------|---------|
-| C-01 | 事实基座完整性 | BLOCKER | facts/目录不存在 |
-| C-02 | 推论体系完整性 | ERROR | inferences/目录不存在 |
-| C-03 | 方案文件完整性 | ERROR | scheme/目录无文件 |
-| C-04 | 事实可追溯性 | WARN | 事实编号在方案中未被引用 |
-| C-05 | 断言可追溯性 | WARN | 断言无编号引用(<30%) |
-| C-06 | 可证伪性 | WARN | 核心预测无条件句(<15%) |
-| C-07 | ID合规性 | WARN | 非标准实体ID |
-| C-08 | 引擎健康度 | BLOCKER | derive.py不可运行 |
+## 五、常用场景
+
+### 5.1 市场分析
+
+```bash
+python3 engine/derive.py --goal "新能源汽车市场分析"
+# 编辑 新能源汽车市场分析/facts/data.md 填入数据
+python3 engine/derive.py --project 新能源汽车市场分析 \
+  --with-tools --derive --check
+```
+
+### 5.2 方案编制
+
+按四阶段：事实基座→实体本体→推论体系→方案产出，每阶段运行 `--check`，完成后 `--rounds 5` 收敛。
+
+### 5.3 工具推荐
+
+```python
+from engine.toolforge.matcher import ToolForge
+tf = ToolForge()
+for t in tf.select("分析新能源汽车市场", top_n=3):
+    print(f"{t['id']} {t['name']} ({t['score']})")
+# S-003 先市场后技术 (3.0)
+# M-001 波特五力 (2.5)
+# M-005 PEST分析 (1.5)
+```
+
+### 5.4 类型校验
+
+```python
+from engine.typesystem import TypeValidator
+tv = TypeValidator()
+assert tv.check_id("D-F1").is_valid     # True
+assert not tv.check_id("BAD-xxx").is_valid  # False
+```
+
+---
+
+## 六、配置 (ontoderive.yaml)
+
+```yaml
+toolforge_mode: keyword     # keyword | tfidf | hybrid
+toolforge_top_n: 5
+check_thresholds:
+  assertion_traceability: 0.30
+  falsifiability: 0.15
+derive_iterations: 3
+```
+
+优先级：env vars > CLI args > project yaml > defaults
+
+---
+
+## 七、生态集成
+
+```python
+# Minerva研究 → OntoDerive事实
+from engine.ecosystem import minerva_to_facts
+minerva_to_facts({"facts": [{"description":"企业数","value":"240"}]}, "my-project")
+
+# Sophia → OntoDerive框架推荐
+from engine.ecosystem import recommend_frameworks
+recommend_frameworks("分析新能源汽车市场")
+
+# eCOS事件观察
+from engine.ecosystem import create_observer
+obs = create_observer()
+```
+
+---
+
+## 八、测试
+
+```bash
+python3 -m pytest tests/ -v                    # 全量 114测试
+python3 -m pytest tests/ --cov=engine          # 覆盖率
+python3 -m pytest tests/test_typesystem.py -v  # 单模块
+```

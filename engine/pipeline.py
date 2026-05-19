@@ -46,12 +46,18 @@ class LoadStage(PipelineStage):
 class DeriveStage(PipelineStage):
     name = "derive"
     def run(self, ctx):
+        # 复用LoadStage结果，避免重复扫描+Bayesian
+        cached = ctx.get("_derive_result")
+        if cached:
+            return cached
         try:
             from .derive import OntoDerive as _OD
         except ImportError:
             from derive import OntoDerive as _OD  # noqa
         od = _OD(ctx["project_root"])
-        return od.derive()
+        result = od.derive()
+        ctx["_derive_result"] = result
+        return result
 
 
 class CheckStage(PipelineStage):

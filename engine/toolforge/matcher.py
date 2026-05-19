@@ -12,7 +12,17 @@ CATALOG_PATH = Path(__file__).parent / "catalog.json"
 
 
 def _tokenize(text):
-    return re.findall(r'[一-鿿]+|[a-zA-Z]+', text.lower())
+    """中英文混合分词：英文按词，中文生成bigram+unigram提高召回"""
+    tokens = []
+    text_lower = text.lower()
+    # 英文词
+    tokens.extend(re.findall(r'[a-zA-Z]+', text_lower))
+    # 中文：bigram (相邻2字) + unigram (单字)
+    cn_chars = re.findall(r'[一-鿿]', text_lower)
+    for i in range(len(cn_chars) - 1):
+        tokens.append(cn_chars[i] + cn_chars[i + 1])
+    tokens.extend(cn_chars)
+    return tokens
 
 
 def _build_vocab(docs):
@@ -40,7 +50,13 @@ def _compute_idf(docs, vocab):
     return idf
 
 
-class ToolForge:
+try:
+    from ..protocols import ToolForgeInterface
+except ImportError:
+    from protocols import ToolForgeInterface  # noqa
+
+
+class ToolForge(ToolForgeInterface):
     """思维工具匹配引擎 v2 — TF-IDF + 关键词双模式"""
 
     def __init__(self, catalog_path=None):
