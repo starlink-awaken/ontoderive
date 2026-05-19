@@ -120,7 +120,15 @@ class OntoDerive(DeriveInterface):
         try:
             from reasoner import RuleReasoner
             rr = RuleReasoner()
-            rr_results = rr.derive(facts, {})  # TODO: 传入推论
+            # 重建推论dict
+            inferences_dict = {}
+            for f in all_md(self.inferences_dir):
+                text = rf(f)
+                for block in __import__('re').split(r'^##\s+', text, __import__('re').MULTILINE)[1:]:
+                    title = block.strip().split('\n')[0].strip()
+                    df = __import__('re').findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', block)
+                    inferences_dict[title] = {"derives_from": list(set(df)), "text": block[:300]}
+            rr_results = rr.derive(facts["data"], inferences_dict)
             summary["derived_conclusions"] = [
                 {"conclusion": r["conclusion"], "confidence": r["confidence"],
                  "type": r["type"], "method": "rule_engine"}
