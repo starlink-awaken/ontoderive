@@ -1,4 +1,4 @@
-# OntoDerive v3.2 — 渊衍框架
+# OntoDerive v3.3 — 渊衍框架
 
 > 知识工程分析平台。三模式：结构分析(无LLM) | 规则推理(无LLM) | 形式推理(需LLM Phase1)
 
