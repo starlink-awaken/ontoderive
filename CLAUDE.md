@@ -1,4 +1,4 @@
-# OntoDerive — 渊衍框架 v2.2
+# OntoDerive — 渊衍框架 v3.0
 
 > 事实驱动的一体化知识工程与方案推导框架。
 > 核心推导链：ToolForge匹配 → 事实基座 → 类型校验 → 推论体系 → 方案产出（双向可追溯）
@@ -18,7 +18,7 @@ python3 engine/derive.py --project . --with-tools --goal "分析XX" --derive --c
 python3 -m pytest tests/ -v
 ```
 
-## 项目状态 (v2.2)
+## 项目状态 (v3.0)
 
 | 指标 | 数值 |
 |------|------|

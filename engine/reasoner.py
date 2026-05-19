@@ -127,7 +127,211 @@ class RuleReasoner:
         # R12: 覆盖度分析
         results.extend(self._coverage_analysis(inferences, facts))
 
+        # R13: 选言三段论 — 排中律 (A或B, 非A ∴ B)
+        results.extend(self._disjunctive_syllogism(inferences))
+
+        # R14: 假言三段论 — IF-THEN链 (A→B→C ∴ A→C)
+        results.extend(self._hypothetical_syllogism(inferences))
+
+        # R15: 变化检测 — 时态推理 (事实有时间戳→检测变化)
+        results.extend(self._change_detection(facts))
+
+        # R16: 一致性分析 — 置信度vsKQIvs覆盖率脱节检测
+        results.extend(self._consistency_analysis(inferences, facts))
+
+        # R17: 结构洞检测 — 移除一个节点会断开多少连接
+        results.extend(self._structural_holes(inferences))
+
+        # R18: 约束传播 — 规约阈值触发改善建议
+        results.extend(self._constraint_propagation(inferences, facts))
+
         self.state = "done"
+        return results
+
+    # ═══ R13: 选言三段论 (Disjunctive Syllogism) ═══
+
+    def _disjunctive_syllogism(self, inferences):
+        """A或B的推论结构: 如果两个推论引用相同事实但结论方向不同,
+        检测是否存在'排中'结构"""
+        results = []
+        inf_list = list(inferences.items())
+        for i in range(len(inf_list)):
+            for j in range(i + 1, len(inf_list)):
+                a_id, a_info = inf_list[i]
+                b_id, b_info = inf_list[j]
+                shared = set(a_info.get("derives_from", [])) & set(b_info.get("derives_from", []))
+                if len(shared) >= 2:
+                    a_text = a_info.get("text", "")
+                    b_text = b_info.get("text", "")
+                    # 检测排中结构: "应A" vs "应B" 且 A和B可能是互斥选项
+                    dichotomy_pairs = [("研发", "营销"), ("增加", "控制"), ("优先", "推迟"),
+                                       ("内部", "外部"), ("自建", "采购")]
+                    for w1, w2 in dichotomy_pairs:
+                        if (w1 in a_text and w2 in b_text) or (w2 in a_text and w1 in b_text):
+                            results.append({
+                                "type": "disjunctive_syllogism",
+                                "conclusion": f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), 需明确优先级",
+                                "derived_from": list(shared),
+                                "confidence": 0.70,
+                                "method": "rule_engine",
+                            })
+                            break
+        return results
+
+    # ═══ R14: 假言三段论 (Hypothetical Syllogism Chain) ═══
+
+    def _hypothetical_syllogism(self, inferences):
+        """IF A THEN B, IF B THEN C → IF A THEN C
+        检测跨层推导链并计算衰减系数"""
+        results = []
+        for title, info in inferences.items():
+            chain = self._find_chain(title, inferences, set())
+            if len(chain) >= 3:
+                decay = 0.9 ** (len(chain) - 1)
+                results.append({
+                    "type": "hypothetical_syllogism",
+                    "conclusion": f"推导链:{'→'.join(chain[:5])}, 衰减系数={decay:.2f}({len(chain)}层)",
+                    "derived_from": chain,
+                    "confidence": 0.80,
+                    "method": "rule_engine",
+                })
+        return results
+
+    def _find_chain(self, node, inferences, visited):
+        if node in visited or node not in inferences:
+            return [node]
+        visited.add(node)
+        longest = [node]
+        for parent in inferences[node].get("derives_from", []):
+            if parent.startswith("INF"):
+                parent_chain = self._find_chain(parent, inferences, visited.copy())
+                if len(parent_chain) + 1 > len(longest):
+                    longest = [node] + parent_chain
+        return longest
+
+    # ═══ R15: 变化检测 (Change Detection / 时态推理) ═══
+
+    def _change_detection(self, facts):
+        """检测事实中的时间戳字段, 如果存在则分析变化趋势"""
+        results = []
+        dated = []
+        for fid, info in facts.items():
+            text = f"{info.get('desc','')} {info.get('value','')}"
+            # 检测年份/季度
+            years = __import__('re').findall(r'(20\d{2})', text)
+            if years:
+                dated.append((fid, info, years))
+        if len(dated) >= 2:
+            dated.sort(key=lambda x: x[2][0])
+            results.append({
+                "type": "temporal_sequence",
+                "conclusion": f"检测到{len(dated)}个带时间戳的事实, 时间跨度{dated[0][2][0]}-{dated[-1][2][0]}",
+                "derived_from": [d[0] for d in dated],
+                "confidence": 0.85,
+                "method": "rule_engine",
+            })
+        return results
+
+    # ═══ R16: 一致性分析 (Consistency Analysis) ═══
+
+    def _consistency_analysis(self, inferences, facts):
+        """检测体系内部的一致性: 置信度/KQI/覆盖率是否自洽"""
+        results = []
+        n_inf = len(inferences)
+        n_facts = len(facts)
+
+        # 计算平均置信度
+        confs = []
+        for info in inferences.values():
+            m = __import__('re').search(r'confidence:\s*(\w+)', info.get("text", ""))
+            if m:
+                conf_map = {"high": 0.92, "inference": 0.85, "medium": 0.70}
+                confs.append(conf_map.get(m.group(1), 0.85))
+        if confs:
+            avg_conf = sum(confs) / len(confs)
+            high_conf_count = sum(1 for c in confs if c >= 0.85)
+            # 如果所有推论都标high但推导链深度只有1 → 不一致
+            if high_conf_count == len(confs) and n_inf >= 3:
+                results.append({
+                    "type": "consistency_warning",
+                    "conclusion": f"所有{len(confs)}个推论置信度过高(均≥0.85)但推导链深度不足, 可能存在过度自信",
+                    "derived_from": [],
+                    "confidence": 0.70,
+                    "method": "rule_engine",
+                })
+
+        # 事实数:推偶数比例
+        if n_facts > 0 and n_inf > 0:
+            ratio = n_inf / n_facts
+            if ratio > 3:
+                results.append({
+                    "type": "consistency_warning",
+                    "conclusion": f"推偶数/事实数={ratio:.1f}, 可能过度推导(建议<3)",
+                    "derived_from": [],
+                    "confidence": 0.60,
+                    "method": "rule_engine",
+                })
+        return results
+
+    # ═══ R17: 结构洞检测 (Structural Holes) ═══
+
+    def _structural_holes(self, inferences):
+        """检测网络中的结构洞: 移除某个节点后图会断裂成几个连通分量"""
+        results = []
+        if not inferences:
+            return results
+        # 构建引用图
+        import re
+        graph = {}
+        for title, info in inferences.items():
+            deps = [d for d in info.get("derives_from", []) if d in inferences or d.startswith(("D-F", "P-F"))]
+            for dep in deps:
+                graph.setdefault(title, set()).add(dep)
+                graph.setdefault(dep, set()).add(title)
+
+        # 计算每个节点的betweenness简化版
+        for node in inferences:
+            neighbors = len(graph.get(node, set()))
+            if neighbors >= 3:
+                results.append({
+                    "type": "structural_hole",
+                    "conclusion": f"节点'{node[:30]}'连接{neighbors}个其他节点, 是潜在结构洞/瓶颈",
+                    "derived_from": list(graph.get(node, set()))[:5],
+                    "confidence": 0.65,
+                    "method": "rule_engine",
+                })
+        return results
+
+    # ═══ R18: 约束传播 (Constraint Propagation) ═══
+
+    def _constraint_propagation(self, inferences, facts):
+        """基于规约阈值传播约束: 断言追溯率<阈值→触发改善建议"""
+        results = []
+        import re
+        # 统计断言数
+        total_assertions = 0
+        for info in inferences.values():
+            text = info.get("text", "")
+            assertions = re.findall(r'[^。\n]*?(?:应该|必须|需要)[^。]*?[。]', text)
+            total_assertions += len([a for a in assertions if len(a) >= 15])
+
+        if total_assertions > 0:
+            # 检查是否有引用
+            traced = 0
+            for info in inferences.values():
+                text = info.get("text", "")
+                for a in re.findall(r'[^。\n]*?(?:应该|必须|需要)[^。]*?[。]', text):
+                    if re.search(r'D-F\d+|P-F\d+', a):
+                        traced += 1
+            rate = traced / total_assertions if total_assertions > 0 else 1
+            if rate < 0.5:
+                results.append({
+                    "type": "constraint_violation",
+                    "conclusion": f"断言追溯率{rate:.0%}低于50%阈值(C-05), 建议为{total_assertions-traced}个断言标注事实引用",
+                    "derived_from": [],
+                    "confidence": 0.90,
+                    "method": "rule_engine",
+                })
         return results
 
     # ═══ R7: 假言推理 (Modus Ponens/Tollens) ═══
