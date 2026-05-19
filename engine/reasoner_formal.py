@@ -6,7 +6,7 @@ FormalReasoner — 形式推理引擎 (Phase 3, 零LLM)
 """
 import re
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
 @dataclass
@@ -57,7 +57,6 @@ class FormalReasoner:
         results = []
         domain_subtypes = tbox.get("DOMAIN", {}).get("subtypes", [])
         for eid, info in entities.items():
-            etype = info.get("type", "")
             prefix = eid.split("-")[0] if "-" in eid else eid[:3]
             if prefix in domain_subtypes:
                 results.append(FormalConclusion(

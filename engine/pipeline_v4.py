@@ -93,10 +93,9 @@ class FormalPipeline:
 
         return "\n".join(lines)
 
-    def save_report(self, output_dir):
+    def save_report(self, output_dir, report_text=""):
         """保存报告到文件"""
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
-        report = self.results.get("_last_report", "")
-        (out / "formal-report.md").write_text(report)
+        (out / "formal-report.md").write_text(report_text)
         print(f"[pipeline_v4] ✅ 报告: {out}/formal-report.md")

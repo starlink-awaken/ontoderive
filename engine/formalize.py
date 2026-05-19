@@ -5,7 +5,7 @@ LLM从自然语言提取结构化知识 → 本体对齐 → OntoLang符号化
 """
 import json, re
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
 @dataclass
@@ -108,7 +108,6 @@ class Formalizer:
     def extract_from_text(self, text: str) -> FormalKnowledge:
         """Phase 1: LLM提取 → 降级规则引擎"""
         knowledge = FormalKnowledge()
-        llm_used = False
 
         if self.enhancer and self.enhancer.available:
             result = self.enhancer._call(
