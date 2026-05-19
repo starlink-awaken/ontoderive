@@ -20,7 +20,7 @@ try:
 except ImportError:
     from utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 
 try:
     from .protocols import DeriveInterface
