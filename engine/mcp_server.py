@@ -50,7 +50,7 @@ def handle_request(req):
         return respond(req_id, {
             "protocolVersion": "0.1.0",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "ontoderive-unified-mcp", "version": "3.0.0"}
+            "serverInfo": {"name": "ontoderive-unified-mcp", "version": "3.3.0"}
         })
 
     if method == "tools/call":

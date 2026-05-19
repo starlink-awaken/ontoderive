@@ -237,7 +237,7 @@ class RuleReasoner:
         for fid, info in facts.items():
             text = f"{info.get('desc','')} {info.get('value','')}"
             # 检测年份/季度
-            years = __import__('re').findall(r'(20\d{2})', text)
+            years = re.findall(r'(20\d{2})', text)
             if years:
                 dated.append((fid, info, years))
         if len(dated) >= 2:
@@ -262,7 +262,7 @@ class RuleReasoner:
         # 计算平均置信度
         confs = []
         for info in inferences.values():
-            m = __import__('re').search(r'confidence:\s*(\w+)', info.get("text", ""))
+            m = re.search(r'confidence:\s*(\w+)', info.get("text", ""))
             if m:
                 conf_map = {"high": 0.92, "inference": 0.85, "medium": 0.70}
                 confs.append(conf_map.get(m.group(1), 0.85))
@@ -690,7 +690,7 @@ class RuleReasoner:
         n_f = len(facts)
         n_i = len(infs)
         avg_df = sum(len(i.get("derives_from", [])) for i in infs.values()) / max(n_i, 1)
-        num_ratio = sum(1 for f in facts.values() for v in [str(f.get("value", ""))] if __import__('re').search(r'\d', v)) / max(n_f, 1)
+        num_ratio = sum(1 for f in facts.values() for v in [str(f.get("value", ""))] if re.search(r'\d', v)) / max(n_f, 1)
         pol_ratio = sum(1 for f in facts.values() if "政策" in str(f.get("desc", ""))) / max(n_f, 1)
         return [n_f/20, n_i/10, avg_df/5, num_ratio, pol_ratio]
 

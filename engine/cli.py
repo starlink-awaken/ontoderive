@@ -21,7 +21,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="OntoDerive v3.2.0 — 知识工程分析平台",
+        description="OntoDerive v3.3.0 — 知识工程分析平台",
         epilog="示例: ontoderive init my-project --with-tools --derive --check",
     )
     sub = parser.add_subparsers(dest="command", help="子命令")
@@ -95,7 +95,7 @@ def main():
         )
         (root / "scheme" / "report.md").write_text("# 分析报告\n\n待补充。\n")
         (root / "README.md").write_text(
-            f"# {args.name}\n\n> OntoDerive v3.2.0\n\n```bash\nontoderive derive --project .\nontoderive check --project .\n```\n"
+            f"# {args.name}\n\n> OntoDerive v3.3.0\n\n```bash\nontoderive derive --project .\nontoderive check --project .\n```\n"
         )
         print(f"✅ 项目 '{args.name}' 已初始化")
 

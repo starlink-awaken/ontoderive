@@ -71,22 +71,23 @@ class Formalizer:
                 ))
                 fid_counter += 1
 
-        # 提取实体
-        eid_counter = 1
+        # 提取实体 — 精确模式, 去重, 避免垃圾匹配
+        seen_names = set()
         entity_patterns = [
-            (r'([一-鿿]{2,4}(?:科技)?园区)', 'ORG', '运营主体'),
-            (r'([一-鿿]{2,4}(?:平台|系统))', 'PRJ', '核心项目'),
-            (r'([一-鿿]{2,4}(?:高校|大学|学院))', 'ORG', '合作方'),
-            (r'([一-鿿]{2,4}(?:公司|集团))', 'ORG', '企业'),
+            (r'(国家.{2,6}(?:中心|平台|基地))', 'ORG', '运营主体'),
+            (r'((?:中关村|北京|上海|深圳).{2,4}(?:园区|新区|开发区))', 'ORG', '区域'),
+            (r'([一-鿿]{2,4}(?:大学|学院|研究院))', 'ORG', '合作方'),
+            (r'((?:技术|成果|创新|产业).{2,6}(?:平台|系统|体系))', 'PRJ', '核心项目'),
         ]
         for pattern, etype, role in entity_patterns:
             for m in re.finditer(pattern, text):
                 name = m.group(1)
-                knowledge.entities.append(SymbolicEntity(
-                    id=f"{'ORG' if etype=='ORG' else 'PRJ'}-{name}",
-                    name=name, entity_type=etype, role=role,
-                ))
-                eid_counter += 1
+                if name not in seen_names and len(name) >= 3:
+                    seen_names.add(name)
+                    knowledge.entities.append(SymbolicEntity(
+                        id=f"{etype}-{name[:10]}",
+                        name=name, entity_type=etype, role=role,
+                    ))
 
         return knowledge
 
@@ -119,6 +120,7 @@ class Formalizer:
         if mode != "rule_only" and self.enhancer and self.enhancer.available:
             print(f"[formalize] 🤖 LLM提取中 ({self.enhancer.model})...")
             # 分块处理长文本
+            data = {}
             chunks = [text[i:i+2500] for i in range(0, min(len(text), 8000), 2500)]
             for chunk in chunks:
                 result = self.enhancer._call(

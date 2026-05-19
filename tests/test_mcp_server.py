@@ -23,7 +23,7 @@ def test_tools_list():
 def test_initialize():
     resp = json.loads(handle_request({"id": 2, "method": "initialize"}))
     assert resp["result"]["serverInfo"]["name"] == "ontoderive-unified-mcp"
-    assert resp["result"]["serverInfo"]["version"] == "3.0.0"
+    assert resp["result"]["serverInfo"]["version"] == "3.3.0"
     assert "tools" in resp["result"]["capabilities"]
 
 

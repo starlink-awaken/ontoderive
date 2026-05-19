@@ -124,11 +124,11 @@ class OntoDerive(DeriveInterface):
             inferences_dict = {}
             for f in all_md(self.inferences_dir):
                 text = rf(f)
-                for block in __import__('re').split(r'^##\s+', text, __import__('re').MULTILINE)[1:]:
+                for block in re.split(r'^##\s+', text, flags=re.MULTILINE)[1:]:
                     title = block.strip().split('\n')[0].strip()
                     # 只从 derives_from 行捕获引用, 不扫描全文
-                    df_line = __import__('re').search(r'derives_from:\s*\[([^\]]+)\]', block)
-                    df = __import__('re').findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', df_line.group(1)) if df_line else []
+                    df_line = re.search(r'derives_from:\s*\[([^\]]+)\]', block)
+                    df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', df_line.group(1)) if df_line else []
                     inferences_dict[title] = {"derives_from": list(set(df)), "text": block[:300]}
             rr_results = rr.derive(facts["data"], inferences_dict)
             summary["derived_conclusions"] = [
