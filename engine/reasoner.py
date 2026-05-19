@@ -36,9 +36,25 @@ class DerivationRule:
 class RuleReasoner:
     """基于规则的确定性推导引擎 — 零依赖，永远可用"""
 
+    UNIT_GROUPS = {
+        "人数": ["人", "团队", "员工", "用户", "工程师", "博士"],
+        "金额": ["万", "亿", "元", "预算", "营收", "收入", "成本"],
+        "百分比": ["%", "率", "覆盖", "转化", "NPS", "满意度"],
+        "数量": ["次", "项", "个", "所", "家", "篇", "起", "件"],
+    }
+
     def __init__(self):
         self.rules: List[DerivationRule] = self._default_rules()
-        self.state = "idle"  # idle → collecting → deriving → done
+        self.state = "idle"
+
+    def _comparable(self, label_a, label_b):
+        """判断两个标签是否属于同一单位维度"""
+        for group, keywords in self.UNIT_GROUPS.items():
+            a_in = any(kw in label_a for kw in keywords)
+            b_in = any(kw in label_b for kw in keywords)
+            if a_in and b_in:
+                return True
+        return False
 
     def _default_rules(self):
         """内置推导规则库 — 可扩展"""
@@ -506,11 +522,14 @@ class RuleReasoner:
             if m:
                 numeric[fid] = {"label": info.get("desc", fid)[:30], "value": float(m.group(1))}
 
-        # 两两比较
+        # 两两比较 (仅比较单位相似的事实)
         ids = list(numeric.keys())
         for i in range(len(ids)):
             for j in range(i + 1, len(ids)):
                 a, b = numeric[ids[i]], numeric[ids[j]]
+                # 跳过跨维度比较 (人数vs金额vs百分比)
+                if not self._comparable(a["label"], b["label"]):
+                    continue
                 if b["value"] > 0 and a["value"] > b["value"] * 1.5:  # 显著差异
                     results.append({
                         "type": "numeric_comparison",
