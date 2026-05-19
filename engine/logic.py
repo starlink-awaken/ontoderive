@@ -138,32 +138,53 @@ class EntailmentGraph:
         }
 
     def find_contradictions(self):
-        """检测矛盾推论：两个推论引用相同事实但关键词方向相反"""
+        """检测矛盾推论：共享事实+对立词 或 否定模式 或 多层共享"""
         inf_nodes = [(nid, info) for nid, info in self.nodes.items() if info["type"] == "inference"]
         opposite_pairs = [
             ("增加", "减少"), ("增加", "控制"), ("上升", "下降"), ("增长", "衰退"),
             ("优势", "劣势"), ("机会", "威胁"), ("成功", "失败"),
             ("应该", "不应"), ("需要", "无需"), ("建议", "避免"),
-            ("优化", "削减"), ("扩大", "缩减"),
+            ("优化", "削减"), ("扩大", "缩减"), ("提升", "加剧"),
+            ("成效", "垄断"), ("合理", "泡沫"), ("进步", "停滞"),
+            ("道德", "压力"), ("保障", "暴力"), ("市场", "扭曲"),
+            ("吸收", "制度"), ("回报", "租金"), ("创新", "泡沫"),
+            ("促进", "阻碍"), ("推动", "抵制"), ("加强", "削弱"),
+            ("改进", "恶化"), ("真实", "虚假"), ("合理", "过度"),
         ]
+        negation_patterns = ["不是", "并非", "不应被", "不能简单", "而非", "不是简单"]
         contradictions = []
         seen = set()
         for i, (id1, inf1) in enumerate(inf_nodes):
             parents1 = set(self.reverse.get(id1, []))
+            t1 = inf1.get("label", "")
             for j in range(i + 1, len(inf_nodes)):
                 id2, inf2 = inf_nodes[j]
+                t2 = inf2.get("label", "")
                 if (id1, id2) in seen or (id2, id1) in seen:
                     continue
                 parents2 = set(self.reverse.get(id2, []))
                 shared = parents1 & parents2
-                if len(shared) >= 1:
-                    t1, t2 = inf1.get("label", ""), inf2.get("label", "")
-                    for pos_word, neg_word in opposite_pairs:
-                        if (pos_word in t1 and neg_word in t2) or (neg_word in t1 and pos_word in t2):
+                matched = False
+                for pos_word, neg_word in opposite_pairs:
+                    if (pos_word in t1 and neg_word in t2) or (neg_word in t1 and pos_word in t2):
+                        contradictions.append({
+                            "inference_a": id1, "inference_b": id2,
+                            "shared_facts": list(shared), "strength": "strong" if len(shared) >= 2 else "weak",
+                            "opposing_terms": [pos_word, neg_word],
+                            "method": "keyword",
+                        })
+                        seen.add((id1, id2))
+                        matched = True
+                        break
+                # 否定模式检测：一方直接否定另一方的核心概念
+                if not matched and len(shared) >= 1:
+                    for np in negation_patterns:
+                        if np in t2 and any(kw in t1 for kw in t2.split(np)[0].split() if len(kw) >= 2):
                             contradictions.append({
                                 "inference_a": id1, "inference_b": id2,
-                                "shared_facts": list(shared),
-                                "opposing_terms": [pos_word, neg_word],
+                                "shared_facts": list(shared), "strength": "medium",
+                                "opposing_terms": [np, "negation"],
+                                "method": "negation",
                             })
                             seen.add((id1, id2))
                             break
@@ -192,18 +213,25 @@ def build_from_project(project_root):
                 graph.add_node(fid, "fact", fid)
                 fact_ids.add(fid)
 
-    # 扫描推论
+    # 扫描推论（v2.3: 支持INF-to-INF推导链）
+    inf_titles = {}
     for f in all_md(root / "inferences"):
         text = rf(f)
         blocks = re.split(r'^##\s+', text, flags=re.MULTILINE)
         for block in blocks[1:]:
             title = block.strip().split("\n")[0].strip()
-            df = re.findall(r'(D-F\d+|P-F\d+)', block)
+            df_facts = re.findall(r'(D-F\d+|P-F\d+)', block)
+            df_infs = re.findall(r'(INF-[\w\d]+)', block)
             if title not in graph.nodes:
                 graph.add_node(title, "inference", title[:80])
-            for src in df:
+                inf_titles[title] = True
+            for src in df_facts:
                 if src not in graph.nodes:
                     graph.add_node(src, "fact", src)
                 graph.add_edge(src, title)
+            # INF-to-INF推导链
+            for src in df_infs:
+                if src != title and src in inf_titles:
+                    graph.add_edge(src, title)
 
     return graph

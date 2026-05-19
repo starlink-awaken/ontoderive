@@ -176,12 +176,13 @@ class BayesianLayer:
                 lines = block.strip().split("\n")
                 title = lines[0].strip() if lines else "unknown"
                 full_text = block
-                df = re.findall(r'(D-F\d+|P-F\d+)', full_text)
+                df_facts = re.findall(r'(D-F\d+|P-F\d+)', full_text)
+                df_infs = re.findall(r'(INF-[\w\d]+|INF-V2-[\w\d]+)', full_text)
                 conf_match = re.search(r'confidence:\s*(\w+)', full_text)
                 raw_conf = conf_match.group(1) if conf_match else "inference"
                 base_conf = CONFIDENCE_MAP.get(raw_conf, 0.85)
                 inferences[title] = {
-                    "derives_from": list(set(df)),
+                    "derives_from": list(set(df_facts + df_infs)),
                     "raw_confidence": raw_conf,
                     "base_confidence": base_conf,
                     "propagated_confidence": None,

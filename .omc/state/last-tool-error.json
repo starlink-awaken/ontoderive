@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"python3 engine/cli.py derive --project ontoderive-evolution 2>&1 && echo \\\"====\\\" && python3 engine/cli.py check --project ontoderive-evolution 2>&1 && echo \\\"====\\\" && python3 engine/cli....",
+  "error": "Exit code 2\n[derive] 事实基座扫描...\n[bayesian] ✅ DAG: 15节点, 9边, 2轮收敛\n[bayesian]    DOT: ontoderive-evolution/_derivation_logs/bayesian-network.dot\n[derive] 📊 事实=11, 推论=1, 推导提示=1\n====\n[check] 执行规约检查...\n  ✅ [PASS] C-01 — 事实文件: 2 个\n  ✅ [PASS] C-02 — 推论文件: 1 个\n  ✅ [PASS] C-03 — 方案文件: 1 个\n  ✅ [PASS] C-04 — 事实11个: 推论引用9, 方案引用8 | 蕴含图: 15节点/17边, 深度1, 未追溯3个: D-F7,P-F1,D-F3\n  ✅ [PASS] C-05 — 断言0个, 可追溯0, 率100%\n  ✅ [PASS] C-06 — 预测断言0个, 可证伪0, 率100%\n  ✅ [PASS] C-07 — v2前缀26种, 校验通过: 19个ID\n  ✅ [PASS] C-08 — 引擎: ch...",
+  "timestamp": "2026-05-18T09:34:05.531Z",
+  "retry_count": 1
+}
