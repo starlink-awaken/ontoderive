@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"ONTODERIVE_LLM_BACKEND=none python3 -c \\\"\\nimport sys; sys.path.insert(0,'engine')\\nfrom formalize import Formalizer\\nfrom reasoner_formal import FormalReasoner\\n\\ntext = '某科技园区有240家入驻企业，年...",
-  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 25, in <module>\n    md = kb.to_markdown(kb)\n         ^^^^^^^^^^^^^^\nAttributeError: 'FormalKnowledge' object has no attribute 'to_markdown'\n=== Phase 1: 规则提取 (零LLM) ===\n[formalize] LLM提取为空, 已降级为规则引擎\n提取: 4事实/3实体\n  D-F1: 入驻企业数=240家 (规则提取)\n  D-F2: 合作高校=12所 (规则提取)\n  D-F3: NPS得分=52分 (规则提取)\n  D-F4: NPS得分=71分 (规则提取)\n  ORG-某科技: 某科技 (ORG/运营主体)\n  PRJ-主要问题是缺乏: 主要问题是缺乏 (PRJ/核心项目)\n  ORG-家入驻: 家入驻 (ORG/企业)\n\n=== Phase 2: ABox/TBox ===\nABox: ...",
-  "timestamp": "2026-05-19T09:00:45.619Z",
+  "tool_input_preview": "{\"command\":\"python3 -c \\\"\\nimport sys; sys.path.insert(0,'engine')\\nfrom pipeline_v4 import FormalPipeline\\n\\ntext = '某科技园区有240家入驻企业，年技术对接量80次，转化成功率仅8%。与12所高校合作。NPS52，竞品NPS71。缺乏供需匹配机制。'\\n\\nr = FormalP...",
+  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 7, in <module>\n    r = FormalPipeline().run(text)\n  File \"/Users/xiamingxing/Workspace/ontoderive/engine/pipeline_v4.py\", line 22, in run\n    from .formalize import Formalizer\nImportError: attempted relative import with no known parent package",
+  "timestamp": "2026-05-19T09:08:27.657Z",
   "retry_count": 1
 }
