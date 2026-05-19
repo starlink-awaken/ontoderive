@@ -21,7 +21,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="OntoDerive v2.0.0 — 事实驱动知识工程引擎",
+        description="OntoDerive v3.2.0 — 知识工程分析平台",
         epilog="示例: ontoderive init my-project --with-tools --derive --check",
     )
     sub = parser.add_subparsers(dest="command", help="子命令")
@@ -55,6 +55,19 @@ def main():
     p_tf.add_argument("--inference-guide", action="store_true", help="输出推导指导")
     p_tf.add_argument("--json", action="store_true", help="JSON输出")
 
+    # formal (v3.2)
+    p_formal = sub.add_parser("formal", help="形式化推理(Phase1-4管线)")
+    p_formal.add_argument("--text", help="原始文本输入")
+    p_formal.add_argument("--project", default=".", help="项目路径")
+    # watch
+    p_watch = sub.add_parser("watch", help="文件监听自动重推导")
+    p_watch.add_argument("--project", default=".", help="项目路径")
+    p_watch.add_argument("--interval", type=int, default=5, help="检测间隔(秒)")
+    # extract
+    p_extract = sub.add_parser("extract", help="从文本/URL提取事实")
+    p_extract.add_argument("source", help="源文本或文件路径")
+    p_extract.add_argument("--to", default="facts/data.md", help="输出路径")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -82,7 +95,7 @@ def main():
         )
         (root / "scheme" / "report.md").write_text("# 分析报告\n\n待补充。\n")
         (root / "README.md").write_text(
-            f"# {args.name}\n\n> OntoDerive v2.0.0\n\n```bash\nontoderive derive --project .\nontoderive check --project .\n```\n"
+            f"# {args.name}\n\n> OntoDerive v3.2.0\n\n```bash\nontoderive derive --project .\nontoderive check --project .\n```\n"
         )
         print(f"✅ 项目 '{args.name}' 已初始化")
 
@@ -138,6 +151,29 @@ def main():
             )
         else:
             tf.report(args.goal, args.context)
+
+    elif args.command == "formal":
+        from derive import OntoDerive
+        od = OntoDerive(args.project)
+        text = getattr(args, "text", None)
+        result = od.derive_formal(text=text)
+        print(result.get("report", "推理完成")[:3000])
+
+    elif args.command == "watch":
+        from watcher import FileWatcher
+        w = FileWatcher(args.project)
+        print(f"[watch] 监听中... 间隔{args.interval}秒, Ctrl+C停止")
+        w.watch(interval=args.interval, auto_run=True)
+
+    elif args.command == "extract":
+        from formalize import Formalizer
+        fz = Formalizer()
+        kb = fz.extract_from_text(args.source)
+        md = fz.to_markdown(kb)
+        output = Path(args.project) / args.to if args.project != "." else Path(args.to)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(md)
+        print(f"[extract] ✅ {len(kb.facts)}事实/{len(kb.entities)}实体 → {output}")
 
 
 if __name__ == "__main__":

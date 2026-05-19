@@ -20,7 +20,7 @@ try:
 except ImportError:
     from utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "3.2.0"
+VERSION = "3.3.0"
 
 try:
     from .protocols import DeriveInterface
@@ -144,6 +144,22 @@ class OntoDerive(DeriveInterface):
               f"推导结论={len(summary.get('derived_conclusions',[]))}条, 结构提示={len(derivation_hints)} " +
               ("(LLM洞察需运行 analyze())" if not self._try_llm() else ""))
         return summary
+
+    def derive_formal(self, text=None):
+        """
+        v3.2: 形式化推理 — 四阶段管线。
+        Phase1: LLM提取(降级规则) → Phase2: 符号化 → Phase3: 形式推理 → Phase4: 解读
+        """
+        try:
+            from .pipeline_v4 import FormalPipeline
+        except ImportError:
+            from pipeline_v4 import FormalPipeline
+        enhancer = self._try_llm()
+        pipeline = FormalPipeline(enhancer=enhancer)
+        if text:
+            return pipeline.run(text)
+        all_text = "\n".join(rf(f) for f in all_md(self.root) if "_derivation_logs" not in str(f))
+        return pipeline.run(all_text)
 
     def analyze(self):
         """

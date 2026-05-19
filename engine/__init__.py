@@ -3,6 +3,6 @@
 事实驱动的一体化知识工程与方案推导引擎。
 含 ToolForge 思维工具匹配模块。
 """
-__version__ = "3.2.0"
+__version__ = "3.3.0"
 
 from engine.toolforge import ToolForge  # noqa: E402, F401
