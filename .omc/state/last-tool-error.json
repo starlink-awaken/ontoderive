@@ -1,7 +1,7 @@
 {
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"echo \\\"═══════════════════════════════════════════\\\" && echo \\\"  2. 事件总线 + 市场 + 搜索\\\" && echo \\\"═══════════════════════════════════════════\\\" && .venv/bin/agora event publish \\\"test:validat...",
-  "error": "Exit code 127\n═══════════════════════════════════════════\n  2. 事件总线 + 市场 + 搜索\n═══════════════════════════════════════════\n(eval):1: no such file or directory: .venv/bin/agora",
-  "timestamp": "2026-05-19T07:14:04.080Z",
-  "retry_count": 2
+  "tool_name": "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
+  "tool_input_preview": "{\"file\":\"/Users/xiamingxing/Workspace/agora/src/agora/persistence.py\"}",
+  "error": "Language server 'ty' not found.\nInstall with: Install ty from https://github.com/astral-sh/ty",
+  "timestamp": "2026-05-19T07:25:08.252Z",
+  "retry_count": 8
 }

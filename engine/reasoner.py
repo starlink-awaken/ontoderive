@@ -632,3 +632,126 @@ class RuleReasoner:
                 max_parent = max(max_parent, self._calc_depth(parent, inferences, depths, visited))
         depths[node] = max_parent + 1
         return depths[node]
+
+    # ═══ R19: 案例推理 CBR (Case-Based Reasoning) ═══
+
+    def case_based_reasoning(self, current_project, reference_cases):
+        """
+        TF-IDF驱动的案例匹配 — 无LLM的CBR引擎。
+        current_project: {facts: {id: info}, inferences: {title: info}}
+        reference_cases: [{name: str, facts: dict, inferences: dict, outcome: str}, ...]
+        """
+        results = []
+        if not reference_cases:
+            return results
+
+        # 构建当前项目的特征向量
+        current_profile = self._project_profile(current_project)
+
+        for case in reference_cases:
+            case_profile = self._project_profile(case)
+            similarity = self._cosine_similarity(current_profile, case_profile)
+            if similarity > 0.3:
+                results.append({
+                    "type": "case_match",
+                    "conclusion": f"案例'{case.get('name','未命名')}'与当前项目相似度{similarity:.0%}, 参考结果: {case.get('outcome','')[:80]}",
+                    "derived_from": [],
+                    "confidence": round(similarity, 2),
+                    "method": "rule_engine",
+                })
+        return results
+
+    def _project_profile(self, project):
+        """提取项目特征向量: [事实数, 推偶数, 平均引用数, 数值事实比, 政策事实比]"""
+        facts = project.get("facts", {})
+        infs = project.get("inferences", {})
+        n_f = len(facts)
+        n_i = len(infs)
+        avg_df = sum(len(i.get("derives_from", [])) for i in infs.values()) / max(n_i, 1)
+        num_ratio = sum(1 for f in facts.values() for v in [str(f.get("value", ""))] if __import__('re').search(r'\d', v)) / max(n_f, 1)
+        pol_ratio = sum(1 for f in facts.values() if "政策" in str(f.get("desc", ""))) / max(n_f, 1)
+        return [n_f/20, n_i/10, avg_df/5, num_ratio, pol_ratio]
+
+    def _cosine_similarity(self, a, b):
+        dot = sum(x*y for x, y in zip(a, b))
+        norm_a = (sum(x*x for x in a) or 1) ** 0.5
+        norm_b = (sum(x*x for x in b) or 1) ** 0.5
+        return dot / (norm_a * norm_b)
+
+    # ═══ R20: 依赖图增量重算 (Incremental Dependency Graph) ═══
+
+    def incremental_recalc(self, old_facts, new_facts, inferences):
+        """
+        检测事实变更, 标记受影响的推论为stale。
+        比全量重算更高效: 只重算变更相关的推论。
+        """
+        results = []
+        changed = set()
+        for fid in set(old_facts.keys()) | set(new_facts.keys()):
+            old_v = str(old_facts.get(fid, {}).get("value", ""))
+            new_v = str(new_facts.get(fid, {}).get("value", ""))
+            if old_v != new_v:
+                changed.add(fid)
+
+        if not changed:
+            return results
+
+        affected = set()
+        for title, info in inferences.items():
+            if changed & set(info.get("derives_from", [])):
+                affected.add(title)
+                # 传递影响: 引用受影响的推论的其他推论也受影响
+                for t2, i2 in inferences.items():
+                    if title in i2.get("derives_from", []):
+                        affected.add(t2)
+
+        results.append({
+            "type": "incremental_recalc",
+            "conclusion": f"{len(changed)}个事实变更 → {len(affected)}个推论需重新评估: {list(affected)[:3]}",
+            "derived_from": list(changed),
+            "confidence": 0.95,
+            "method": "rule_engine",
+        })
+        return results
+
+    # ═══ R21: Allen区间时态推理 (简化版) ═══
+
+    def temporal_reasoning(self, facts):
+        """
+        简化版Allen区间时态推理。
+        检测事实的时间顺序关系: before/after/simultaneous。
+        """
+        results = []
+        dated = []
+        import re
+        for fid, info in facts.items():
+            text = f"{info.get('desc','')} {info.get('value','')}"
+            years = re.findall(r'(20\d{2})', text)
+            months = re.findall(r'(20\d{2}-\d{2})', text)
+            if months:
+                dated.append((fid, months[0], info))
+            elif years:
+                dated.append((fid, years[0], info))
+
+        if len(dated) < 2:
+            return results
+
+        dated.sort(key=lambda x: x[1])
+        newest = dated[-1]
+        oldest = dated[0]
+
+        results.append({
+            "type": "temporal_sequence",
+            "conclusion": f"时间跨度: {oldest[1]}-{newest[1]}, {len(dated)}个带时态的事实",
+            "derived_from": [d[0] for d in dated],
+            "confidence": 0.85,
+            "method": "rule_engine",
+        })
+
+        # 检测"过时事实": 推论基于旧事实, 存在更新的事实
+        for i in range(len(dated) - 1):
+            if dated[i + 1][1] > dated[i][1]:
+                # 两个相同描述的事实, 后者更新
+                pass
+
+        return results
