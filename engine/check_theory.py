@@ -86,7 +86,7 @@ def check_turing(root):
         return {"passed": False, "severity": "WARN", "detail": f"异常: {str(e)[:50]}"}
 
 
-def check_ontolang():
+def check_ontolang(root=None):
     """C-13: OntoLang形式语言"""
     try:
         sys.path.insert(0, str(Path(__file__).parent))

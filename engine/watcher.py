@@ -31,7 +31,7 @@ class FileWatcher:
     def _hash(self, filepath):
         try:
             return hashlib.md5(Path(filepath).read_bytes()).hexdigest()
-        except:
+        except (OSError, IOError):
             return ""
 
     def check(self):
@@ -72,9 +72,9 @@ class FileWatcher:
                         print(f"  {change_type:8s} {filename}")
 
                     if auto_run:
-                        # 运行推导+检查
-                        cmd = f"python3 engine/derive.py --project {self.root} --derive --check"
-                        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                        result = subprocess.run(
+                            ["python3", "engine/derive.py", "--project", str(self.root), "--derive", "--check"],
+                            capture_output=True, text=True)
                         # 输出摘要
                         for line in result.stdout.split("\n"):
                             if "📊" in line or "✅" in line or "🟠" in line or "🟡" in line or "🔴" in line:

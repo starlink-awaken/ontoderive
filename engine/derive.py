@@ -71,13 +71,15 @@ class OntoDerive(DeriveInterface):
             confs = [i.get("propagated_confidence", i.get("base_confidence", 0.85)) for i in bayes_infs.values()]
             if confs:
                 summary["confidence_distribution"] = {"mean": round(sum(confs)/len(confs),4), "min": round(min(confs),4), "max": round(max(confs),4), "count": len(confs)}
-        except Exception: pass
+        except Exception as e:
+            import sys; print(f"[derive] Bayesian skip: {e}", file=sys.stderr)
 
         try:
             from logic import build_from_project
             g = build_from_project(self.root).stats()
             summary["entailment_graph"] = {"nodes": g["nodes"], "edges": g["edges"], "max_depth": g["max_depth"], "cycles": g["cycles"]}
-        except Exception: pass
+        except Exception as e:
+            import sys; print(f"[derive] Logic skip: {e}", file=sys.stderr)
 
         # v2.3: 内容推导 — 规则引擎 + DAG分析
         derivation_hints = []

@@ -31,8 +31,8 @@ dev = ["pytest", "pytest-cov", "ruff"]
 ontoderive = "engine.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/ontoderive"
-Repository = "https://github.com/your-org/ontoderive"
+Homepage = "https://github.com/starlink-awaken/ontoderive"
+Repository = "https://github.com/starlink-awaken/ontoderive"
 
 [tool.setuptools]
 packages = ["engine", "engine.toolforge", "engine.ontolang", "engine.ecosystem"]
