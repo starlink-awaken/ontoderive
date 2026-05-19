@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-OntoDerive 推导引擎 v2.2
-=========================
-事实驱动推导引擎：事实→本体→推论→方案的全链路可追溯推导。
-支持多轮迭代、双向规约校验、断言追溯检测、实体完整性检查。
+OntoDerive 分析引擎 v3.1
+========================
+知识工程质量分析引擎。双模式运行:
+- 规则引擎模式: 结构分析(文件扫描/计数/格式检查), 始终可用
+- LLM增强模式: 洞察推导/质量评估/语义矛盾检测, 需要LLM后端
 
 用法:
     python3 derive.py --init my-project     # 初始化
-    python3 derive.py --derive              # 正向推导
+    python3 derive.py --analyze             # 分析(结构+[LLM洞察])
     python3 derive.py --check               # 规约检查
     python3 derive.py --rounds 5            # 多轮迭代
-    python3 derive.py --generate report     # 生成报告
 """
 import datetime, re, sys
 from pathlib import Path
@@ -20,7 +20,7 @@ try:
 except ImportError:
     from utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 try:
     from .protocols import DeriveInterface
@@ -111,29 +111,55 @@ class OntoDerive(DeriveInterface):
         except Exception:
             pass
 
-        # v2.4: LLM增强推导提示（降级：无LLM时跳过）
-        try:
-            from llm import get_enhancer
-            enhancer = get_enhancer()
-            if enhancer.available:
-                infs_text = "\n".join(rf(f) for f in all_md(self.inferences_dir))
-                hints_before = len(derivation_hints)
-                derivation_hints = enhancer.enhance_derivation_hints(
-                    f"事实数={summary['facts']}, 推论数={summary['inferences']}",
-                    infs_text, derivation_hints)
-                if len(derivation_hints) > hints_before:
-                    print(f"[derive] 🤖 LLM增强: +{len(derivation_hints)-hints_before}条洞察 ({enhancer.model})")
-                else:
-                    print(f"[derive] 🤖 LLM就绪 ({enhancer.model}), 规则引擎已覆盖当前场景")
-        except Exception:
-            pass
-
+        # v3.1: 规则引擎提示（始终可用，标注为结构分析）
+        summary["analysis_mode"] = "structural"
         if derivation_hints:
             summary["derivation_hints"] = derivation_hints[:15]
 
         save_json(self.log_dir / "derive-summary.json", summary)
-        print(f"[derive] 📊 事实={summary['facts']}, 推论={summary['inferences']}, 推导提示={len(derivation_hints)}")
+        print(f"[derive] 📊 事实={summary['facts']}, 推论={summary['inferences']}, 结构提示={len(derivation_hints)} " +
+              ("(LLM推导需运行 analyze())" if not self._try_llm() else ""))
         return summary
+
+    def analyze(self):
+        """
+        v3.1: 完整分析 — 结构分析 + LLM洞察推导。
+        这是OntoDerive的"真实推导"入口。需要LLM后端。
+        """
+        summary = self.derive()  # 结构分析
+        if not self._try_llm():
+            summary["llm_status"] = "unavailable"
+            summary["llm_message"] = "结构分析已完成。深度洞察推导需要接入LLM后端。配置方式: export ONTODERIVE_LLM_BACKEND=local"
+            print("[analyze] ⚠️ LLM不可用 — 仅完成结构分析。洞察推导需要LLM。")
+            print("[analyze]    配置: ONTODERIVE_LLM_BACKEND=local ONTODERIVE_LLM_MODEL=qwopus3.6-35b-a3b-v1")
+            return summary
+
+        print(f"[analyze] 🤖 启动LLM洞察推导...")
+        try:
+            from insight import InsightEngine
+            engine = InsightEngine(enhancer=self._try_llm())
+            facts_summary = f"事实数={summary['facts']}, 推论数={summary['inferences']}"
+            infs_text = "\n".join(rf(f) for f in all_md(self.inferences_dir))
+            insights = engine.derive_insights(self.root, facts_summary, infs_text)
+            if insights:
+                summary["llm_insights"] = [i.to_dict() for i in insights]
+                summary["llm_status"] = "enhanced"
+                summary["llm_model"] = insights[0].model if insights else ""
+                print(f"[analyze] ✅ +{len(insights)}条LLM洞察")
+                summary["analysis_mode"] = "llm_enhanced"
+            engine.save_insights(self.log_dir)
+        except Exception as e:
+            summary["llm_status"] = f"error: {e}"
+            print(f"[analyze] ⚠️ LLM调用失败: {e}")
+        return summary
+
+    def _try_llm(self):
+        try:
+            from llm import get_enhancer
+            e = get_enhancer()
+            return e if e.available else None
+        except Exception:
+            return None
 
     def check(self):
         print("[check] 执行规约检查...")
