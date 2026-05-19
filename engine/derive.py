@@ -20,7 +20,7 @@ try:
 except ImportError:
     from utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "2.3.0"
+VERSION = "3.0.0"
 
 try:
     from .protocols import DeriveInterface
@@ -114,11 +114,15 @@ class OntoDerive(DeriveInterface):
             from llm import get_enhancer
             enhancer = get_enhancer()
             if enhancer.available:
-                facts_text = str(summary.get("facts", ""))
                 infs_text = "\n".join(rf(f) for f in all_md(self.inferences_dir))
+                hints_before = len(derivation_hints)
                 derivation_hints = enhancer.enhance_derivation_hints(
                     f"事实数={summary['facts']}, 推论数={summary['inferences']}",
                     infs_text, derivation_hints)
+                if len(derivation_hints) > hints_before:
+                    print(f"[derive] 🤖 LLM增强: +{len(derivation_hints)-hints_before}条洞察 ({enhancer.model})")
+                else:
+                    print(f"[derive] 🤖 LLM就绪 ({enhancer.model}), 规则引擎已覆盖当前场景")
         except Exception:
             pass
 
