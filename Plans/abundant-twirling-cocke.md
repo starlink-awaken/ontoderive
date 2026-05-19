@@ -1,55 +1,42 @@
-# OntoDerive v2.1 — 硬骨头冲刺
+# 图凝聚度提升 — 从0.10→0.15+架构重构
 
 ## Context
 
-Phase 0-4完成，审计评分≈5.9/10。五个硬骨头待攻坚：
-1. derive()不做推导（只做正则计数）
-2. MOF四层无代码（只在文档中）
-3. 六论数据流断裂（通过文件系统通信，各自重新实例化）
-4. 测试缺口大（Pipeline/生态/MCP零测试）
-5. 文档与代码脱节
+知识图谱显示68社区凝聚度0.05-0.10。根因：`check.py`的`run_check()`是270行god-function，直接导入6个理论模块，形成dense hub-and-spoke图结构。这不是bug而是当前架构的必然结果。
 
-ISA文件：`MEMORY/WORK/ontoderive-v21/ISA.md`（12条ISC，10个Feature，E3级）
+## 架构方案：Strategy Pattern + Theory Check Registry
 
-## 已完成
+核心思路：不减少连接（规约检查必须调用所有理论），而是**让连接更有序**。每个理论检查变成独立可插拔的策略单元。
 
-- [x] F8: ToolForge默认keyword模式
-- [x] F4: PID历史通配读取 + check结果时间戳存储
+### 目标架构
 
-## 待执行
+```
+Before (hub-and-spoke, 凝聚力0.05):
+  check.py ──→ bayesian.py
+          ├──→ metrics.py
+          ├──→ controller.py
+          ├──→ turing_k.py
+          ├──→ ontolang.py
+          └──→ typesystem.py
 
-### Wave 1（并行，1天）：F1 + F2 + F9
+After (strategy chain, 凝聚力目标0.15):
+  check.py ──→ check_theory.py (C-09~C-13 registry)
+                    ├── C-09 → BayesianLayer (独立函数, 暴露check接口)
+                    ├── C-10 → MetricsLayer
+                    ├── C-11 → PIDController
+                    ├── C-12 → KnowledgeTM
+                    └── C-13 → OntoLangParser
+```
 
-| Feature | 文件 | 说明 |
-|---------|------|------|
-| **F1** derive升级 | `engine/derive.py` | derive()输出confidence_distribution和chain_depth，集成贝叶斯/KQI/PID结果 |
-| **F2** 类型系统 | `engine/typesystem.py` 新增 | 10元类型校验器，ID前缀与声明类型一致性检查 |
-| **F9** 文档标注 | `framework/02-迭代方案-v2.md` | 逐条标注✅/⚠️/❌实现状态 |
+### 关键重构
 
-### Wave 2（1天）：F3
-
-| Feature | 文件 | 说明 |
-|---------|------|------|
-| **F3** 六论管道 | `engine/pipeline.py`, `engine/bayesian.py`, `engine/metrics.py` | Pipeline内存传递；Bayesian暴露get_distribution()供Metrics消费；消除重复扫描 |
-
-### Wave 3（并行，1.5天）：F5 + F6 + F7
-
-| Feature | 文件 | 说明 |
-|---------|------|------|
-| **F5** Pipeline测试 | `tests/test_pipeline.py` 新增 | 端到端流程 |
-| **F6** 生态测试 | `tests/test_ecosystem.py` 新增 | Minerva/Sophia/Agora/eCOS |
-| **F7** MCP测试 | `tests/test_mcp_server.py` 新增 | 11工具响应格式 |
-
-### Wave 4（1天）：F10
-
-| Feature | 文件 | 说明 |
-|---------|------|------|
-| **F10** 补全测试 | `tests/test_cli.py`, `tests/test_config.py`, `tests/test_watcher.py` 新增 | 总测试数≥100 |
+1. **提取check_theory.py**：从check.py分离C-09~C-13（~120行）
+2. **理论模块暴露check方法**：每个模块添加`check_xxx(root)`静态函数
+3. **check.py瘦身**：270→~150行，C-01~C-08保留（文件检查，轻量正则）
 
 ## 验收
 
-```bash
-python3 -m pytest tests/ -q  # ≥100 passed
-```
-
-全部12条ISC通过，详见ISA.md的Verification部分。
+- `python3 -m pytest tests/ -q` — 150+通过
+- 重新运行graphify AST提取，中位凝聚度≥0.15
+- check.py < 160行
+- 理论模块各有独立`check_xxx()`公开函数

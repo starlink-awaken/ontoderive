@@ -3,7 +3,7 @@ OntoDerive 规约检查引擎 — 从derive.py拆分
 ===========================================
 13条规约检查(C-01~C-13)，独立模块。
 """
-import datetime, re, sys
+import datetime, re
 from pathlib import Path
 
 try:
@@ -169,78 +169,34 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
     result("C-08", "推导引擎健康度", script_path.exists(),
            "BLOCKER" if not script_path.exists() else "PASS", f"引擎: {script_path.name}")
 
-    # C9: 贝叶斯信念传播（结果缓存供C-10复用）
-    _bayes_distribution = None
+    # C9~C13: 委theory_check_registry（策略模式解耦）
     try:
-        sys.path.insert(0, str(Path(__file__).parent))
-        from bayesian import BayesianLayer
-        bl = BayesianLayer(root)
-        _bayes_distribution = bl.get_distribution()
-        all_confs = _bayes_distribution["facts"] + _bayes_distribution["inferences"]
-        valid_confs = all(0 < c < 1 for c in all_confs) if all_confs else True
-        has_variance = len(set(round(c, 1) for c in all_confs)) > 1 if all_confs else True
-        bayes_ok = valid_confs and has_variance
-        result("C-09", "贝叶斯信念传播(智能层)", bayes_ok,
-               "WARN" if not bayes_ok else "PASS",
-               f"事实{_bayes_distribution['n_facts']}个, 推论{_bayes_distribution['n_inferences']}个, "
-               f"平均置信度{sum(all_confs)/len(all_confs):.2f}" if all_confs else "N/A")
+        from .check_theory import THEORY_CHECKS, check_bayesian
     except ImportError:
-        result("C-09", "贝叶斯信念传播(智能层)", False, "WARN", "bayesian.py模块未安装")
-    except Exception as e:
-        result("C-09", "贝叶斯信念传播(智能层)", False, "WARN", f"执行异常: {str(e)[:50]}")
+        from check_theory import THEORY_CHECKS, check_bayesian  # noqa
 
-    # C10: 信息论层（使用C-09的预计算置信度，不重新实例化Bayesian）
+    # C9: 贝叶斯 → 结果缓存供C-10复用
     try:
-        sys.path.insert(0, str(Path(__file__).parent))
-        from metrics import MetricsLayer
-        ml = MetricsLayer(root)
-        kqi = ml.compute_kqi(precomputed_confs=_bayes_distribution)
-        kqi_ok = kqi["kqi"] > 0 and kqi["entropy"] >= 0
-        result("C-10", "信息论层(KQI质量指数)", kqi_ok, "PASS",
-               f"KQI={kqi['kqi']}, 熵={kqi['entropy']}bits, "
-               f"密度={kqi['density']:.2f}, 覆盖={kqi['coverage']*100:.0f}%")
-    except ImportError:
-        result("C-10", "信息论层(KQI质量指数)", False, "WARN", "metrics.py模块未安装")
+        r9 = check_bayesian(root)
+        result("C-09", r9["name"] if "name" in r9 else "贝叶斯信念传播(智能层)",
+               r9["passed"], r9["severity"], r9["detail"])
+        _bayes_distribution = r9.get("distribution")
     except Exception as e:
-        result("C-10", "信息论层(KQI质量指数)", False, "WARN", f"异常: {str(e)[:50]}")
+        result("C-09", "贝叶斯信念传播(智能层)", False, "WARN", str(e)[:50])
+        _bayes_distribution = None
 
-    # C11: 控制论层
-    try:
-        sys.path.insert(0, str(Path(__file__).parent))
-        from controller import PIDController
-        ctrl = PIDController(root)
-        pid = ctrl.analyze()
-        result("C-11", "控制论层(PID反馈)", pid["stability"] == "stable",
-               "WARN" if pid["stability"] != "stable" else "PASS",
-               f"P={pid['p_value']} I={pid['i_value']} D={pid['d_value']} "
-               f"信号={pid['control_signal']} 状态={pid['stability']}")
-    except Exception as e:
-        result("C-11", "控制论层(PID反馈)", True, "PASS", f"首次运行, 信号=0 (需要历史数据)")
-
-    # C12: 图灵机层
-    try:
-        sys.path.insert(0, str(Path(__file__).parent))
-        from turing_k import KnowledgeTM
-        ktm = KnowledgeTM(root)
-        state = ktm.snapshot()
-        result("C-12", "图灵机层(知识状态机)", state.timestamp is not None,
-               "PASS", f"快照: {state.facts}F/{state.inferences}I/{state.entities}E")
-    except Exception as e:
-        result("C-12", "图灵机层(知识状态机)", False, "WARN", f"异常: {str(e)[:50]}")
-
-    # C13: 形式语言层
-    try:
-        sys.path.insert(0, str(Path(__file__).parent))
-        from ontolang import OntoLangParser
-        parser = OntoLangParser()
-        ast = parser.test_suite()
-        total_nodes = len(ast["entities"]) + len(ast["facts"]) + len(ast["inferences"]) + len(ast["protocols"])
-        errors = parser.validate(ast)
-        result("C-13", "形式语言层(OntoLang解析)", len(errors) == 0,
-               "PASS" if len(errors) == 0 else "ERROR",
-               f"AST节点{total_nodes}个, 错误{len(errors)}个")
-    except Exception as e:
-        result("C-13", "形式语言层(OntoLang解析)", False, "WARN", f"异常: {str(e)[:50]}")
+    # C10~C13: 通过注册表调用，而非直接import
+    for pid, name, check_fn in THEORY_CHECKS:
+        if pid == "C-09":
+            continue  # 已在上面处理（需要缓存distribution）
+        try:
+            kwargs = {}
+            if pid == "C-10" and _bayes_distribution:
+                kwargs["precomputed_confs"] = _bayes_distribution
+            r = check_fn(root, **kwargs) if pid == "C-10" else check_fn(root)
+            result(pid, name, r["passed"], r["severity"], r["detail"])
+        except Exception as e:
+            result(pid, name, False, "WARN", f"异常: {str(e)[:50]}")
 
     # 保存结果
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
