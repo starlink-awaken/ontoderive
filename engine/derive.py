@@ -116,9 +116,23 @@ class OntoDerive(DeriveInterface):
         if derivation_hints:
             summary["derivation_hints"] = derivation_hints[:15]
 
+        # v3.1: 集成RuleReasoner → derived_conclusions (真正的推导结论)
+        try:
+            from reasoner import RuleReasoner
+            rr = RuleReasoner()
+            rr_results = rr.derive(facts, {})  # TODO: 传入推论
+            summary["derived_conclusions"] = [
+                {"conclusion": r["conclusion"], "confidence": r["confidence"],
+                 "type": r["type"], "method": "rule_engine"}
+                for r in rr_results[:10]
+            ]
+        except Exception:
+            pass
+
         save_json(self.log_dir / "derive-summary.json", summary)
-        print(f"[derive] 📊 事实={summary['facts']}, 推论={summary['inferences']}, 结构提示={len(derivation_hints)} " +
-              ("(LLM推导需运行 analyze())" if not self._try_llm() else ""))
+        print(f"[derive] 📊 事实={summary['facts']}, 推论={summary['inferences']}, "
+              f"推导结论={len(summary.get('derived_conclusions',[]))}条, 结构提示={len(derivation_hints)} " +
+              ("(LLM洞察需运行 analyze())" if not self._try_llm() else ""))
         return summary
 
     def analyze(self):
