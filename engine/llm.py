@@ -13,6 +13,8 @@ class LLMEnhancer:
     """LLM增强器 — 失败时静默降级为规则引擎"""
 
     def __init__(self, backend="auto", model=None, base_url=None):
+        if backend == "auto":
+            backend = os.environ.get("ONTODERIVE_LLM_BACKEND", "auto")
         self.backend = self._detect_backend(backend)
         self.model = model or os.environ.get("ONTODERIVE_LLM_MODEL", "")
         self.base_url = base_url or os.environ.get("ONTODERIVE_LLM_URL", "")
