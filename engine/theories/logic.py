@@ -192,7 +192,6 @@ class EntailmentGraph:
         # Phase 2: LLM语义增强 (可选, 覆盖率 ~80%+)
         if enhancer and enhancer.available:
             try:
-                llm_contradictions = []
                 for i, (id1, inf1) in enumerate(inf_nodes):
                     parents1 = set(self.reverse.get(id1, []))
                     t1 = inf1.get("label", "")

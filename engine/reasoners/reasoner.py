@@ -332,7 +332,7 @@ class RuleReasoner:
                 conf_map = {"high": 0.92, "inference": 0.85, "medium": 0.70}
                 confs.append(conf_map.get(m.group(1), 0.85))
         if confs:
-            avg_conf = sum(confs) / len(confs)
+            sum(confs) / len(confs)
             high_conf_count = sum(1 for c in confs if c >= 0.85)
             # 如果所有推论都标high但推导链深度只有1 → 不一致
             if high_conf_count == len(confs) and n_inf >= 3:

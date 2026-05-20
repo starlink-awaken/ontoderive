@@ -219,15 +219,6 @@ class ReasoningSelector:
     def explain_selection(self, profile: DataProfile) -> str:
         """解释为何选择/跳过某些规则"""
         selected = self.select_rules(profile)
-        features = {
-            "has_numeric": profile.has_numeric,
-            "has_timestamps": profile.has_timestamps,
-            "has_inf_chains": profile.has_inf_chains,
-            "has_dichotomy": profile.has_dichotomy,
-            "has_high_confidence": profile.has_high_confidence,
-            "fact_count": profile.fact_count > 0,
-            "inf_count": profile.inf_count > 0,
-        }
         lines = [
             f"数据画像: {profile.fact_count}事实/{profile.inf_count}推论, "
             f"数值={profile.has_numeric}, 时态={profile.has_timestamps}, "

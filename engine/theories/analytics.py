@@ -91,6 +91,33 @@ class AnalyticsEngine:
                 analyze=self._analyze_remediation,
                 semantic_depth=1,  # 确定性计算+可选LLM增强
             ),
+            # ═══ A6: 市场结构分析 ═══
+            AnalyticalPattern(
+                name="market_structure",
+                description="实体数量+份额分布→HHI集中度+市场类型判定",
+                category="economics",
+                detect=self._detect_market_structure,
+                analyze=self._analyze_market_structure,
+                semantic_depth=0,  # 纯公式计算
+            ),
+            # ═══ A7: 博弈均衡检测 ═══
+            AnalyticalPattern(
+                name="game_equilibrium",
+                description="多方竞争/合作/博弈关系→均衡类型+囚徒困境识别",
+                category="game_theory",
+                detect=self._detect_game_equilibrium,
+                analyze=self._analyze_game_equilibrium,
+                semantic_depth=1,  # TF-IDF语义匹配
+            ),
+            # ═══ A8: 策略选项生成 ═══
+            AnalyticalPattern(
+                name="strategic_options",
+                description="目标+约束+资源→可行策略+风险收益评分",
+                category="strategic",
+                detect=self._detect_strategic_options,
+                analyze=self._analyze_strategic_options,
+                semantic_depth=2,  # 嵌入向量级别
+            ),
         ]
 
     def run(self, facts, entities, inferences, relations=None, patterns=None,
@@ -411,6 +438,104 @@ class AnalyticsEngine:
                     })
             except Exception:
                 pass
+        return results
+
+    # ═══ A6: 市场结构分析 ═══
+
+    def _detect_market_structure(self, facts, entities, relations):
+        """检测: 存在实体数量数据+份额分布"""
+        n_entities = len(entities) if isinstance(entities, dict) else len(entities)
+        return n_entities >= 3
+
+    def _analyze_market_structure(self, facts, entities, relations, enhancer):
+        """HHI集中度 + 市场类型判定"""
+        results = []
+        # 提取实体数量作为市场参与者
+        n = len(entities) if isinstance(entities, dict) else len(entities)
+        # 从事实中找份额/占比数据
+        shares = []
+        for fid, info in _iter_facts(facts):
+            desc = info.get("desc", "")
+            if any(kw in desc for kw in ("份额", "占比", "集中度", "CR")):
+                shares.append(_extract_num(info.get("value", "")))
+        if not shares:
+            return results
+        # HHI = sum(share_i^2)
+        total = sum(shares) or 1
+        hhi = sum((s / total * 100) ** 2 for s in shares)
+        mtype = "垄断" if hhi > 2500 else ("寡头" if hhi > 1500 else ("集中" if hhi > 1000 else "分散"))
+        cr3 = sum(sorted(shares, reverse=True)[:3]) / total * 100 if len(shares) >= 3 else 100
+        results.append({
+            "type": "analytics",
+            "conclusion": f"市场结构: HHI={hhi:.0f}({mtype}), CR3={cr3:.0f}%, {n}个参与者",
+            "derives_from": [fid for fid in facts],
+            "confidence": 0.80,
+        })
+        return results
+
+    # ═══ A7: 博弈均衡检测 ═══
+
+    def _detect_game_equilibrium(self, facts, entities, relations):
+        """检测: 多方竞争/合作关系"""
+        comp_count = sum(1 for r in (relations or [])
+                         if r.get("relation_type") == "competes_with")
+        coop_count = sum(1 for r in (relations or [])
+                         if r.get("relation_type") == "cooperates_with")
+        return comp_count >= 1 or coop_count >= 2
+
+    def _analyze_game_equilibrium(self, facts, entities, relations, enhancer):
+        """识别博弈结构: 囚徒困境/协调博弈/零和博弈"""
+        results = []
+        comps = [r for r in (relations or []) if r.get("relation_type") == "competes_with"]
+        coops = [r for r in (relations or []) if r.get("relation_type") == "cooperates_with"]
+        # 竞争+合作共存 → 潜在囚徒困境
+        if comps and coops:
+            results.append({
+                "type": "analytics",
+                "conclusion": f"囚徒困境风险: {len(comps)}对竞争+{len(coops)}对合作共存, "
+                              f"个体理性可能导致集体次优",
+                "derives_from": [],
+                "confidence": 0.65,
+            })
+        # 纯竞争 → 零和或负和博弈
+        if comps and not coops:
+            results.append({
+                "type": "analytics",
+                "conclusion": f"零和博弈: {len(comps)}对竞争关系, 无合作→可能陷入价格战/军备竞赛",
+                "derives_from": [],
+                "confidence": 0.70,
+            })
+        return results
+
+    # ═══ A8: 策略选项生成 ═══
+
+    def _detect_strategic_options(self, facts, entities, relations):
+        """检测: 存在问题+约束+资源"""
+        has_problem = self._detect_remediation_needed(facts, entities, relations)
+        has_constraint = any("约束" in info.get("desc", "") or "限制" in info.get("desc", "")
+                             for _, info in _iter_facts(facts))
+        return has_problem or has_constraint
+
+    def _analyze_strategic_options(self, facts, entities, relations, enhancer):
+        """生成策略选项 — 基于目标/约束/资源组合"""
+        results = []
+        # 收集目标、约束、资源
+        goals = [info.get("desc", "") for _, info in _iter_facts(facts)
+                 if any(kw in info.get("desc", "") for kw in ("目标", "计划", "预计"))]
+        constraints = [info.get("desc", "") for _, info in _iter_facts(facts)
+                       if any(kw in info.get("desc", "") for kw in ("限制", "约束", "上限", "不超过"))]
+        resources = [info.get("desc", "") for _, info in _iter_facts(facts)
+                     if any(kw in info.get("desc", "") for kw in ("预算", "团队", "储备", "现金"))]
+        if not goals and not constraints:
+            return results
+        # 策略框架
+        results.append({
+            "type": "analytics",
+            "conclusion": f"策略空间: {len(goals)}目标×{len(constraints)}约束×{len(resources)}资源"
+                          f"→ 需评估{2**len(goals) if goals else 1}种策略组合",
+            "derives_from": [fid for fid in facts],
+            "confidence": 0.60,
+        })
         return results
 
 

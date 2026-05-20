@@ -284,7 +284,7 @@ class Parser:
         self.idx += 1
         obj = self._read_until_comma_or_id_end()
         if rel not in self.RELATION_VOCAB:
-            known = sorted(self.RELATION_VOCAB.keys())
+            sorted(self.RELATION_VOCAB.keys())
             # 不阻塞, 仅记录 — 允许用户自定义关系类型
             pass
         return RelationDef(subject=subj, relation_type=rel, object=obj, pos=pos)
