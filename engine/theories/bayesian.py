@@ -253,7 +253,10 @@ class BayesianLayer:
 
     def recompute_if_changed(self, fact_id: str, new_value: float):
         """v3.6: What-if分析 — 修改一个事实值后重算下游置信度变化"""
-        facts, inferences = self.propagate_all()
+        if not hasattr(self, '_cached_facts'):
+            self._cached_facts, self._cached_inferences = self.propagate_all()
+        facts = dict(self._cached_facts)  # 浅拷贝避免修改缓存
+        inferences = dict(self._cached_inferences)
         if fact_id not in facts:
             return {"error": f"事实{fact_id}不存在"}
         old_conf = facts[fact_id].get("confidence", 0.95)
@@ -262,10 +265,9 @@ class BayesianLayer:
         deltas = {}
         for name, inf in new_inferences.items():
             new_conf = inf.get("propagated_confidence", 0)
-            old = inferences.get(name, {}).get("propagated_confidence", 0)
+            old = self._cached_inferences.get(name, {}).get("propagated_confidence", 0)
             if abs(new_conf - old) > 0.001:
                 deltas[name] = {"old": old, "new": new_conf, "delta": round(new_conf - old, 4)}
-        facts[fact_id]["confidence"] = old_conf  # 恢复原值
         return {"fact_id": fact_id, "old_confidence": old_conf, "new_confidence": new_value,
                 "affected_inferences": len(deltas), "deltas": deltas}
 

@@ -633,26 +633,30 @@ class AnalyticsEngine:
 
     def _analyze_causal_chain(self, facts, entities, relations, enhancer):
         results = []
-        deps = {}  # {downstream: [upstream]}
+        deps = {}
         for r in (relations or []):
             if r.get("relation_type") in ("depends_on", "causes", "influences"):
                 deps.setdefault(r["subject"], []).append(r["object"])
         if len(deps) < 2:
             return results
-        # 找最长的因果链
+        # BFS找所有因果路径 (v3.6 fix: 多分支)
         for start in deps:
-            path = [start]
-            current = start
-            while current in deps and deps[current][0] not in path:
-                current = deps[current][0]
-                path.append(current)
-            if len(path) >= 3:
-                results.append({
-                    "type": "analytics",
-                    "conclusion": f"因果链: {'→'.join(path)}, 深度{len(path)-1}, "
-                                  f"中介{path[1:-1]}, 根因={path[-1]}",
-                    "derives_from": path[:3], "confidence": 0.75,
-                })
+            paths = [[start]]
+            for path in paths:
+                last = path[-1]
+                if last in deps:
+                    for up in deps[last]:
+                        if up not in path:
+                            new_path = path + [up]
+                            paths.append(new_path)
+                            if len(new_path) >= 3:
+                                results.append({
+                                    "type": "analytics",
+                                    "conclusion": f"因果链: {'→'.join(new_path)}, "
+                                                  f"深度{len(new_path)-1}, "
+                                                  f"中介{new_path[1:-1]}, 根因={new_path[-1]}",
+                                    "derives_from": new_path[:3], "confidence": 0.75,
+                                })
         return results
 
     # ═══ A11: 情景规划 (v3.6) ═══
@@ -670,7 +674,7 @@ class AnalyticsEngine:
         for _, info in _iter_facts(facts):
             desc = info.get("desc", "")
             val = info.get("value", "")
-            if any(k in desc for k in ("不确定性", "概率", " риск", "风险")):
+            if any(k in desc for k in ("不确定性", "概率", "风险")):
                 uncertainties.append((desc, _extract_num(val)))
         if len(uncertainties) < 2:
             return results
@@ -697,7 +701,7 @@ class AnalyticsEngine:
 
     def _analyze_power_map(self, facts, entities, relations, enhancer):
         results = []
-        # Betweenness centrality近似: 每个节点在多少条关系中被引用
+        # Degree centrality (度中心性): 每个节点参与的关系数
         centrality = {}
         for r in (relations or []):
             s, o = r.get("subject", ""), r.get("object", "")

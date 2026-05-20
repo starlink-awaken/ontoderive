@@ -30,8 +30,8 @@ class UnifiedConclusion:
 class UnifiedReasoner:
     """统一推理入口 — 合并三引擎输出"""
 
-    def __init__(self):
-        self.rule = RuleReasoner()
+    def __init__(self, loaded_rules: list = None):
+        self.rule = RuleReasoner(loaded_rules=loaded_rules or [])
         self.formal = FormalReasoner()
         self._last_results = []
 

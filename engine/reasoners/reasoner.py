@@ -235,7 +235,7 @@ class RuleReasoner:
         if self._loaded_rules:
             for rule in self._loaded_rules:
                 try:
-                    c = RuleLoader().to_conclusion(rule)
+                    c = RuleLoader.to_conclusion(rule)
                     if c and c.get("conclusion"):
                         results.append(c)
                 except Exception:

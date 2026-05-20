@@ -96,13 +96,15 @@ class RuleLoader:
     def get_by_category(self, category: str) -> List[dict]:
         return [r for r in self.rules if r.get("category") == category]
 
-    def to_conclusion(self, rule: dict, **kwargs) -> dict:
-        """将规则模板化为结论"""
+    @staticmethod
+    def to_conclusion(rule: dict, **kwargs) -> dict:
+        """将规则模板化为结论, 缺kwargs时用规则名作为结论"""
         template = rule.get("conclusion_template", rule.get("name", ""))
         try:
             text = template.format(**kwargs)
-        except KeyError:
-            text = template
+        except (KeyError, ValueError):
+            # 缺少实际数据 → 不产生结论
+            return None
         return {
             "type": rule.get("type", "loaded_rule"),
             "conclusion": text,

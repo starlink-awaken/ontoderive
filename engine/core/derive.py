@@ -158,7 +158,7 @@ class OntoDerive(DeriveInterface):
                         "subject": m.group(1), "relation_type": m.group(2),
                         "object": m.group(3),
                     })
-            ur = UnifiedReasoner()
+            ur = UnifiedReasoner(loaded_rules=self._loaded_rules)
             uc_list = ur.reason(
                 facts["data"], inferences_dict, relations=relations if relations else None,
                 enhancer=self._try_llm()

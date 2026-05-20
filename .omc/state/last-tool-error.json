@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd /Users/xiamingxing/Workspace/gateway && git status --short && git add -A && git commit -m \\\"feat: register ontoderive-mcp (14 tools)\\\" 2>&1 && git push origin main 2>&1\",\"description\":\"...",
-  "error": "Exit code 128\n M README.md\n M bin/kos-mcp-server\n?? bin/ontoderive-mcp\n[main 9915777] feat: register ontoderive-mcp (14 tools)\n 3 files changed, 22 insertions(+), 3 deletions(-)\n create mode 100755 bin/ontoderive-mcp\nfatal: 'origin' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.",
-  "timestamp": "2026-05-20T09:10:59.290Z",
-  "retry_count": 1
+  "tool_input_preview": "{\"command\":\".venv/bin/python -c \\\"\\nimport yaml\\ndata = yaml.safe_load(open('engine/foundation/rules/analytics_rules.yaml'))\\nfor r in data[:2]:\\n    print('Rule:', r['id'])\\n    tmpl = r.get('conclus...",
+  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 2, in <module>\n    import yaml\nModuleNotFoundError: No module named 'yaml'",
+  "timestamp": "2026-05-20T09:57:03.734Z",
+  "retry_count": 2
 }

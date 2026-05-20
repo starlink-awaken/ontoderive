@@ -43,3 +43,9 @@
 {"t":0,"agent":"a6f67a6","agent_type":"general-purpose","event":"agent_stop","success":true,"duration_ms":407832}
 {"t":0,"agent":"system","event":"keyword_detected","keyword":"wiki"}
 {"t":0,"agent":"system","event":"keyword_detected","keyword":"code-review"}
+{"t":0,"agent":"a4e1e61","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a7d9d28","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a3c5ef0","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a7d9d28","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":223679}
+{"t":0,"agent":"a3c5ef0","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":242610}
+{"t":0,"agent":"a4e1e61","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":436100}
