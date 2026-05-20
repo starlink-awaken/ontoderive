@@ -7,7 +7,7 @@
     from engine import OntoDerive, ToolForge, FormalPipeline
     od = OntoDerive("my-project").derive()
 """
-__version__ = "3.5.0"
+__version__ = "3.6.0"
 
 # 顶层 re-export — 保持向后兼容
 from engine.core.derive import OntoDerive as _OntoDerive, VERSION as _VERSION

@@ -127,6 +127,33 @@ class AnalyticsEngine:
                 analyze=self._analyze_info_ecology,
                 semantic_depth=0,  # 纯公式计算
             ),
+            # ═══ A10: 因果链分析 ═══ (v3.6)
+            AnalyticalPattern(
+                name="causal_chain",
+                description="从derives_from DAG提取因果路径+中介变量+因果距离",
+                category="supply_chain",
+                detect=self._detect_causal_chain,
+                analyze=self._analyze_causal_chain,
+                semantic_depth=0,
+            ),
+            # ═══ A11: 情景规划 ═══ (v3.6)
+            AnalyticalPattern(
+                name="scenario_planning",
+                description="基于关键不确定性→2×2矩阵→4情景+触发信号",
+                category="strategic",
+                detect=self._detect_scenario_planning,
+                analyze=self._analyze_scenario_planning,
+                semantic_depth=1,
+            ),
+            # ═══ A12: 权力地图 ═══ (v3.6)
+            AnalyticalPattern(
+                name="power_map",
+                description="从关系网络计算中心性→识别关键影响力节点",
+                category="organizational",
+                detect=self._detect_power_map,
+                analyze=self._analyze_power_map,
+                semantic_depth=0,
+            ),
         ]
 
     def run(self, facts, entities, inferences, relations=None, patterns=None,
@@ -595,6 +622,96 @@ class AnalyticsEngine:
                           f"{'事实共识已瓦解' if health < 15 else '尚可正常决策'}",
             "derives_from": [],
             "confidence": 0.75,
+        })
+        return results
+
+
+    # ═══ A10: 因果链分析 (v3.6) ═══
+
+    def _detect_causal_chain(self, facts, entities, relations):
+        return len(relations or []) >= 1
+
+    def _analyze_causal_chain(self, facts, entities, relations, enhancer):
+        results = []
+        deps = {}  # {downstream: [upstream]}
+        for r in (relations or []):
+            if r.get("relation_type") in ("depends_on", "causes", "influences"):
+                deps.setdefault(r["subject"], []).append(r["object"])
+        if len(deps) < 2:
+            return results
+        # 找最长的因果链
+        for start in deps:
+            path = [start]
+            current = start
+            while current in deps and deps[current][0] not in path:
+                current = deps[current][0]
+                path.append(current)
+            if len(path) >= 3:
+                results.append({
+                    "type": "analytics",
+                    "conclusion": f"因果链: {'→'.join(path)}, 深度{len(path)-1}, "
+                                  f"中介{path[1:-1]}, 根因={path[-1]}",
+                    "derives_from": path[:3], "confidence": 0.75,
+                })
+        return results
+
+    # ═══ A11: 情景规划 (v3.6) ═══
+
+    def _detect_scenario_planning(self, facts, entities, relations):
+        kw = ("不确定性", "概率", "情景", "乐观", "悲观", "基线", "可能")
+        for _, info in _iter_facts(facts):
+            if any(k in info.get("desc", "") for k in kw):
+                return True
+        return False
+
+    def _analyze_scenario_planning(self, facts, entities, relations, enhancer):
+        results = []
+        uncertainties = []
+        for _, info in _iter_facts(facts):
+            desc = info.get("desc", "")
+            val = info.get("value", "")
+            if any(k in desc for k in ("不确定性", "概率", " риск", "风险")):
+                uncertainties.append((desc, _extract_num(val)))
+        if len(uncertainties) < 2:
+            return results
+        u1, u2 = uncertainties[:2]
+        scenarios = [
+            (f"{u1[0]}高+{u2[0]}高", "乐观"),
+            (f"{u1[0]}高+{u2[0]}低", "基准偏上"),
+            (f"{u1[0]}低+{u2[0]}高", "基准偏下"),
+            (f"{u1[0]}低+{u2[0]}低", "悲观"),
+        ]
+        results.append({
+            "type": "analytics",
+            "conclusion": f"情景矩阵(2×2): {len(scenarios)}情景, "
+                          f"关键轴={u1[0]}({u1[1]:.0f})×{u2[0]}({u2[1]:.0f}), "
+                          f"早鸟指标: {u1[0]}趋势逆转或{u2[0]}突破阈值",
+            "derives_from": [], "confidence": 0.60,
+        })
+        return results
+
+    # ═══ A12: 权力地图 (v3.6) ═══
+
+    def _detect_power_map(self, facts, entities, relations):
+        return len(relations or []) >= 4
+
+    def _analyze_power_map(self, facts, entities, relations, enhancer):
+        results = []
+        # Betweenness centrality近似: 每个节点在多少条关系中被引用
+        centrality = {}
+        for r in (relations or []):
+            s, o = r.get("subject", ""), r.get("object", "")
+            centrality[s] = centrality.get(s, 0) + 1
+            centrality[o] = centrality.get(o, 0) + 1
+        if not centrality:
+            return results
+        top = sorted(centrality.items(), key=lambda x: -x[1])[:3]
+        results.append({
+            "type": "analytics",
+            "conclusion": f"权力地图: 关键节点={', '.join(f'{k}(度={v})' for k,v in top)}, "
+                          f"最大影响力={top[0][0]}({top[0][1]}连接), "
+                          f"潜在单点={'是' if top[0][1]>=len(centrality)/2 else '否'}",
+            "derives_from": [k for k, _ in top], "confidence": 0.70,
         })
         return results
 

@@ -21,6 +21,7 @@ import re
 from dataclasses import dataclass
 from typing import List, Dict
 
+from engine.foundation.rule_loader import RuleLoader
 
 @dataclass
 class DerivationRule:
@@ -67,8 +68,9 @@ class RuleReasoner:
         "万辆": "数量", "万单": "数量", "万台": "数量",
     }
 
-    def __init__(self):
+    def __init__(self, loaded_rules: list = None):
         self.rules: List[DerivationRule] = self._default_rules()
+        self._loaded_rules = loaded_rules or []
         self.state = "idle"
 
     def _detect_domain(self, value, label):
@@ -228,6 +230,16 @@ class RuleReasoner:
             deps = r.get("derived_from", [])
             trail = f"{rule_id}: {'→'.join(deps[:4])}" if deps else f"{rule_id}"
             r["derivation_trail"] = trail
+
+        # v3.6: YAML规则执行 — 声明式规则产生产出
+        if self._loaded_rules:
+            for rule in self._loaded_rules:
+                try:
+                    c = RuleLoader().to_conclusion(rule)
+                    if c and c.get("conclusion"):
+                        results.append(c)
+                except Exception:
+                    pass
 
         self.state = "done"
         return results

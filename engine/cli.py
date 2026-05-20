@@ -21,7 +21,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="OntoDerive v3.5.0 — 知识工程分析平台",
+        description="OntoDerive v3.6.0 — 知识工程分析平台",
         epilog="示例: ontoderive init my-project --with-tools --derive --check",
     )
     sub = parser.add_subparsers(dest="command", help="子命令")

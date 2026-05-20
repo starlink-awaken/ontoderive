@@ -22,7 +22,7 @@ try:
 except ImportError:
     from engine.foundation.utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "3.5.0"
+VERSION = "3.6.0"
 
 try:
     from .protocols import DeriveInterface
