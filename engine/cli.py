@@ -44,6 +44,7 @@ def main():
     # rounds
     p_generate = sub.add_parser("generate", help="生成推导报告")
     p_generate.add_argument("--project", default=".", help="项目路径")
+    p_generate.add_argument("--export", choices=["jsonld", "turtle"], help="导出为本体格式")
     p_rounds = sub.add_parser("rounds", help="多轮迭代")
     p_rounds.add_argument("--project", default=".", help="项目路径")
     p_rounds.add_argument("n", type=int, default=3, help="迭代轮数")
@@ -131,7 +132,27 @@ def main():
         elif args.command == "rounds":
             od.run_rounds(args.n)
         elif args.command == "generate":
-            od.generate_report()
+            fmt = getattr(args, "export", None)
+            if fmt:
+                od.derive()  # 先推导再导出
+                try:
+                    from engine.formalize import Formalizer
+                    from engine.foundation.ontology_map import OntologyMapper
+                    fz = Formalizer()
+                    all_text = ""
+                    for d in ["facts", "entities", "inferences", "scheme"]:
+                        for f in Path(args.project).glob(f"{d}/**/*.md"):
+                            all_text += f.read_text() + "\n"
+                    kb = fz.extract_from_text(all_text, mode="rule_only")
+                    om = OntologyMapper()
+                    output = om.export(kb, fmt=fmt)
+                    out_path = Path(args.project) / f"export.{fmt if fmt != 'jsonld' else 'json'}"
+                    out_path.write_text(output)
+                    print(f"[export] ✅ {out_path} ({len(output)}字符)")
+                except Exception as e:
+                    print(f"[export] ❌ {e}")
+            else:
+                od.generate_report()
 
     elif args.command == "toolforge":
         from engine.toolforge import ToolForge

@@ -434,12 +434,6 @@ def _extract_num(val):
     m = re.search(r'(\d+\.?\d*)', str(val))
     return float(m.group(1)) if m else 0.0
 
-def _safe_get(items, key, default=None):
-    """安全获取dict值 — 兼容dict和原始值"""
-    if isinstance(items, dict):
-        return items.get(key, default)
-    return default
-
 
 def _find_entity_for_fact(fid, desc, entities, matcher=None):
     """根据事实描述找到对应实体ID — 语义匹配优先"""

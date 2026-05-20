@@ -40,6 +40,20 @@ class OntoDerive(DeriveInterface):
         self.protocols_dir = self.root / "protocols"
         self.log_dir = self.root / "_derivation_logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        self._loaded_rules = self._init_rules()  # v3.4: 加载YAML规则
+
+    def _init_rules(self):
+        """加载声明式YAML规则 (v3.4)"""
+        try:
+            from engine.foundation.rule_loader import RuleLoader
+            rl = RuleLoader()
+            rules_dir = Path(__file__).parent.parent / "foundation" / "rules"
+            if rules_dir.exists():
+                for yf in rules_dir.glob("*.yaml"):
+                    rl.load_yaml(str(yf))
+            return rl.rules
+        except Exception:
+            return []
 
     def derive(self):
         print("[derive] 事实基座扫描...")
