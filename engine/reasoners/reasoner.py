@@ -37,23 +37,61 @@ class RuleReasoner:
     """基于规则的确定性推导引擎 — 零依赖，永远可用"""
 
     UNIT_GROUPS = {
-        "人数": ["人", "团队", "员工", "用户", "工程师", "博士"],
-        "金额": ["万", "亿", "元", "预算", "营收", "收入", "成本"],
-        "百分比": ["%", "率", "覆盖", "转化", "NPS", "满意度"],
-        "数量": ["次", "项", "个", "所", "家", "篇", "起", "件"],
+        "人数": ["人", "团队", "员工", "用户", "工程师", "博士", "经理", "专家", "导师", "工人"],
+        "金额": ["万", "亿", "元", "预算", "营收", "收入", "成本", "金额", "投资", "赔偿", "市值"],
+        "百分比": ["%", "率", "覆盖", "转化", "NPS", "满意度", "渗透", "份额", "占比", "集中度", "卸载率", "流失率"],
+        "数量": ["次", "项", "个", "所", "家", "篇", "起", "件", "台", "单", "辆"],
+        "时间": ["年份", "历时", "周期", "耗时", "成立于"],
+        "面积": ["平方米", "亩", "公顷", "平方公里", "面积"],
+    }
+
+    VALUE_UNIT_MAP = {
+        "%": "百分比", "万元": "金额", "亿元": "金额", "美元": "金额",
+        "人": "人数", "家": "数量", "次": "数量", "件": "数量", "台": "数量",
+        "月": "时间", "天": "时间", "小时": "时间",
+        "平方米": "面积", "亩": "面积", "公顷": "面积",
+        "万辆": "数量", "万单": "数量", "万台": "数量",
     }
 
     def __init__(self):
         self.rules: List[DerivationRule] = self._default_rules()
         self.state = "idle"
 
-    def _comparable(self, label_a, label_b):
-        """判断两个标签是否属于同一单位维度"""
+    def _detect_domain(self, value, label):
+        """从值和标签中检测语义域, 优先用值的显式单位"""
+        vs = str(value)
+        for suffix, domain in self.VALUE_UNIT_MAP.items():
+            if suffix in vs:
+                return domain
+        for domain, keywords in self.UNIT_GROUPS.items():
+            if any(kw in label for kw in keywords):
+                return domain
+        return None
+
+    _STOP_CHARS = set("的是在与和及年第个月日一二三四五六七八九十前后")
+
+    def _char_overlap(self, label_a, label_b):
+        """检测两个标签的共同CJK字符数 ≥ 阈值"""
+        chars_a = {c for c in label_a if '一' <= c <= '鿿' and c not in self._STOP_CHARS}
+        chars_b = {c for c in label_b if '一' <= c <= '鿿' and c not in self._STOP_CHARS}
+        return len(chars_a & chars_b) >= 2
+
+    def _comparable(self, label_a, label_b, val_a=None, val_b=None):
+        """判断两个事实是否可比较 — 域匹配+字符重叠"""
+        if val_a is not None and val_b is not None:
+            dom_a = self._detect_domain(val_a, label_a)
+            dom_b = self._detect_domain(val_b, label_b)
+            if dom_a and dom_b:
+                if dom_a != dom_b:
+                    return False
+                return self._char_overlap(label_a, label_b)
+            if dom_a or dom_b:
+                return False
         for group, keywords in self.UNIT_GROUPS.items():
             a_in = any(kw in label_a for kw in keywords)
             b_in = any(kw in label_b for kw in keywords)
             if a_in and b_in:
-                return True
+                return self._char_overlap(label_a, label_b)
         return False
 
     def _default_rules(self):
@@ -528,7 +566,7 @@ class RuleReasoner:
             for j in range(i + 1, len(ids)):
                 a, b = numeric[ids[i]], numeric[ids[j]]
                 # 跳过跨维度比较 (人数vs金额vs百分比)
-                if not self._comparable(a["label"], b["label"]):
+                if not self._comparable(a["label"], b["label"], a["value"], b["value"]):
                     continue
                 if b["value"] > 0 and a["value"] > b["value"] * 1.5:  # 显著差异
                     results.append({
