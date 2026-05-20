@@ -139,68 +139,74 @@ class RuleReasoner:
             ),
         ]
 
-    def derive(self, facts: Dict[str, dict], inferences: Dict[str, dict]) -> List[dict]:
+    def derive(self, facts: Dict[str, dict], inferences: Dict[str, dict],
+               relations: List[dict] = None) -> List[dict]:
         """
         基于规则库做确定性推导。
         facts: {id: {desc, value, ...}}   inferences: {title: {text, derives_from, ...}}
+        relations: [{subject, relation_type, object}, ...]  (R19)
         """
         self.state = "deriving"
         results = []
 
-        # R1: 数值比较 — 从事实中提取可比较的数值
+        # R1: 数值比较
         results.extend(self._numeric_derive(facts))
 
-        # R2: 共享前提检测 — 找互相引用同一事实的推论
+        # R2: 共享前提检测
         results.extend(self._shared_premise_check(inferences))
 
-        # R3: 缺失引用检测 — 推论引用了不存在的ID
+        # R3: 缺失引用检测
         all_ids = set(facts.keys()) | set(inferences.keys())
         results.extend(self._missing_ref_check(inferences, all_ids))
 
-        # R4: 证据缺口 — 引用太少的前提
+        # R4: 证据缺口
         results.extend(self._evidence_gap_check(inferences))
 
-        # R5: 阈值触发 — 从事实值对比预设阈值
+        # R5: 阈值触发
         results.extend(self._threshold_check(facts))
 
-        # R6: 推导链完整性 — INF引用INF但存在断链
+        # R6: 推导链完整性
         results.extend(self._chain_integrity_check(inferences))
 
-        # R7: 假言推理 — 蕴含链检测 (Modus Ponens/Tollens)
+        # R7: 假言推理
         results.extend(self._modus_ponens_check(inferences, facts))
 
-        # R8: 传递推理 — 属性传递链 (A→B→C ∴ A→C)
+        # R8: 传递推理
         results.extend(self._transitive_closure(inferences, facts))
 
-        # R9: 包含推理 — 本体层级 (Subsumption: ORG ⊑ Entity)
+        # R9: 包含推理 (增强版)
         results.extend(self._subsumption_check(inferences, facts))
 
-        # R10: 影响传播 — 图中心性 (哪个事实影响最大)
+        # R10: 影响传播
         results.extend(self._influence_analysis(inferences, facts))
 
-        # R11: 冗余检测 — 结构推理
+        # R11: 冗余检测
         results.extend(self._redundancy_check(inferences))
 
         # R12: 覆盖度分析
         results.extend(self._coverage_analysis(inferences, facts))
 
-        # R13: 选言三段论 — 排中律 (A或B, 非A ∴ B)
+        # R13: 选言三段论
         results.extend(self._disjunctive_syllogism(inferences))
 
-        # R14: 假言三段论 — IF-THEN链 (A→B→C ∴ A→C)
+        # R14: 假言三段论
         results.extend(self._hypothetical_syllogism(inferences))
 
-        # R15: 变化检测 — 时态推理 (事实有时间戳→检测变化)
+        # R15: 变化检测
         results.extend(self._change_detection(facts))
 
-        # R16: 一致性分析 — 置信度vsKQIvs覆盖率脱节检测
+        # R16: 一致性分析
         results.extend(self._consistency_analysis(inferences, facts))
 
-        # R17: 结构洞检测 — 移除一个节点会断开多少连接
+        # R17: 结构洞检测
         results.extend(self._structural_holes(inferences))
 
-        # R18: 约束传播 — 规约阈值触发改善建议
+        # R18: 约束传播
         results.extend(self._constraint_propagation(inferences, facts))
+
+        # R19: 关系推理 — 传递性/逆关系/域约束 (v3.3)
+        if relations:
+            results.extend(self._relation_reasoning(relations))
 
         self.state = "done"
         return results
@@ -359,6 +365,89 @@ class RuleReasoner:
                 })
         return results
 
+    # ═══ R19: 关系推理 (Relation Reasoning) ═══
+
+    # 逆关系映射
+    _INVERSE_RELATIONS = {
+        "employs": "employed_by", "part_of": "contains",
+        "contains": "part_of", "cooperates_with": "cooperates_with",
+        "competes_with": "competes_with", "depends_on": "depended_on_by",
+        "authored_by": "authors", "precedes": "follows",
+        "belongs_to": "contains", "influences": "influenced_by",
+    }
+
+    def _relation_reasoning(self, relations):
+        """关系推理 — 传递性+逆关系+域约束检测"""
+        results = []
+        if not relations:
+            return results
+
+        # 构建关系图
+        rel_graph = {}  # {subject: [(relation_type, object), ...]}
+        for rel in relations:
+            s, r, o = rel.get("subject", ""), rel.get("relation_type", ""), rel.get("object", "")
+            if s and o:
+                rel_graph.setdefault(s, []).append((r, o))
+
+        # 1. 传递性推理: s→r→o, o→r→p → s→r→p (仅对传递关系)
+        transitive_rels = {"part_of", "contains", "depends_on", "precedes", "belongs_to"}
+        for s, edges in rel_graph.items():
+            for r, o in edges:
+                if r in transitive_rels and o in rel_graph:
+                    for r2, p in rel_graph[o]:
+                        if r2 == r:
+                            results.append({
+                                "type": "relation_transitive",
+                                "conclusion": f"关系传递: {s}→{r}→{o}→{r2}→{p} ∴ {s} {r} {p}",
+                                "derived_from": [s, o, p],
+                                "confidence": 0.80,
+                                "method": "rule_engine",
+                            })
+
+        # 2. 逆关系检测
+        for rel in relations:
+            r_type = rel.get("relation_type", "")
+            inverse = self._INVERSE_RELATIONS.get(r_type)
+            if inverse:
+                results.append({
+                    "type": "relation_inverse",
+                    "conclusion": f"逆关系: {rel.get('subject')}→{r_type}→{rel.get('object')} ⇒ "
+                                 f"{rel.get('object')}→{inverse}→{rel.get('subject')}",
+                    "derived_from": [rel.get("subject", ""), rel.get("object", "")],
+                    "confidence": 0.90,
+                    "method": "rule_engine",
+                })
+
+        # 3. 域约束检测: employs的domain应为ORG, range应为ROL
+        domain_rules = {
+            "employs": ({"ORG"}, {"ROL"}),
+            "authored_by": ({"DOC", "INF"}, {"ORG", "ROL"}),
+        }
+        for rel in relations:
+            r_type = rel.get("relation_type", "")
+            if r_type in domain_rules:
+                exp_dom, exp_rng = domain_rules[r_type]
+                subj_prefix = rel.get("subject", "").split("-")[0] if "-" in rel.get("subject", "") else ""
+                obj_prefix = rel.get("object", "").split("-")[0] if "-" in rel.get("object", "") else ""
+                if subj_prefix and subj_prefix not in exp_dom:
+                    results.append({
+                        "type": "relation_domain",
+                        "conclusion": f"域约束: {r_type}的domain应为{exp_dom}, 但subject'{rel.get('subject')}'前缀为'{subj_prefix}'",
+                        "derived_from": [rel.get("subject", "")],
+                        "confidence": 0.70,
+                        "method": "rule_engine",
+                    })
+                if obj_prefix and obj_prefix not in exp_rng:
+                    results.append({
+                        "type": "relation_range",
+                        "conclusion": f"域约束: {r_type}的range应为{exp_rng}, 但object'{rel.get('object')}'前缀为'{obj_prefix}'",
+                        "derived_from": [rel.get("object", "")],
+                        "confidence": 0.70,
+                        "method": "rule_engine",
+                    })
+
+        return results
+
     # ═══ R18: 约束传播 (Constraint Propagation) ═══
 
     def _constraint_propagation(self, inferences, facts):
@@ -454,9 +543,14 @@ class RuleReasoner:
         "DOCUMENT": ["COL", "DOC", "CH", "SEC", "STD"],
     }
 
+    # 已知前缀→推荐父类型
+    _PREFIX_TO_PARENT = {}
+    for _parent, _subs in ONTOLOGY_HIERARCHY.items():
+        for _sub in _subs:
+            _PREFIX_TO_PARENT[_sub] = _parent
+
     def _subsumption_check(self, inferences, facts):
-        """A ⊑ B (A是B的子类), x ∈ A ∴ x ∈ B
-        检测实体ID是否使用了正确的上层类型"""
+        """增强包含推理 — 分类建议+新类型检测+误分类检测"""
         results = []
         all_ids = list(inferences.keys()) + list(facts.keys())
         type_map = {}
@@ -464,27 +558,96 @@ class RuleReasoner:
             prefix = id_str.split("-")[0] if "-" in id_str else id_str[:3]
             type_map[id_str] = prefix
 
-        # 检查: ORG-xxx被正确归类为DOMAIN的子类型
-        for parent_type, subtypes in self.ONTOLOGY_HIERARCHY.items():
-            for id_str, prefix in type_map.items():
-                if prefix in subtypes:
-                    # 正确归类, 通过
-                    pass
-                elif prefix in sum([v for k, v in self.ONTOLOGY_HIERARCHY.items() if k != parent_type], []):
-                    # 前缀属于另一个父类型 → 可能归类错误
-                    pass
-        # 简化输出
-        n_correct = sum(1 for p in type_map.values() for v in self.ONTOLOGY_HIERARCHY.values() if p in v)
+        # 统计
+        known_in_hierarchy = set()
+        for subs in self.ONTOLOGY_HIERARCHY.values():
+            known_in_hierarchy.update(subs)
+
+        unknown_prefixes = {}
+        misclassified = []
+        correct = 0
+
+        for id_str, prefix in type_map.items():
+            if prefix in known_in_hierarchy:
+                correct += 1
+                # 检测可能的误分类: 检查前缀是否在正确的父类型下
+                expected_parent = self._PREFIX_TO_PARENT.get(prefix)
+                if expected_parent:
+                    for other_parent, other_subs in self.ONTOLOGY_HIERARCHY.items():
+                        if other_parent != expected_parent and prefix in other_subs:
+                            misclassified.append(f"{id_str}: 前缀'{prefix}'同时属于{expected_parent}和{other_parent}")
+            else:
+                unknown_prefixes[prefix] = unknown_prefixes.get(prefix, 0) + 1
+
         n_total = len(type_map)
-        if n_total > 0 and n_correct < n_total:
+        if n_total == 0:
+            return results
+
+        # 输出1: 归类统计
+        results.append({
+            "type": "subsumption",
+            "conclusion": f"本体归类: {correct}/{n_total}个ID正确({correct*100//n_total}%)",
+            "derived_from": [],
+            "confidence": 0.85,
+            "method": "rule_engine",
+        })
+
+        # 输出2: 未知前缀 → 新类型建议
+        for prefix, count in sorted(unknown_prefixes.items(), key=lambda x: -x[1]):
+            if count >= 2:  # 至少出现2次才建议
+                # 猜测最可能的父类型
+                guess = self._guess_parent(prefix, type_map)
+                results.append({
+                    "type": "subsumption",
+                    "conclusion": f"新类型建议: '{prefix}'出现{count}次, 建议归入{guess}类型",
+                    "derived_from": [k for k, v in type_map.items() if v == prefix],
+                    "confidence": 0.55,
+                    "method": "rule_engine",
+                })
+            elif count == 1:
+                # 孤立未知前缀 → 可能是拼写错误
+                example_id = next(k for k, v in type_map.items() if v == prefix)
+                closest = self._closest_known(prefix)
+                results.append({
+                    "type": "subsumption",
+                    "conclusion": f"孤立前缀: '{prefix}'(仅{example_id})可能是'{closest}'的拼写错误",
+                    "derived_from": [example_id],
+                    "confidence": 0.40,
+                    "method": "rule_engine",
+                })
+
+        # 输出3: 误分类检测
+        for mc in misclassified[:5]:
             results.append({
                 "type": "subsumption",
-                "conclusion": f"{n_correct}/{n_total}个ID正确归入本体层级({','.join(self.ONTOLOGY_HIERARCHY.keys())})",
+                "conclusion": f"误分类: {mc}",
                 "derived_from": [],
-                "confidence": 0.70,
+                "confidence": 0.60,
                 "method": "rule_engine",
             })
+
         return results
+
+    def _guess_parent(self, prefix, type_map):
+        """根据前缀相似度猜测最可能的父类型"""
+        # 基于已知前缀的字符重叠
+        best, best_score = "DOMAIN", 0
+        for known in self._PREFIX_TO_PARENT:
+            score = len(set(prefix) & set(known)) / max(len(set(prefix) | set(known)), 1)
+            if score > best_score:
+                best_score = score
+                best = self._PREFIX_TO_PARENT[known]
+        return best
+
+    def _closest_known(self, prefix):
+        """找到最相似的已知前缀"""
+        best, best_score = "ORG", 0
+        for known in self._PREFIX_TO_PARENT:
+            score = len(set(prefix) & set(known))
+            if score > best_score:
+                best_score = score
+                best = known
+        return best
 
     # ═══ R10: 影响传播 (Influence Analysis) ═══
 

@@ -192,7 +192,7 @@ class Formalizer:
         return knowledge
 
     def _validate(self, knowledge: FormalKnowledge):
-        """规则校验: TypeValidator检查ID格式"""
+        """规则校验: TypeValidator检查ID格式 + 属性约束校验"""
         try:
             from .typesystem import TypeValidator
         except ImportError:
@@ -204,6 +204,41 @@ class Formalizer:
         for e in knowledge.entities:
             if not tv.check_id(e.id).is_valid:
                 e.id = f"ORG-{e.name[:10]}"
+        self._validate_properties(knowledge)
+
+    def _validate_properties(self, knowledge: FormalKnowledge):
+        """属性约束校验: 基于TBox PROPERTY/META_TYPES检查字段完整性和类型"""
+        issues = []
+        # 事实属性校验
+        for f in knowledge.facts:
+            if not f.value or f.value.strip() in ("", "-", "—"):
+                issues.append(f"事实 {f.id}: value字段为空")
+            elif not any(c.isdigit() for c in str(f.value)):
+                # 非纯数值型事实(如政策引用), 跳过
+                pass
+            if not f.source or f.source.strip() in ("", "-"):
+                issues.append(f"事实 {f.id}: source字段为空, 可追溯性受影响")
+
+        # 实体属性校验
+        for e in knowledge.entities:
+            if not e.name or len(e.name.strip()) < 2:
+                issues.append(f"实体 {e.id}: name字段过短或为空 ('{e.name}')")
+            if not e.entity_type or e.entity_type.strip() == "":
+                issues.append(f"实体 {e.id}: entity_type字段为空")
+            # 检查entity_type是否在TBox已知类型中
+            known_types = {"ORG", "ROL", "PRJ", "RES", "DOC", "STD", "POL", "DAT"}
+            if e.entity_type and e.entity_type not in known_types:
+                issues.append(f"实体 {e.id}: entity_type='{e.entity_type}'不在已知类型{known_types}中")
+
+        # 推论属性校验
+        for inf in knowledge.inferences:
+            if not inf.derives_from:
+                issues.append(f"推论 {inf.id}: derives_from为空, 推论不可追溯")
+            if not inf.conclusion or len(inf.conclusion.strip()) < 5:
+                issues.append(f"推论 {inf.id}: conclusion为空或过短")
+
+        if issues:
+            knowledge.abox["_validation_issues"] = issues
 
     def _build_abox_tbox(self, knowledge: FormalKnowledge):
         """Phase 2: 构建ABox(断言)和TBox(术语)"""

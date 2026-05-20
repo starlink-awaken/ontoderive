@@ -5,3 +5,4 @@ from engine.foundation.constants import RE_FACT_ID, RE_ENTITY_ID, V2_ID_PATTERNS
 from engine.foundation.utils import rf, wf, all_md, load_json, save_json, detect_cycles, CachedReader
 from engine.foundation.config import Config
 from engine.foundation.protocols import DeriveInterface, ToolForgeInterface, PipelineObservable, AnalysisResult
+from engine.foundation.ontology_map import OntologyMapper, TYPE_MAPPINGS, RDFTriple

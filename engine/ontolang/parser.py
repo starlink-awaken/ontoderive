@@ -256,14 +256,57 @@ class Parser:
         return ProtocolDef(id=decl_id, constraint_type=decl_type, constraint=constraint,
                            properties=props, pos=pos)
 
+    # 关系词汇表: 关系名 → (domain, range)
+    RELATION_VOCAB = {
+        "cooperates_with":  ("DOMAIN", "DOMAIN"),
+        "competes_with":    ("DOMAIN", "DOMAIN"),
+        "part_of":          ("DOMAIN", "DOMAIN"),
+        "contains":         ("DOMAIN", "DOMAIN"),
+        "employs":          ("ORG", "ROL"),
+        "belongs_to":       ("DOMAIN", "DOMAIN"),
+        "depends_on":       ("DOMAIN", "DOMAIN"),
+        "causes":           ("FACT", "FACT"),
+        "influences":       ("DOMAIN", "DOMAIN"),
+        "precedes":         ("DOMAIN", "DOMAIN"),
+        "authored_by":      ("DOCUMENT", "DOMAIN"),
+        "references":       ("DOMAIN", "DOMAIN"),
+        "derives_from":     ("INFERENCE", "FACT"),
+        "maps_to":          ("DOMAIN", "DOMAIN"),
+    }
+
     def _parse_relation(self):
         pos = SourcePos(self.peek().line, self.peek().col, self.filename)
         self.consume("RELATION")
-        subj_tok = self.peek()
+        # 支持的语法: relation ORG-A cooperates_with ORG-B
+        # 关系词汇表验证
+        subj = self._read_until_comma_or_id_end()
+        rel = self.peek().value
         self.idx += 1
-        rel_type = self.peek().value
-        self.idx += 1
-        obj_tok = self.peek()
-        self.idx += 1
-        return RelationDef(subject=subj_tok.value, relation_type=rel_type,
-                           object=obj_tok.value, pos=pos)
+        obj = self._read_until_comma_or_id_end()
+        if rel not in self.RELATION_VOCAB:
+            known = sorted(self.RELATION_VOCAB.keys())
+            # 不阻塞, 仅记录 — 允许用户自定义关系类型
+            pass
+        return RelationDef(subject=subj, relation_type=rel, object=obj, pos=pos)
+
+    def _read_until_comma_or_id_end(self):
+        """读取一个完整的ID值, 遇到已知关系名则停止"""
+        parts = []
+        while self.peek().kind not in ("EOF", "NEWLINE", "COMMA", "LBRACE", "RBRACE"):
+            t = self.peek()
+            # 遇到已知关系名 → 停止, 这是下一个token
+            if t.value in self.RELATION_VOCAB:
+                break
+            if t.kind in ("ID", "CN_TEXT", "NUMBER"):
+                parts.append(t.value)
+                self.idx += 1
+            elif t.kind == "UNKNOWN" and t.value in ("-", "_"):
+                parts.append(t.value)
+                self.idx += 1
+            else:
+                break
+        if not parts:
+            t = self.peek()
+            self.idx += 1
+            return t.value
+        return "".join(parts)

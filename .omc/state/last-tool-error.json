@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"python3 -c \\\"\\nfrom engine.foundation.typesystem import TypeValidator\\ntv = TypeValidator()\\n# 验证STD-/DOC-前缀\\nfor tid in ['STD-ISO9001', 'DOC-京政发202410号', 'ORG-国转中心', 'PRJ-数字平台']:\\n    r =...",
-  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 7, in <module>\n    print(f'{tid}: valid={r.is_valid} meta={r.meta_type}')\n                                            ^^^^^^^^^^^\nAttributeError: 'TypeCheckResult' object has no attribute 'meta_type'",
-  "timestamp": "2026-05-20T02:14:07.511Z",
+  "tool_input_preview": "{\"command\":\"echo \\\"=== 模块间导入关系 ===\\\" && for f in $(find engine -name \\\"*.py\\\" -not -name \\\"__init__.py\\\" -not -path \\\"*__pycache__*\\\" | sort); do\\n  mod=$(echo $f | sed 's|engine/||;s|/|.|g;s|\\\\.py||'...",
+  "error": "Exit code 1\n=== 模块间导入关系 ===\n  cli → core.derive \n  core.check_theory → theories.bayesian \n  core.check → foundation.constants foundation.typesystem foundation.utils theories.logic \n  core.derive → core.check foundation.protocols foundation.utils intelligence.insight intelligence.llm reasoners.reasoner theories.bayesian theories.logic \n  core.pipeline → foundation.config foundation.protocols \n  ecosystem.minerva → foundation.utils \n  formalize → foundation.typesystem \n  mcp_server → core.derive f...",
+  "timestamp": "2026-05-20T02:39:49.594Z",
   "retry_count": 1
 }
