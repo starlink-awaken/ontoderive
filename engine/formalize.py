@@ -47,6 +47,8 @@ class FormalKnowledge:
 class Formalizer:
     """LLM提取 + 规则降级 + 符号化"""
 
+    _CONNECTOR_PREFIX = re.compile(r'^[与和及的]+')
+
     def _rule_extract(self, text: str) -> FormalKnowledge:
         """规则引擎降级提取 — 零LLM, 正则匹配数值和实体"""
         knowledge = FormalKnowledge()
@@ -95,11 +97,10 @@ class Formalizer:
             # 标准/认证
             (r'(ISO\s*\d+|GB/T\s*\d+|国家标准.{2,6}|行业标准.{2,6})', 'STD', '标准规范'),
         ]
-        _CONNECTOR_PREFIX = re.compile(r'^[与和及的]+')
         for pattern, etype, role in entity_patterns:
             for m in re.finditer(pattern, text):
                 name = m.group(1)
-                name = _CONNECTOR_PREFIX.sub('', name)  # 清理连接词前缀
+                name = self._CONNECTOR_PREFIX.sub('', name)
                 if name not in seen_names and len(name) >= 3:
                     seen_names.add(name)
                     knowledge.entities.append(SymbolicEntity(
@@ -138,9 +139,9 @@ class Formalizer:
         if mode != "rule_only" and self.enhancer and self.enhancer.available:
             print(f"[formalize] 🤖 LLM提取中 ({self.enhancer.model})...")
             # 分块处理长文本
-            data = {}
             chunks = [text[i:i+2500] for i in range(0, min(len(text), 8000), 2500)]
             for chunk in chunks:
+                data = {}
                 result = self.enhancer._call(
                     self.EXTRACT_PROMPT.format(text=chunk),
                     "你是知识提取专家。只输出JSON。", 0.2
@@ -211,7 +212,8 @@ class Formalizer:
             "entities": {e.id: {"name": e.name, "type": e.entity_type} for e in knowledge.entities},
         }
         knowledge.tbox = {
-            "DOMAIN": {"subtypes": ["ORG", "ROL", "PRJ"]},
+            "DOMAIN": {"subtypes": ["ORG", "ROL", "PRJ", "RES"]},
+            "DOCUMENT": {"subtypes": ["COL", "DOC", "CH", "SEC", "STD"]},
             "FACT": {"subtypes": ["DAT", "POL"]},
             "INFERENCE": {"subtypes": ["CLAIM", "STRATEGY", "DIAGNOSIS"]},
             "PROPERTY": {"numeric": ["value", "count", "rate"], "textual": ["description", "source"]},

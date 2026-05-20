@@ -53,7 +53,7 @@ class OntoDerive(DeriveInterface):
 
         entities = {}
         for f in all_md(self.entities_dir):
-            for m in re.finditer(r'\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+)\*\*', rf(f)):
+            for m in re.finditer(r'\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+|DOC-[\w-]+|STD-[\w-]+)\*\*', rf(f)):
                 entities[m.group(1)] = True
 
         infer_count = 0
@@ -153,7 +153,7 @@ class OntoDerive(DeriveInterface):
         Phase1: LLM提取(降级规则) → Phase2: 符号化 → Phase3: 形式推理 → Phase4: 解读
         """
         try:
-            from engine.pipeline_v4 import FormalPipeline
+            from .pipeline_v4 import FormalPipeline
         except ImportError:
             from engine.pipeline_v4 import FormalPipeline
         enhancer = self._try_llm()

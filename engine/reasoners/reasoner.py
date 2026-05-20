@@ -413,7 +413,7 @@ class RuleReasoner:
         "FACT": ["DAT", "POL"],
         "INFERENCE": ["CONTRADICTION", "BUSINESS", "ARCHITECTURE"],
         "STATE": ["T", "F", "H"],
-        "DOCUMENT": ["COL", "DOC", "CH", "SEC"],
+        "DOCUMENT": ["COL", "DOC", "CH", "SEC", "STD"],
     }
 
     def _subsumption_check(self, inferences, facts):

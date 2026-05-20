@@ -27,3 +27,9 @@
 {"t":0,"agent":"system","event":"keyword_detected","keyword":"wiki"}
 {"t":0,"agent":"system","event":"keyword_detected","keyword":"wiki"}
 {"t":0,"agent":"adde66b","agent_type":"unknown","event":"agent_stop","success":true}
+{"t":0,"agent":"a73c02c","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a437556","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a389ca1","agent_type":"code-reviewer","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a437556","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":243208}
+{"t":0,"agent":"a73c02c","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":383527}
+{"t":0,"agent":"a389ca1","agent_type":"code-reviewer","event":"agent_stop","success":true,"duration_ms":1105331}

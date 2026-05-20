@@ -38,9 +38,9 @@ META_TYPES = {
         "required_fields": [],
     },
     "DOCUMENT": {
-        "subtypes": {"COL", "DOC", "CH", "SEC"},
-        "id_prefixes": ("DOC-", "CH-", "SEC-", "DCH-"),
-        "description": "文档 — 方案/章节/集合",
+        "subtypes": {"COL", "DOC", "CH", "SEC", "STD"},
+        "id_prefixes": ("DOC-", "CH-", "SEC-", "DCH-", "STD-"),
+        "description": "文档/标准 — 方案/章节/集合/标准规范",
         "required_fields": ["title"],
     },
     "CONSTRAINT": {

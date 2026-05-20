@@ -6,20 +6,20 @@ OntoDerive 共享常量
 import re
 
 # ── ID前缀 ──
-ENTITY_PREFIXES = ("ORG-", "ROL-", "PRJ-", "POL-", "DAT-")
+ENTITY_PREFIXES = ("ORG-", "ROL-", "PRJ-", "POL-", "DAT-", "DOC-", "STD-")
 FACT_PREFIXES = ("D-F", "P-F")
 INFERENCE_PREFIX = "INF-"
 
 # ── 编译正则 ──
 RE_FACT_ID = re.compile(r'(D-F\d+|P-F\d+)')
-RE_ENTITY_ID = re.compile(r'\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+)\*\*')
+RE_ENTITY_ID = re.compile(r'\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+|DOC-[\w-]+|STD-[\w-]+)\*\*')
 RE_IS_FACT_ID = re.compile(r'^(D-F|P-F)\d+')
 RE_IS_ENTITY_PREFIX = re.compile(r'^(ORG|ROL|PRJ)-')
 
 # ── V2扩展ID前缀 ──
 V2_ID_PATTERNS = [
     "ORG-", "ROL-", "PRJ-", "POL-", "DAT-", "INF-",
-    "INF-V2-", "ADR-", "DCH-", "DOC-", "CON-", "IP",
+    "INF-V2-", "ADR-", "DCH-", "DOC-", "STD-", "CON-", "IP",
     "T[0-7]", "F[1-8]", "H[1-6]",
     "META-", "LAYER-", "TH-", "LANG-", "ENG-", "FRM-",
     "BAY-", "PRIOR-", "POST-", "KQI-", "MEAS-",

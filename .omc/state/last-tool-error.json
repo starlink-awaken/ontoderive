@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"git add .gitignore CLAUDE.md docs/ARCHITECTURE.md engine/cli.py engine/derive.py engine/formalize.py engine/mcp_server.py engine/reasoner.py tests/test_mcp_server.py && git add .omc/state/...",
-  "error": "Exit code 1\nThe following paths are ignored by one of your .gitignore files:\n.omc\nhint: Use -f if you really want to add them.\nhint: Disable this message with \"git config set advice.addIgnoredFile false\"",
-  "timestamp": "2026-05-19T10:12:47.676Z",
+  "tool_input_preview": "{\"command\":\"python3 -c \\\"\\nfrom engine.foundation.typesystem import TypeValidator\\ntv = TypeValidator()\\n# 验证STD-/DOC-前缀\\nfor tid in ['STD-ISO9001', 'DOC-京政发202410号', 'ORG-国转中心', 'PRJ-数字平台']:\\n    r =...",
+  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 7, in <module>\n    print(f'{tid}: valid={r.is_valid} meta={r.meta_type}')\n                                            ^^^^^^^^^^^\nAttributeError: 'TypeCheckResult' object has no attribute 'meta_type'",
+  "timestamp": "2026-05-20T02:14:07.511Z",
   "retry_count": 1
 }
