@@ -6,3 +6,4 @@ from engine.foundation.utils import rf, wf, all_md, load_json, save_json, detect
 from engine.foundation.config import Config
 from engine.foundation.protocols import DeriveInterface, ToolForgeInterface, PipelineObservable, AnalysisResult
 from engine.foundation.ontology_map import OntologyMapper, TYPE_MAPPINGS, RDFTriple
+from engine.foundation.rule_loader import RuleLoader

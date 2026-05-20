@@ -17,13 +17,23 @@ from engine.intelligence.semantic import SemanticMatcher
 
 @dataclass
 class AnalyticalPattern:
-    """分析模式定义"""
+    """分析模式定义
+
+    semantic_depth: 0-5连续推理深度
+      0 = 纯正则/数值比较 (R1-R18级别)
+      1 = 语义匹配 (TF-IDF)
+      2 = 嵌入向量 (需外部模型)
+      3 = 轻量分类器
+      4 = 小语言模型 (本地)
+      5 = 大语言模型 (云端LLM)
+    """
     name: str
     description: str
     category: str  # game_theory | economics | supply_chain | organizational | strategic
     detect: Callable  # (facts, entities, relations) → bool
     analyze: Callable  # (facts, entities, relations, enhancer) → List[dict]
-    requires_llm: bool = False
+    semantic_depth: int = 0  # 0-5连续推理深度
+    requires_llm: bool = False  # 向后兼容, 等同于 semantic_depth >= 4
 
 
 class AnalyticsEngine:
@@ -42,7 +52,7 @@ class AnalyticsEngine:
                 category="economics",
                 detect=self._detect_capacity_constraint,
                 analyze=self._analyze_capacity,
-                requires_llm=False,
+                semantic_depth=0,  # 纯公式计算
             ),
             # ═══ A2: 供应链风险放大 ═══
             AnalyticalPattern(
@@ -51,7 +61,7 @@ class AnalyticsEngine:
                 category="supply_chain",
                 detect=self._detect_supply_risk,
                 analyze=self._analyze_supply_chain,
-                requires_llm=False,
+                semantic_depth=1,  # TF-IDF语义匹配
             ),
             # ═══ A3: 代理问题检测 ═══
             AnalyticalPattern(
@@ -60,7 +70,7 @@ class AnalyticsEngine:
                 category="game_theory",
                 detect=self._detect_agency_issue,
                 analyze=self._analyze_agency,
-                requires_llm=True,  # 需要LLM理解组织上下文
+                semantic_depth=4,  # 需要LLM理解组织上下文
             ),
             # ═══ A4: 激励不相容检测 ═══
             AnalyticalPattern(
@@ -69,7 +79,7 @@ class AnalyticsEngine:
                 category="organizational",
                 detect=self._detect_incentive_issue,
                 analyze=self._analyze_incentive,
-                requires_llm=True,
+                semantic_depth=1,  # TF-IDF语义匹配 (v3.4升级)
             ),
             # ═══ A5: 分阶段补救规划 ═══
             AnalyticalPattern(
@@ -78,27 +88,41 @@ class AnalyticsEngine:
                 category="strategic",
                 detect=self._detect_remediation_needed,
                 analyze=self._analyze_remediation,
-                requires_llm=True,
+                semantic_depth=1,  # 确定性计算+可选LLM增强
             ),
         ]
 
-    def run(self, facts, entities, inferences, relations=None, patterns=None):
-        """运行所有(或指定)分析模式, 返回洞察列表"""
-        # 防御: 确保facts是dict
+    def run(self, facts, entities, inferences, relations=None, patterns=None,
+            max_depth: int = 5):
+        """运行所有(或指定)分析模式, 返回洞察列表
+
+        max_depth: 最大推理深度 (0=仅纯规则, 3=含分类器, 5=含LLM)
+        """
         if not isinstance(facts, dict):
             return []
+        # 可用深度: 有enhancer→max 5, 有matcher→max 1, 否则→0
+        available_depth = 0
+        if self.enhancer and self.enhancer.available:
+            available_depth = 5
+        elif hasattr(self, 'matcher') and self.matcher:
+            available_depth = 1
+        effective_depth = min(max_depth, available_depth)
+
         results = []
         targets = patterns or self.patterns
         for pat in targets:
+            # 深度控制: 只运行深度在可用范围内的模式
+            if pat.semantic_depth > effective_depth:
+                continue
             try:
                 if pat.detect(facts, entities, relations or []):
                     conclusions = pat.analyze(facts, entities, relations or [], self.enhancer)
                     for c in conclusions:
                         c["pattern"] = pat.name
                         c["category"] = pat.category
+                        c["semantic_depth"] = pat.semantic_depth
                     results.extend(conclusions)
-            except Exception as e:
-                # 静默降级: 分析模式失败不影响主流程
+            except Exception:
                 pass
         return results
 
@@ -179,12 +203,14 @@ class AnalyticsEngine:
 
     def _analyze_supply_chain(self, facts, entities, relations, enhancer):
         results = []
+        # 语义匹配器: 基于事实描述
+        descs = [info.get("desc", "") for _, info in _iter_facts(facts)]
+        matcher = SemanticMatcher(descs if descs else ["default"])
         # 构建依赖图
-        deps = {}  # {downstream: [(upstream, dependency_ratio), ...]}
+        deps = {}
         for r in (relations or []):
             if r.get("relation_type") == "depends_on":
                 deps.setdefault(r["subject"], []).append((r["object"], 1.0))
-
         # 查找交付异常
         for fid, info in _iter_facts(facts):
             desc = info.get("desc", "") + info.get("description", "")
@@ -193,11 +219,15 @@ class AnalyticsEngine:
             delivery = _extract_num(info.get("value", ""))
             if delivery >= 80 or delivery <= 0:
                 continue
-            # 查找该实体的上游依赖
-            entity_name = _find_entity_for_fact(fid, desc, entities)
+            entity_name = _find_entity_for_fact(fid, desc, entities, matcher)
             upstreams = deps.get(entity_name, [])
+            if not upstreams:
+                for subj in deps:
+                    if matcher.is_semantically_related(subj, desc):
+                        upstreams = deps.get(subj, [])
+                        entity_name = subj
+                        break
             for up_name, ratio in upstreams:
-                # 查找上游的库存/利用率数据
                 for fid2, info2 in _iter_facts(facts):
                     up_desc = info2.get("desc", "")
                     if "库存" in up_desc:
@@ -410,10 +440,22 @@ def _safe_get(items, key, default=None):
     return default
 
 
-def _find_entity_for_fact(fid, desc, entities):
-    """根据事实描述找到对应实体ID"""
-    if isinstance(entities, dict):
-        for eid, info in entities.items():
-            if info.get("name", "") in desc:
-                return eid
+def _find_entity_for_fact(fid, desc, entities, matcher=None):
+    """根据事实描述找到对应实体ID — 语义匹配优先"""
+    if not isinstance(entities, dict):
+        return fid
+    # TF-IDF语义匹配
+    if matcher:
+        candidates = [info.get("name", "") for info in entities.values()
+                      if isinstance(info, dict)]
+        if candidates:
+            best, score = matcher.best_match(desc, candidates, threshold=0.15)
+            if best and score > 0.15:
+                for eid, info in entities.items():
+                    if isinstance(info, dict) and info.get("name") == best:
+                        return eid
+    # 回退: 精确字符串匹配
+    for eid, info in entities.items():
+        if isinstance(info, dict) and info.get("name", "") in desc:
+            return eid
     return fid
