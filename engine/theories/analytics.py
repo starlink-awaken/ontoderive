@@ -39,8 +39,9 @@ class AnalyticalPattern:
 class AnalyticsEngine:
     """分析模式引擎 — 确定性检测 + 可选的LLM增强"""
 
-    def __init__(self, enhancer=None):
+    def __init__(self, enhancer=None, matcher=None):
         self.enhancer = enhancer
+        self.matcher = matcher  # 语义匹配器 (v3.4 fix)
         self.patterns = self._register_patterns()
 
     def _register_patterns(self):
@@ -429,7 +430,7 @@ def _extract_num(val):
     if isinstance(val, (int, float)):
         return float(val)
     if isinstance(val, bool):
-        return 0.0
+        return 0.0  # bool→0.0 (bool在JSON中不应出现在value字段, 若出现视为0)
     m = re.search(r'(\d+\.?\d*)', str(val))
     return float(m.group(1)) if m else 0.0
 

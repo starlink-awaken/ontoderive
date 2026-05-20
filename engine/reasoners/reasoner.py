@@ -36,6 +36,21 @@ class DerivationRule:
 class RuleReasoner:
     """基于规则的确定性推导引擎 — 零依赖，永远可用"""
 
+    _TYPE_TO_RULE = {
+        "numeric_comparison": "R1", "shared_premise": "R2", "missing_reference": "R3",
+        "evidence_gap": "R4", "threshold_alert": "R5", "chain_break": "R6",
+        "modus_ponens_valid": "R7", "modus_ponens_fail": "R7",
+        "transitive_dependency": "R8", "subsumption": "R9",
+        "influence_analysis": "R10", "redundancy_warning": "R11",
+        "coverage": "R12", "disjunctive_syllogism": "R13",
+        "hypothetical_syllogism": "R14", "temporal_sequence": "R15",
+        "consistency_warning": "R16", "structural_hole": "R17",
+        "constraint_propagation": "R18",
+        "relation_transitive": "R19", "relation_inverse": "R19",
+        "relation_domain": "R19", "relation_range": "R19",
+        "shallow_chain": "R6",
+    }
+
     UNIT_GROUPS = {
         "人数": ["人", "团队", "员工", "用户", "工程师", "博士", "经理", "专家", "导师", "工人"],
         "金额": ["万", "亿", "元", "预算", "营收", "收入", "成本", "金额", "投资", "赔偿", "市值"],
@@ -209,21 +224,8 @@ class RuleReasoner:
             results.extend(self._relation_reasoning(relations))
 
         # 推理链路可解释性: 每个结论标注规则ID+依赖链
-        _TYPE_TO_RULE = {
-            "numeric_comparison": "R1", "shared_premise": "R2", "missing_reference": "R3",
-            "evidence_gap": "R4", "threshold_alert": "R5", "chain_break": "R6",
-            "modus_ponens_valid": "R7", "modus_ponens_fail": "R7",
-            "transitive_dependency": "R8", "subsumption": "R9",
-            "influence_analysis": "R10", "redundancy_warning": "R11",
-            "coverage": "R12", "disjunctive_syllogism": "R13",
-            "hypothetical_syllogism": "R14", "temporal_sequence": "R15",
-            "consistency_warning": "R16", "structural_hole": "R17",
-            "constraint_propagation": "R18",
-            "relation_transitive": "R19", "relation_inverse": "R19",
-            "relation_domain": "R19", "relation_range": "R19",
-        }
         for r in results:
-            rule_id = _TYPE_TO_RULE.get(r.get("type", ""), "R?")
+            rule_id = self._TYPE_TO_RULE.get(r.get("type", ""), "R?")
             deps = r.get("derived_from", [])
             trail = f"{rule_id}: {'→'.join(deps[:4])}" if deps else f"{rule_id}"
             r["derivation_trail"] = trail
@@ -364,7 +366,6 @@ class RuleReasoner:
         if not inferences:
             return results
         # 构建引用图
-        import re
         graph = {}
         for title, info in inferences.items():
             deps = [d for d in info.get("derives_from", []) if d in inferences or d.startswith(("D-F", "P-F"))]
@@ -475,7 +476,6 @@ class RuleReasoner:
     def _constraint_propagation(self, inferences, facts):
         """基于规约阈值传播约束: 断言追溯率<阈值→触发改善建议"""
         results = []
-        import re
         # 统计断言数
         total_assertions = 0
         for info in inferences.values():
@@ -972,7 +972,6 @@ class RuleReasoner:
         """
         results = []
         dated = []
-        import re
         for fid, info in facts.items():
             text = f"{info.get('desc','')} {info.get('value','')}"
             years = re.findall(r'(20\d{2})', text)
