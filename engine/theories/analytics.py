@@ -12,6 +12,8 @@ import re
 from dataclasses import dataclass
 from typing import List, Callable
 
+from engine.intelligence.semantic import SemanticMatcher
+
 
 @dataclass
 class AnalyticalPattern:
@@ -103,12 +105,14 @@ class AnalyticsEngine:
     # ═══ A1: 供给弹性 ═══
 
     def _detect_capacity_constraint(self, facts, entities, relations):
-        """检测: 产能利用率>90% 或 库存<安全基准"""
+        """检测: 利用率>90%供给紧张 或 利用率<60%产能过剩 或 库存偏离基准"""
         for fid, info in _iter_facts(facts):
             desc = info.get("desc", "") + info.get("description", "")
             val = info.get("value", "")
-            if ("利用率" in desc or "产能" in desc) and _extract_num(val) > 90:
-                return True
+            if ("利用率" in desc or "产能" in desc):
+                num = _extract_num(val)
+                if num > 90 or (num > 0 and num < 60):
+                    return True
             if "库存" in desc:
                 stock = _extract_num(val)
                 # 查找对应安全基准
@@ -125,8 +129,8 @@ class AnalyticsEngine:
             num = _extract_num(val)
             if num <= 0:
                 continue
-            # 利用率分析
-            if "利用率" in desc and num > 90:
+            # 利用率分析 (供给紧张)
+            if "利用率" in desc and num > 90 and num <= 100:
                 elasticity = max(0, (100 - num) / num)  # 剩余产能比例
                 results.append({
                     "type": "analytics",
@@ -134,6 +138,16 @@ class AnalyticsEngine:
                                   f"仅余{100-num:.0f}%产能, 需求波动将直接传导为短缺",
                     "derives_from": [fid],
                     "confidence": 0.85,
+                })
+            # 产能过剩检测 (v3.4)
+            elif "利用率" in desc and num > 0 and num < 60:
+                excess_pct = 100 - num
+                results.append({
+                    "type": "analytics",
+                    "conclusion": f"产能过剩: '{desc}'={val}, 闲置{excess_pct:.0f}%产能, "
+                                  f"供过于求→价格下行→行业出清压力",
+                    "derives_from": [fid],
+                    "confidence": 0.80,
                 })
             # 库存vs安全基准
             if "库存" in desc:
@@ -247,38 +261,51 @@ class AnalyticsEngine:
     # ═══ A4: 激励不相容 ═══
 
     def _detect_incentive_issue(self, facts, entities, relations):
-        """检测: 多实体存在 + 共享资源 + 不同目标"""
-        # 简化为: 3个以上实体 + 至少1个共享关系
-        n_entities = len(entities) if isinstance(entities, dict) else len(entities)
-        n_relations = len(relations) if relations else 0
-        return n_entities >= 3 and n_relations >= 2
+        """检测: 多实体共享资源(语义关联) + 有不同的事实描述"""
+        # 找共享同一目标实体的多个主体
+        targets = {}
+        for r in (relations or []):
+            obj = r.get("object", "")
+            targets.setdefault(obj, []).append(r.get("subject", ""))
+        shared_resources = [(t, subs) for t, subs in targets.items() if len(subs) >= 2]
+        return len(shared_resources) >= 1
 
     def _analyze_incentive(self, facts, entities, relations, enhancer):
         results = []
-        # 找共享同一资源的不同实体
-        targets = {}  # {target: [subjects]}
+        # 匹配器: 用事实描述语料
+        fact_desc = [f.get("desc", "") for f in facts.values() if isinstance(f, dict)]
+        matcher = SemanticMatcher(fact_desc if fact_desc else ["default"])
+
+        targets = {}
         for r in (relations or []):
             obj = r.get("object", "")
             targets.setdefault(obj, []).append(r.get("subject", ""))
 
         shared = [(t, subs) for t, subs in targets.items() if len(subs) >= 2]
         for target, subjects in shared:
-            if enhancer and enhancer.available:
-                try:
-                    context = f"实体{', '.join(subjects)}共享资源{target}"
-                    analysis = enhancer._call(
-                        f"分析潜在激励不相容(一句话): {context}",
-                        "你是组织行为学专家。", 0.3
-                    )
-                    if analysis:
+            # 检测: 共享同一资源的实体是否有语义差异大的事实
+            subj_facts = {}
+            for fid, info in _iter_facts(facts):
+                desc = info.get("desc", "")
+                for subj in subjects:
+                    if matcher.is_semantically_related(desc, subj, threshold=0.15):
+                        subj_facts.setdefault(subj, []).append(desc)
+            if len(subj_facts) >= 2:
+                pairs = list(subj_facts.items())
+                for i in range(len(pairs)):
+                    for j in range(i + 1, len(pairs)):
+                        s1, f1 = pairs[i]
+                        s2, f2 = pairs[j]
+                        if matcher.is_semantically_related(" ".join(f1), " ".join(f2), threshold=0.30):
+                            continue  # 相似→目标一致
+                        # 不相似→潜在激励冲突
                         results.append({
                             "type": "analytics",
-                            "conclusion": f"激励不相容: {context}。{analysis.strip()[:200]}",
+                            "conclusion": f"潜在激励冲突: {s1}({', '.join(f1[:2])})与"
+                                          f"{s2}({', '.join(f2[:2])})共享{target}但关注点不同",
                             "derives_from": subjects + [target],
-                            "confidence": 0.65,
+                            "confidence": 0.60,
                         })
-                except Exception:
-                    pass
         return results
 
     # ═══ A5: 补救规划 ═══
@@ -294,15 +321,39 @@ class AnalyticsEngine:
     def _analyze_remediation(self, facts, entities, relations, enhancer):
         results = []
         problems = []
+        team_size, months = 4, 6  # 默认值
         for fid, info in _iter_facts(facts):
             desc = info.get("desc", "") + info.get("description", "")
             val = info.get("value", "")
+            if "团队" in desc or "合规" in desc:
+                team_size = max(1, int(_extract_num(val)))
+            if "距" in desc and "月" in desc:
+                months = max(1, int(_extract_num(val)))
             if any(kw in desc for kw in ("审计问题", "高风险", "整改率", "认证", "差距")):
                 problems.append(f"{desc}={val}")
         if not problems:
             return results
 
-        # 确定性部分: 严重度分类
+        # 可行性比率 (v3.4): 问题任务数÷(人数×月数)
+        task_count = 0
+        for fid, info in _iter_facts(facts):
+            desc = info.get("desc", "")
+            val = info.get("value", "")
+            if "问题" in desc and _extract_num(val) > 0:
+                task_count = max(task_count, int(_extract_num(val)))
+        remaining_tasks = max(task_count, 1)
+        feasibility = remaining_tasks / max(team_size * months, 1)
+        status = "不可行⚠️" if feasibility > 1.5 else ("紧张" if feasibility > 1.0 else "可行")
+        results.append({
+            "type": "analytics",
+            "conclusion": f"整改可行性: {remaining_tasks}问题/{team_size}人/{months}月=人均{feasibility:.1f}个/月→{status}"
+                          f"{' 需增加人力或延长时间窗口' if feasibility > 1.0 else ''}",
+            "derives_from": [fid for fid, _ in _iter_facts(facts)
+                             if any(kw in facts.get(fid, {}).get('desc', '') for kw in ('审计', '整改'))][:5],
+            "confidence": 0.85,
+        })
+
+        # 严重度分类
         high_risk = sum(1 for p in problems if "高风险" in p or "差距" in p)
         if high_risk > 0:
             results.append({

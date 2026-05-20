@@ -208,6 +208,26 @@ class RuleReasoner:
         if relations:
             results.extend(self._relation_reasoning(relations))
 
+        # 推理链路可解释性: 每个结论标注规则ID+依赖链
+        _TYPE_TO_RULE = {
+            "numeric_comparison": "R1", "shared_premise": "R2", "missing_reference": "R3",
+            "evidence_gap": "R4", "threshold_alert": "R5", "chain_break": "R6",
+            "modus_ponens_valid": "R7", "modus_ponens_fail": "R7",
+            "transitive_dependency": "R8", "subsumption": "R9",
+            "influence_analysis": "R10", "redundancy_warning": "R11",
+            "coverage": "R12", "disjunctive_syllogism": "R13",
+            "hypothetical_syllogism": "R14", "temporal_sequence": "R15",
+            "consistency_warning": "R16", "structural_hole": "R17",
+            "constraint_propagation": "R18",
+            "relation_transitive": "R19", "relation_inverse": "R19",
+            "relation_domain": "R19", "relation_range": "R19",
+        }
+        for r in results:
+            rule_id = _TYPE_TO_RULE.get(r.get("type", ""), "R?")
+            deps = r.get("derived_from", [])
+            trail = f"{rule_id}: {'→'.join(deps[:4])}" if deps else f"{rule_id}"
+            r["derivation_trail"] = trail
+
         self.state = "done"
         return results
 
@@ -391,11 +411,13 @@ class RuleReasoner:
 
         # 1. 传递性推理: s→r→o, o→r→p → s→r→p (仅对传递关系)
         transitive_rels = {"part_of", "contains", "depends_on", "precedes", "belongs_to"}
+        seen_pairs = set()  # 防循环: 记录已生成的(s, p)对
         for s, edges in rel_graph.items():
             for r, o in edges:
                 if r in transitive_rels and o in rel_graph:
                     for r2, p in rel_graph[o]:
-                        if r2 == r:
+                        if r2 == r and s != p and (s, p) not in seen_pairs:
+                            seen_pairs.add((s, p))
                             results.append({
                                 "type": "relation_transitive",
                                 "conclusion": f"关系传递: {s}→{r}→{o}→{r2}→{p} ∴ {s} {r} {p}",

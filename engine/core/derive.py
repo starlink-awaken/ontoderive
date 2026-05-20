@@ -161,7 +161,8 @@ class OntoDerive(DeriveInterface):
             summary["derived_conclusions"] = [
                 {"conclusion": r["conclusion"], "confidence": r["confidence"],
                  "type": r.get("type", r.get("pattern", "analytics")),
-                 "method": "analytics" if "pattern" in r else "rule_engine"}
+                 "method": "analytics" if "pattern" in r else "rule_engine",
+                 "derivation_trail": r.get("derivation_trail", r.get("pattern", "?"))}
                 for r in all_results[:20]
             ]
         except Exception:
