@@ -49,3 +49,14 @@ KQI_WEIGHTS = {
 
 # ── PID默认增益 ──
 PID_DEFAULTS = {"kp": 1.0, "ki": 0.5, "kd": 0.5, "window": 5, "epsilon": 0.1}
+
+# ── 分析引擎阈值 (v3.4) ──
+CAPACITY_TIGHT = 90       # 产能利用率紧张阈值(%)
+CAPACITY_EXCESS = 60      # 产能利用率过剩阈值(%)
+DELIVERY_WARNING = 80     # 交付及时率告警阈值(%)
+SEMANTIC_THRESHOLD = 0.15 # 语义匹配默认阈值
+INCENTIVE_DISSIMILARITY = 0.30  # 激励冲突最小差异度
+REMEDIATION_URGENT = 1.5  # 整改可行性紧急阈值(问题/人/月)
+REMEDIATION_TIGHT = 1.0   # 整改可行性紧张阈值
+DEFAULT_TEAM_SIZE = 4     # 默认合规团队人数
+DEFAULT_MONTHS = 6        # 默认整改时间窗口(月)

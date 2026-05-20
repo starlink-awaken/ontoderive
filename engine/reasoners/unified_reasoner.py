@@ -97,8 +97,8 @@ class UnifiedReasoner:
                     derives_from=ar.get("derives_from", []), source="analytics",
                     derivation_trail=f"A{ar.get('pattern','?')}: {ar.get('category','?')}",
                 ))
-        except Exception:
-            pass
+        except Exception as e:
+            import sys; print(f"[unified] analytics skip: {e}", file=sys.stderr)
 
         self._last_results = results
         return results
