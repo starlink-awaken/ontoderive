@@ -18,9 +18,8 @@ OntoDerive 规则推导引擎 — 8种推理规则 + 13种结构检查
 ❌ 隐喻/类比推理
 """
 import re
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple
-from pathlib import Path
+from dataclasses import dataclass
+from typing import List, Dict
 
 
 @dataclass

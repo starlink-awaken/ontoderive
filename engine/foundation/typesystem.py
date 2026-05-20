@@ -6,7 +6,6 @@ OntoDerive 类型系统 — MOF十元类型校验
 - 类型一致性检查：ID前缀与声明类型匹配
 - 元关系域/值域约束
 """
-import re
 from dataclasses import dataclass, field
 from typing import List, Optional
 

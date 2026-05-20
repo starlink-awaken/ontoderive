@@ -18,7 +18,7 @@
 """
 import json
 from pathlib import Path
-from typing import List, Dict
+from typing import List
 
 
 class RuleLoader:

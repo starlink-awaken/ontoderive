@@ -4,9 +4,11 @@ OntoDerive Insight — 统一洞察引擎
 所有模块通过InsightEngine调用LLM，而非各自直接调用llm.py。
 标准Insight数据结构，支持外部工具消费（Dashboard、API、Notebook）。
 """
-import json, re, time
+import json
+import re
+import time
 from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from pathlib import Path
 
 

@@ -5,8 +5,6 @@ OntoDerive 共享工具函数 v2.3
 v2.3: 添加 CachedReader 消除单次 run_check 中的重复文件 I/O。
 """
 import json
-from collections import defaultdict
-from functools import lru_cache
 from pathlib import Path
 
 

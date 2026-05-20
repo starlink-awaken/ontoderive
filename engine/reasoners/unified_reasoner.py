@@ -5,10 +5,10 @@ UnifiedReasoner — 统一推理引擎 v3.4
 确定性/启发式/结构性/分析型四层分类 + certainty标注 + derivation_trail。
 """
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 from .reasoner import RuleReasoner
-from .reasoner_formal import FormalReasoner, FormalConclusion
+from .reasoner_formal import FormalReasoner
 
 
 @dataclass

@@ -2,7 +2,7 @@
 import re
 from typing import List
 
-from .ast import AST, SemanticError, ParseError
+from .ast import AST, SemanticError
 
 
 class SemanticAnalyzer:

@@ -7,7 +7,9 @@ OntoDerive 贝叶斯层 v2 — DAG信念传播
 - 循环引用检测
 - Graphviz DOT可视化
 """
-import datetime, math, re
+import datetime
+import math
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -208,7 +210,7 @@ class BayesianLayer:
 
         if "error" in result:
             print(f"[bayesian] ⚠️ {result['error']}")
-            print(f"[bayesian]   回落至简化传播模式")
+            print("[bayesian]   回落至简化传播模式")
             # 回落：加权平均传播
             inferences = self._fallback_propagate(facts, inferences)
             return facts, inferences

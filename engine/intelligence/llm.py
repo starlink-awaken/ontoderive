@@ -27,7 +27,8 @@ class LLMEnhancer:
         if os.environ.get("ANTHROPIC_API_KEY"): return "anthropic"
         # 检测本地API (localhost:1234)
         try:
-            import urllib.request, json
+            import urllib.request
+            import json
             req = urllib.request.Request("http://localhost:1234/api/v1/chat",
                 data=json.dumps({"model": "qwopus3.6-35b-a3b-v1", "input": "hi"}).encode(),
                 headers={"Content-Type": "application/json"})
@@ -104,7 +105,7 @@ class LLMEnhancer:
 
     def _call_local(self, prompt, system="", temperature=0.3):
         """本地OpenAI兼容API (localhost:1234, input/output格式)"""
-        import urllib.request, json
+        import urllib.request
         payload = {"model": self.model, "input": prompt}
         if system:
             payload["system_prompt"] = system

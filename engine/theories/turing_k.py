@@ -4,7 +4,9 @@ OntoDerive 图灵机层 v2 — 知识状态机(K-TM)
 基于模型的状态管理：每次derive产生DeriveSnapshot，
 状态转移可追踪，delta趋近于零时自动停机。
 """
-import datetime, json, hashlib
+import datetime
+import json
+import hashlib
 from pathlib import Path
 
 try:

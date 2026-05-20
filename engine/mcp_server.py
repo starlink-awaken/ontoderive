@@ -5,7 +5,8 @@ OntoDerive Unified MCP Server v3
 统一入口：OntoDerive推导(5工具) + ToolForge匹配(3工具) + 新增(3工具) = 11工具
 协议：JSON-RPC 2.0 over stdio，可直接注册到 Agora MCP路由层。
 """
-import json, sys
+import json
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))  # 项目根
@@ -51,7 +52,7 @@ def handle_request(req):
         return respond(req_id, {
             "protocolVersion": "0.1.0",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "ontoderive-unified-mcp", "version": "3.3.0"}
+            "serverInfo": {"name": "ontoderive-unified-mcp", "version": "3.5.0"}
         })
 
     if method == "tools/call":

@@ -22,7 +22,7 @@ try:
 except ImportError:
     from engine.foundation.utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "3.4.0"
+VERSION = "3.5.0"
 
 try:
     from .protocols import DeriveInterface
@@ -202,7 +202,7 @@ class OntoDerive(DeriveInterface):
             print("[analyze]    配置: ONTODERIVE_LLM_BACKEND=local ONTODERIVE_LLM_MODEL=qwopus3.6-35b-a3b-v1")
             return summary
 
-        print(f"[analyze] 🤖 启动LLM洞察推导...")
+        print("[analyze] 🤖 启动LLM洞察推导...")
         try:
             from engine.intelligence.insight import InsightEngine
             engine = InsightEngine(enhancer=self._try_llm())

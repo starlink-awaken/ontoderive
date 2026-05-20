@@ -11,9 +11,8 @@ OntoDerive 推理编排 — 选择器 + 范式化
   RuleReasoner          → 执行选中的规则 → 推导结果
 """
 import re
-from dataclasses import dataclass, field
-from typing import List, Dict, Set, Optional, Tuple
-from pathlib import Path
+from dataclasses import dataclass
+from typing import List, Dict
 
 
 @dataclass

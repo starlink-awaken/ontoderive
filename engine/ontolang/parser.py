@@ -1,6 +1,6 @@
 """OntoLang 词法+语法解析器 — 手写递归下降"""
 import re
-from typing import List, Optional
+from typing import List
 
 from .ast import (
     AST, EntityDef, FactDef, InferenceDef, ProtocolDef, RelationDef,

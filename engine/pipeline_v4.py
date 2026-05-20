@@ -50,7 +50,7 @@ class FormalPipeline:
     def _interpret(self, conclusions, knowledge) -> str:
         """Phase 4: 将形式结论解读为自然语言报告"""
         lines = ["# 形式化知识推理报告\n"]
-        lines.append(f"## 知识规模\n")
+        lines.append("## 知识规模\n")
         lines.append(f"- 事实: {len(knowledge.facts)}条")
         lines.append(f"- 实体: {len(knowledge.entities)}个")
         lines.append(f"- 推论: {len(knowledge.inferences)}条\n")

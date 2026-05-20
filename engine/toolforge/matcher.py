@@ -4,7 +4,9 @@ ToolForge v2 — 思维工具匹配（原 MindForge，已并入 OntoDerive）
 支持 TF-IDF 语义匹配 + 关键词 fallback。
 输出: 匹配的方法论/策略/模式/原则/理论/技能 + 使用建议 + 匹配原因
 """
-import json, re, math
+import json
+import re
+import math
 from collections import defaultdict
 from pathlib import Path
 

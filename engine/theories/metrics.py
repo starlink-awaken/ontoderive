@@ -4,7 +4,9 @@ OntoDerive 信息论层 v2 — 知识质量指数(KQI)与历史追踪
 使用贝叶斯网络真实置信度分布计算KQI。
 新增：KQI历史追踪、趋势分析、信息增益引导。
 """
-import datetime, math, re
+import datetime
+import math
+import re
 from pathlib import Path
 
 try:

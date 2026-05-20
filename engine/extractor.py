@@ -7,7 +7,7 @@ OntoDerive 上下文提取器 — 从本地文件/网页提取事实
     python3 engine/extractor.py --input ./docs/ --output facts/data.md
     python3 engine/extractor.py --url https://example.com --output facts/
 """
-import re, sys
+import re
 from pathlib import Path
 
 class ContextExtractor:

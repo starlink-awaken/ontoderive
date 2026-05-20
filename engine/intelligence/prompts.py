@@ -12,7 +12,7 @@ OntoDerive 提示词系统 v1 — 一等公民的提示词工程
 """
 import json
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
 @dataclass

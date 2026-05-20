@@ -3,7 +3,8 @@ Formalizer — 符号化引擎 (Phase 1+2)
 =====================================
 LLM从自然语言提取结构化知识 → 本体对齐 → OntoLang符号化
 """
-import json, re
+import json
+import re
 from dataclasses import dataclass, field
 from typing import List, Dict
 

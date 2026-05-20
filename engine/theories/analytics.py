@@ -10,7 +10,7 @@
 """
 import re
 from dataclasses import dataclass
-from typing import List, Callable
+from typing import Callable
 
 from engine.foundation.semantic import SemanticMatcher
 

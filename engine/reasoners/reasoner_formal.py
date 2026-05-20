@@ -66,7 +66,7 @@ class FormalReasoner:
                 ))
         if not results and entities:
             results.append(FormalConclusion(
-                conclusion=f"未检测到实体归属于已知本体层级",
+                conclusion="未检测到实体归属于已知本体层级",
                 certainty="uncertain", method="subsumption",
                 derives_from=list(entities.keys())[:3], confidence=0.40,
             ))
