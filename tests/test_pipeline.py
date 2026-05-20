@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from pipeline import DerivePipeline, ToolForgeStage, LoadStage, DeriveStage, CheckStage
+from engine.core.pipeline import DerivePipeline, ToolForgeStage, LoadStage, DeriveStage, CheckStage
 
 
 def test_pipeline_create():

@@ -10,10 +10,10 @@
 import sys
 from pathlib import Path
 
-# 确保 engine 目录可导入
-_ENGINE_DIR = Path(__file__).parent
-if str(_ENGINE_DIR) not in sys.path:
-    sys.path.insert(0, str(_ENGINE_DIR))
+# 确保项目根目录可导入 engine 包
+_PROJECT_ROOT = Path(__file__).parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 
 def main():
@@ -76,7 +76,7 @@ def main():
 
     # 路由到对应功能
     if args.command == "init":
-        from derive import OntoDerive
+        from engine.core.derive import OntoDerive
 
         root = Path(args.name)
         for d in ["facts", "entities", "inferences", "protocols", "scheme", "_logs"]:
@@ -100,7 +100,7 @@ def main():
         print(f"✅ 项目 '{args.name}' 已初始化")
 
     elif args.command in ("derive", "check", "rounds", "generate"):
-        from derive import OntoDerive
+        from engine.core.derive import OntoDerive
 
         od = OntoDerive(args.project)
 
@@ -153,20 +153,20 @@ def main():
             tf.report(args.goal, args.context)
 
     elif args.command == "formal":
-        from derive import OntoDerive
+        from engine.core.derive import OntoDerive
         od = OntoDerive(args.project)
         text = getattr(args, "text", None)
         result = od.derive_formal(text=text)
         print(result.get("report", "推理完成")[:3000])
 
     elif args.command == "watch":
-        from watcher import FileWatcher
+        from engine.watcher import FileWatcher
         w = FileWatcher(args.project)
         print(f"[watch] 监听中... 间隔{args.interval}秒, Ctrl+C停止")
         w.watch(interval=args.interval, auto_run=True)
 
     elif args.command == "extract":
-        from formalize import Formalizer
+        from engine.formalize import Formalizer
         fz = Formalizer()
         kb = fz.extract_from_text(args.source)
         md = fz.to_markdown(kb)

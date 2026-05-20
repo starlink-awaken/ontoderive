@@ -18,14 +18,14 @@ from pathlib import Path
 try:
     from .utils import rf, wf, all_md, load_json, save_json
 except ImportError:
-    from utils import rf, wf, all_md, load_json, save_json  # noqa
+    from engine.foundation.utils import rf, wf, all_md, load_json, save_json  # noqa
 
 VERSION = "3.3.0"
 
 try:
     from .protocols import DeriveInterface
 except ImportError:
-    from protocols import DeriveInterface  # noqa
+    from engine.foundation.protocols import DeriveInterface  # noqa
 
 
 class OntoDerive(DeriveInterface):
@@ -65,7 +65,7 @@ class OntoDerive(DeriveInterface):
 
         # v2.1: 集成贝叶斯置信度分布+逻辑链深度
         try:
-            from bayesian import BayesianLayer
+            from engine.theories.bayesian import BayesianLayer
             bl = BayesianLayer(self.root)
             _, bayes_infs = bl.propagate_all()
             confs = [i.get("propagated_confidence", i.get("base_confidence", 0.85)) for i in bayes_infs.values()]
@@ -75,7 +75,7 @@ class OntoDerive(DeriveInterface):
             import sys; print(f"[derive] Bayesian skip: {e}", file=sys.stderr)
 
         try:
-            from logic import build_from_project
+            from engine.theories.logic import build_from_project
             g = build_from_project(self.root).stats()
             summary["entailment_graph"] = {"nodes": g["nodes"], "edges": g["edges"], "max_depth": g["max_depth"], "cycles": g["cycles"]}
         except Exception as e:
@@ -96,7 +96,7 @@ class OntoDerive(DeriveInterface):
 
         # DAG分析：弱推论、矛盾检测
         try:
-            from logic import build_from_project
+            from engine.theories.logic import build_from_project
             g = build_from_project(self.root)
             st = g.stats()
             if st["contradictions"]:
@@ -118,7 +118,7 @@ class OntoDerive(DeriveInterface):
 
         # v3.1: 集成RuleReasoner → derived_conclusions (真正的推导结论)
         try:
-            from reasoner import RuleReasoner
+            from engine.reasoners.reasoner import RuleReasoner
             rr = RuleReasoner()
             # 重建推论dict
             inferences_dict = {}
@@ -153,7 +153,7 @@ class OntoDerive(DeriveInterface):
         try:
             from .pipeline_v4 import FormalPipeline
         except ImportError:
-            from pipeline_v4 import FormalPipeline
+            from engine.pipeline_v4 import FormalPipeline
         enhancer = self._try_llm()
         pipeline = FormalPipeline(enhancer=enhancer)
         if text:
@@ -176,7 +176,7 @@ class OntoDerive(DeriveInterface):
 
         print(f"[analyze] 🤖 启动LLM洞察推导...")
         try:
-            from insight import InsightEngine
+            from engine.intelligence.insight import InsightEngine
             engine = InsightEngine(enhancer=self._try_llm())
             facts_summary = f"事实数={summary['facts']}, 推论数={summary['inferences']}"
             infs_text = "\n".join(rf(f) for f in all_md(self.inferences_dir))
@@ -195,7 +195,7 @@ class OntoDerive(DeriveInterface):
 
     def _try_llm(self):
         try:
-            from llm import get_enhancer
+            from engine.intelligence.llm import get_enhancer
             e = get_enhancer()
             return e if e.available else None
         except Exception:
@@ -206,7 +206,7 @@ class OntoDerive(DeriveInterface):
         try:
             from .check import run_check
         except ImportError:
-            from check import run_check  # noqa
+            from engine.core.check import run_check  # noqa
         return run_check(self.root, self.facts_dir, self.entities_dir,
                          self.inferences_dir, self.scheme_dir, self.log_dir)[0]
 

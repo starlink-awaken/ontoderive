@@ -8,8 +8,9 @@ OntoDerive Unified MCP Server v3
 import json, sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
-from derive import OntoDerive
+sys.path.insert(0, str(Path(__file__).parent.parent))  # 项目根
+sys.path.insert(0, str(Path(__file__).parent))         # engine/
+from engine.core.derive import OntoDerive
 from toolforge.matcher import ToolForge
 
 tf = ToolForge()
@@ -101,12 +102,12 @@ def handle_request(req):
                 })
 
             elif tool == "ontoderive_config":
-                from config import Config
+                from engine.foundation.config import Config
                 cfg = Config(project).to_dict()
                 return respond(req_id, cfg)
 
             elif tool == "ontoderive_delta":
-                from turing_k import KnowledgeTM
+                from engine.theories.turing_k import KnowledgeTM
                 ktm = KnowledgeTM(project)
                 d = ktm.delta()
                 return respond(req_id, d)

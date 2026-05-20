@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from check import run_check
+from engine.core.check import run_check
 
 
 def test_run_check_zpark(z_park_path):
@@ -62,7 +62,7 @@ def test_c07_uses_typevalidator(z_park_path):
 
 def test_derive_delegates_to_check(z_park_path):
     """ISC-2: derive.py check()委托给check.py"""
-    from derive import OntoDerive
+    from engine.core.derive import OntoDerive
     od = OntoDerive(z_park_path)
     results = od.check()
     assert len(results) == 13

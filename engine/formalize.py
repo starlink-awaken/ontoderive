@@ -177,7 +177,7 @@ class Formalizer:
         try:
             from .typesystem import TypeValidator
         except ImportError:
-            from typesystem import TypeValidator
+            from engine.foundation.typesystem import TypeValidator
         tv = TypeValidator()
         for f in knowledge.facts:
             if not tv.check_id(f.id).is_valid:

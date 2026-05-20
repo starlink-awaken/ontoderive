@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from turing_k import KnowledgeTM
+from engine.theories.turing_k import KnowledgeTM
 
 
 def test_snapshot(z_park_path):

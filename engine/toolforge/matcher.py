@@ -53,7 +53,7 @@ def _compute_idf(docs, vocab):
 try:
     from ..protocols import ToolForgeInterface
 except ImportError:
-    from protocols import ToolForgeInterface  # noqa
+    from engine.foundation.protocols import ToolForgeInterface  # noqa
 
 
 class ToolForge(ToolForgeInterface):

@@ -9,8 +9,8 @@ try:
     from .config import Config
     from .protocols import PipelineStage, AnalysisResult
 except ImportError:
-    from config import Config  # noqa
-    from protocols import PipelineStage, AnalysisResult  # noqa
+    from engine.foundation.config import Config  # noqa
+    from engine.foundation.protocols import PipelineStage, AnalysisResult  # noqa
 
 
 class ToolForgeStage(PipelineStage):

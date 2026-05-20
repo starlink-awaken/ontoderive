@@ -11,7 +11,7 @@ from collections import defaultdict
 try:
     from .utils import detect_cycles
 except ImportError:
-    from utils import detect_cycles  # noqa
+    from engine.foundation.utils import detect_cycles  # noqa
 
 
 class EntailmentGraph:
@@ -225,7 +225,7 @@ def build_from_project(project_root):
     try:
         from .utils import rf, all_md
     except ImportError:
-        from utils import rf, all_md  # noqa
+        from engine.foundation.utils import rf, all_md  # noqa
 
     root = Path(project_root)
     graph = EntailmentGraph()

@@ -20,13 +20,13 @@ class FormalPipeline:
         """执行完整四阶段管线"""
         # Phase 1+2: 提取 + 符号化
         try: from .formalize import Formalizer
-        except ImportError: from formalize import Formalizer
+        except ImportError: from engine.formalize import Formalizer
         fz = Formalizer(enhancer=self.enhancer)
         knowledge = fz.extract_from_text(text)
         self.results["phase1"] = {"facts": len(knowledge.facts), "entities": len(knowledge.entities), "inferences": len(knowledge.inferences)}
 
         try: from .reasoner_formal import FormalReasoner
-        except ImportError: from reasoner_formal import FormalReasoner
+        except ImportError: from engine.reasoners.reasoner_formal import FormalReasoner
         fr = FormalReasoner()
         conclusions = fr.reason(knowledge)
         self.results["phase3"] = fr.summary()

@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 def test_minerva_to_ontoderive_full_flow(tmp_path):
     """Minerva研究→OntoDerive事实→derive→check完整闭环"""
     from ecosystem import minerva_to_facts
-    from derive import OntoDerive
+    from engine.core.derive import OntoDerive
 
     research = {
         "facts": [
@@ -36,7 +36,7 @@ def test_minerva_to_ontoderive_full_flow(tmp_path):
 
 def test_toolforge_sophia_link():
     """ToolForge→Sophia范式推荐→推导指导"""
-    from toolforge.matcher import ToolForge
+    from engine.toolforge.matcher import ToolForge
     from ecosystem import recommend_frameworks
 
     tools = recommend_frameworks("高校科研评价体系改革")
@@ -69,7 +69,7 @@ def test_ecos_pipeline_observer():
 
 def test_multi_hop_derivation():
     """多层推导链：D-F→INF-L1→INF-L2"""
-    from bayesian import BayesianNetwork
+    from engine.theories.bayesian import BayesianNetwork
     bn = BayesianNetwork()
     bn.add_fact("D-F1", 0.95, "事实1")
     bn.add_fact("D-F2", 0.90, "事实2")

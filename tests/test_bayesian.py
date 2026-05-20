@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from bayesian import BayesianLayer
+from engine.theories.bayesian import BayesianLayer
 
 
 def test_scan_facts(z_park_path):

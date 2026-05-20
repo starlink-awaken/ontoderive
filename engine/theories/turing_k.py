@@ -11,8 +11,8 @@ try:
     from .utils import all_md, rf, wf
     from .models import DeriveSnapshot
 except ImportError:
-    from utils import all_md, rf, wf  # noqa
-    from models import DeriveSnapshot  # noqa
+    from engine.foundation.utils import all_md, rf, wf  # noqa
+    from engine.foundation.models import DeriveSnapshot  # noqa
 
 
 class KnowledgeTM:

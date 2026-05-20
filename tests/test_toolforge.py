@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 import pytest
-from toolforge.matcher import ToolForge, _tokenize, _compute_tf, _build_vocab
+from engine.toolforge.matcher import ToolForge, _tokenize, _compute_tf, _build_vocab
 
 
 @pytest.fixture

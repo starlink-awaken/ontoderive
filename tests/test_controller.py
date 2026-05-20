@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from controller import PIDController
+from engine.theories.controller import PIDController
 
 
 def test_analyze_empty(tmp_path):

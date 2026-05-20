@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from models import Fact, Entity, Inference, CheckResult, DeriveSnapshot
+from engine.foundation.models import Fact, Entity, Inference, CheckResult, DeriveSnapshot
 
 
 def test_fact_defaults():

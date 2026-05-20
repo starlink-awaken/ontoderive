@@ -11,7 +11,7 @@ def check_bayesian(root):
     """C-09: 贝叶斯信念传播"""
     try:
         sys.path.insert(0, str(Path(__file__).parent))
-        from bayesian import BayesianLayer
+        from engine.theories.bayesian import BayesianLayer
         bl = BayesianLayer(root)
         dist = bl.get_distribution()
         all_confs = dist["facts"] + dist["inferences"]

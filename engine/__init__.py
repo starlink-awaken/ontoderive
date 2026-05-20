@@ -1,8 +1,19 @@
-"""OntoDerive — 渊衍框架 v2.2
+"""OntoDerive — 渊衍框架 v3.3
 
-事实驱动的一体化知识工程与方案推导引擎。
-含 ToolForge 思维工具匹配模块。
+知识工程分析平台。三模式：结构分析 | 规则推理 | 形式推理。
+物理五层架构 + ToolForge工具匹配。
+
+用法:
+    from engine import OntoDerive, ToolForge, FormalPipeline
+    od = OntoDerive("my-project").derive()
 """
 __version__ = "3.3.0"
 
-from engine.toolforge import ToolForge  # noqa: E402, F401
+# 顶层 re-export — 保持向后兼容
+from engine.core.derive import OntoDerive, VERSION
+from engine.toolforge import ToolForge
+from engine.formalize import Formalizer, FormalKnowledge
+from engine.pipeline_v4 import FormalPipeline
+
+# 子包门面 — 可直接 from engine import xxx_layer
+from engine import core, reasoners, theories, intelligence, foundation

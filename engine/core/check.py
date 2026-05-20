@@ -10,8 +10,8 @@ try:
     from .utils import CachedReader, save_json
     from .constants import V2_ID_PATTERNS
 except ImportError:
-    from utils import CachedReader, save_json  # noqa
-    from constants import V2_ID_PATTERNS  # noqa
+    from engine.foundation.utils import CachedReader, save_json  # noqa
+    from engine.foundation.constants import V2_ID_PATTERNS  # noqa
 
 
 def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir):
@@ -64,7 +64,7 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
     detail_c4 = f"事实{len(fact_ids)}个: 推论引用{traced_in_inf}, 方案引用{traced_in_scheme}"
     # v2.3: 蕴含图运行时统计
     try:
-        from logic import build_from_project
+        from engine.theories.logic import build_from_project
         g = build_from_project(root)
         gs = g.stats()
         detail_c4 += f" | 蕴含图: {gs['nodes']}节点/{gs['edges']}边, 深度{gs['max_depth']}"
@@ -139,7 +139,7 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
     ids_found = set()
     SKIP_PREFIXES = ("C-", "P-", "ISC-", "F", "v", "v2", "v3", "E", "e")
     try:
-        from typesystem import TypeValidator
+        from engine.foundation.typesystem import TypeValidator
         tv = TypeValidator()
         for m in re.finditer(r'\b([A-Z][A-Za-z0-9_-]*(?:-[A-Za-z0-9_-]+)*)\b', all_text):
             raw_id = m.group(0)

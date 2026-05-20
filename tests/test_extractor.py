@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from extractor import ContextExtractor
+from engine.extractor import ContextExtractor
 
 
 def test_extractor_init():

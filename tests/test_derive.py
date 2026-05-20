@@ -1,7 +1,7 @@
 import sys, json
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
-from derive import OntoDerive
+from engine.core.derive import OntoDerive
 
 def test_init_project(tmp_path):
     od = OntoDerive(tmp_path)

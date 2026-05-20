@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
-from utils import rf, wf, all_md, load_json, save_json, detect_cycles
+from engine.foundation.utils import rf, wf, all_md, load_json, save_json, detect_cycles
 
 def test_rf_file_exists(z_park_path):
     assert len(rf(z_park_path / "facts" / "data.md")) > 0

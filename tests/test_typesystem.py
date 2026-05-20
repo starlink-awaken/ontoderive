@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from typesystem import TypeValidator, META_TYPES, PREFIX_TO_META
+from engine.foundation.typesystem import TypeValidator, META_TYPES, PREFIX_TO_META
 
 
 def test_meta_types_defined():

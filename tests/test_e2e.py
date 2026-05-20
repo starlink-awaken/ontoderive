@@ -8,7 +8,7 @@ ZPARK = str(Path(__file__).parent.parent / "examples" / "z-park")
 
 def test_e2e_derive_check_roundtrip():
     """完整推导+检查+报告闭环"""
-    from derive import OntoDerive
+    from engine.core.derive import OntoDerive
     od = OntoDerive(ZPARK)
     s = od.derive()
     assert s["facts"] >= 2
@@ -21,7 +21,7 @@ def test_e2e_derive_check_roundtrip():
 
 def test_e2e_pipeline_full():
     """Pipeline六阶段全流程"""
-    from pipeline import DerivePipeline
+    from engine.core.pipeline import DerivePipeline
     pipe = DerivePipeline(ZPARK)
     pipe.set_goal("分析中关村", "科技园区")
     pipe.run()
@@ -31,8 +31,8 @@ def test_e2e_pipeline_full():
 
 def test_e2e_toolforge_derive_link():
     """ToolForge匹配→指导→derive"""
-    from toolforge.matcher import ToolForge
-    from derive import OntoDerive
+    from engine.toolforge.matcher import ToolForge
+    from engine.core.derive import OntoDerive
     tf = ToolForge()
     tools = tf.select("中关村科技园区分析")
     assert len(tools) >= 1
@@ -58,8 +58,8 @@ def test_e2e_mcp_analyze():
 
 def test_e2e_typesystem_pipeline():
     """TypeValidator→check→C-07闭环"""
-    from typesystem import TypeValidator
-    from derive import OntoDerive
+    from engine.foundation.typesystem import TypeValidator
+    from engine.core.derive import OntoDerive
     tv = TypeValidator()
     r = tv.check_id("D-F1")
     assert r.is_valid
@@ -73,7 +73,7 @@ def test_e2e_typesystem_pipeline():
 def test_e2e_ecosystem_adapter_roundtrip():
     """Minerva→ecosystem→facts→derive闭环"""
     from ecosystem import minerva_to_facts
-    from derive import OntoDerive
+    from engine.core.derive import OntoDerive
     import tempfile, os
     tmp = tempfile.mkdtemp()
     try:

@@ -14,7 +14,7 @@ from pathlib import Path
 try:
     from .utils import rf, wf, all_md, detect_cycles
 except ImportError:
-    from utils import rf, wf, all_md, detect_cycles  # noqa
+    from engine.foundation.utils import rf, wf, all_md, detect_cycles  # noqa
 
 CONFIDENCE_MAP = {
     "fact": 0.95, "high": 0.92, "inference": 0.85,

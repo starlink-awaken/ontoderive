@@ -37,19 +37,22 @@ r = FormalPipeline().run("原始研究文本...")
 | 推理模式 | 8推理规则+13结构检查+4形式推理 |
 | LLM后端 | ollama/local API/openai/anthropic |
 
-## 架构速览
+## 架构速览 (物理五层)
 
 ```
 engine/
 ├── core/           核心引擎    derive/check/check_theory/pipeline
-├── reasoners/      推理引擎    旧RuleReasoner(21模式)+新FormalReasoner(4模式)
+├── reasoners/      推理引擎    reasoner/reasoner_formal/reasoning/unified_reasoner
 ├── theories/       六论模块    bayesian/metrics/controller/logic/turing_k/ontolang
 ├── intelligence/   LLM智能     llm/insight/judge/prompts/got/react
 ├── foundation/     基础设施    typesystem/models/constants/utils/config/protocols
 ├── toolforge/      工具匹配    TF-IDF+keyword+hybrid (73工具)
 ├── ecosystem/      生态适配    Minerva/Sophia/Agora/eCOS
+├── ontolang/       形式语言    递归下降解析器+AST
 ├── formalize.py    符号化引擎  LLM提取+规则降级+ABox/TBox构建
-├── reasoner_formal.py 形式推理 包含/传递/约束/归类(确定/推测/不确定)
-├── pipeline_v4.py  四阶段管线  文本输入→推理报告输出
-└── mcp_server.py   MCP入口    11工具
+├── pipeline_v4.py  四阶段管线  文本→推理报告输出
+├── cli.py          CLI入口     9子命令
+├── mcp_server.py   MCP入口     11工具
+├── extractor.py    文本提取器  上下文提取
+└── watcher.py      文件监听    自动重推导
 ```

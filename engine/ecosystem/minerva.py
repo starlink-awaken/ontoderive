@@ -5,9 +5,9 @@ Minerva研究结果 → OntoDerive facts/ 文件
 """
 from pathlib import Path
 try:
-    from ..utils import wf
+    from engine.foundation.utils import wf
 except ImportError:
-    from utils import wf  # noqa
+    from engine.foundation.utils import wf  # noqa
 
 
 def minerva_to_facts(research_result: dict, project_root: str):
