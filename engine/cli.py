@@ -44,7 +44,7 @@ def main():
     # rounds
     p_generate = sub.add_parser("generate", help="生成推导报告")
     p_generate.add_argument("--project", default=".", help="项目路径")
-    p_generate.add_argument("--export", choices=["jsonld", "turtle"], help="导出为本体格式")
+    p_generate.add_argument("--export", choices=["jsonld", "turtle", "html", "json"], help="导出格式")
     p_rounds = sub.add_parser("rounds", help="多轮迭代")
     p_rounds.add_argument("--project", default=".", help="项目路径")
     p_rounds.add_argument("n", type=int, default=3, help="迭代轮数")
@@ -134,19 +134,25 @@ def main():
         elif args.command == "generate":
             fmt = getattr(args, "export", None)
             if fmt:
-                od.derive()  # 先推导再导出
+                r = od.derive()
                 try:
-                    from engine.formalize import Formalizer
-                    from engine.foundation.ontology_map import OntologyMapper
-                    fz = Formalizer()
-                    all_text = ""
-                    for d in ["facts", "entities", "inferences", "scheme"]:
-                        for f in Path(args.project).glob(f"{d}/**/*.md"):
-                            all_text += f.read_text() + "\n"
-                    kb = fz.extract_from_text(all_text, mode="rule_only")
-                    om = OntologyMapper()
-                    output = om.export(kb, fmt=fmt)
-                    out_path = Path(args.project) / f"export.{fmt if fmt != 'jsonld' else 'json'}"
+                    if fmt in ("html", "json"):
+                        from engine.core.export import to_html, to_json
+                        output = to_html(r, args.project) if fmt == "html" else to_json(r)
+                        ext = fmt
+                    else:
+                        from engine.formalize import Formalizer
+                        from engine.foundation.ontology_map import OntologyMapper
+                        fz = Formalizer()
+                        all_text = ""
+                        for d in ["facts", "entities", "inferences", "scheme"]:
+                            for f in Path(args.project).glob(f"{d}/**/*.md"):
+                                all_text += f.read_text() + "\n"
+                        kb = fz.extract_from_text(all_text, mode="rule_only")
+                        om = OntologyMapper()
+                        output = om.export(kb, fmt=fmt)
+                        ext = fmt if fmt != "jsonld" else "json"
+                    out_path = Path(args.project) / f"export.{ext}"
                     out_path.write_text(output)
                     print(f"[export] ✅ {out_path} ({len(output)}字符)")
                 except Exception as e:
