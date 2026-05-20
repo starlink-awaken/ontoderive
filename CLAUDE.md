@@ -1,6 +1,6 @@
-# OntoDerive v3.3 — 渊衍框架
+# OntoDerive v3.5 — 渊衍框架
 
-> 知识工程分析平台。三模式：结构分析(无LLM) | 规则推理(无LLM) | 形式推理(需LLM Phase1)
+> 知识工程分析平台。三模式+分析引擎+多格式导出。197 tests, 57模块, 8,600行。
 
 ---
 
@@ -28,31 +28,34 @@ r = FormalPipeline().run("原始研究文本...")
 
 ---
 
-## 当前状态 (v3.3.0)
+## 当前状态 (v3.5.0)
 
 | 指标 | 数值 |
 |------|------|
-| 引擎模块 | 23+5子包 (5层架构) |
-| 测试数 | 162, 全部通过 |
-| 推理模式 | 8推理规则+13结构检查+4形式推理 |
+| 引擎模块 | 57 (5层架构) |
+| 测试数 | 197, 全部通过 |
+| 推理规则 | 19条(R1-R19) + 23条YAML规则 |
+| 分析模式 | 9个(A1-A9), semantic_depth 0-5 |
+| 导出格式 | HTML/JSON/Markdown/JSON-LD/Turtle |
 | LLM后端 | ollama/local API/openai/anthropic |
 
-## 架构速览 (物理五层)
+## 架构速览 (物理五层 + 能力矩阵)
 
 ```
 engine/
-├── core/           核心引擎    derive/check/check_theory/pipeline
-├── reasoners/      推理引擎    reasoner/reasoner_formal/reasoning/unified_reasoner
-├── theories/       六论模块    bayesian/metrics/controller/logic/turing_k/ontolang
-├── intelligence/   LLM智能     llm/insight/judge/prompts/got/react
-├── foundation/     基础设施    typesystem/models/constants/utils/config/protocols
-├── toolforge/      工具匹配    TF-IDF+keyword+hybrid (73工具)
-├── ecosystem/      生态适配    Minerva/Sophia/Agora/eCOS
-├── ontolang/       形式语言    递归下降解析器+AST
-├── formalize.py    符号化引擎  LLM提取+规则降级+ABox/TBox构建
-├── pipeline_v4.py  四阶段管线  文本→推理报告输出
-├── cli.py          CLI入口     9子命令
-├── mcp_server.py   MCP入口     11工具
-├── extractor.py    文本提取器  上下文提取
-└── watcher.py      文件监听    自动重推导
+├── core/           derive/check/check_theory/pipeline/export
+├── reasoners/      reasoner/reasoner_formal/reasoning/unified_reasoner
+├── theories/       bayesian/metrics/controller/logic/turing_k/ontolang/analytics
+├── intelligence/   llm/insight/judge/prompts/got/react
+├── foundation/     typesystem/models/constants/utils/config/protocols
+│                   ontology_map/rule_loader/semantic/rules/
+├── toolforge/      73工具 TF-IDF+keyword+hybrid
+├── ontolang/       递归下降解析器+AST+语义分析+代码生成
+├── formalize.py    LLM提取+规则降级+ABox/TBox+属性约束
+├── pipeline_v4.py  四阶段: 提取→符号化→推理→解读
+├── cli.py          9子命令 + --export html|json|jsonld|turtle
+└── mcp_server.py   11工具 JSON-RPC
+
+分析模式 (A1-A9): 供给弹性/风险传导/代理问题/激励相容/补救规划/市场结构/博弈均衡/策略空间/信息生态
+推理谱系: L0(纯规则)→L1(TF-IDF)→L2(嵌入)→L3(分类器)→L4(小模型)→L5(LLM)
 ```

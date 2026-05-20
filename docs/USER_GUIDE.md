@@ -1,6 +1,6 @@
-# OntoDerive v3.1 — 使用指南
+# OntoDerive v3.5 — 使用指南
 
-> 知识工程分析平台。五分钟上手。
+> 知识工程分析平台。197 tests, 9分析模式, 5格式导出。五分钟上手。
 
 ---
 
@@ -8,7 +8,7 @@
 
 ```bash
 git clone https://github.com/starlink-awaken/ontoderive.git && cd ontoderive
-python3 -m pytest tests/ -q   # 期望: 156 passed
+python3 -m pytest tests/ -q   # 期望: 197 passed
 ```
 
 ---
@@ -18,26 +18,22 @@ python3 -m pytest tests/ -q   # 期望: 156 passed
 ```bash
 # 内置案例: z-park (中关村科学城)
 python3 engine/cli.py derive --project examples/z-park
-# 输出: 8事实, 10条推导结论
+# 输出: 事实+推论+推导结论, 含分析模式洞察
 
-# 内置案例: demo-product (产品策略)
-python3 engine/cli.py derive --project examples/demo-product  
-# 输出: 8事实/3推论, 10条推导结论
+# HTML报告导出
+python3 engine/cli.py generate --project examples/z-park --export html
+# 输出: export.html (浏览器可打开)
 
-# 查看推导结论
-python3 -c "
-from engine.derive import OntoDerive
-s = OntoDerive('examples/demo-product').derive()
-for c in s['derived_conclusions']:
-    print(f'[{c[\"type\"]}] {c[\"conclusion\"]}')
-"
+# 本体映射导出
+python3 engine/cli.py generate --project examples/z-park --export jsonld
+# 输出: export.json (schema.org + PROV-O格式)
 ```
 
 ---
 
-## 三、四种使用方式
+## 三、核心能力
 
-### CLI
+### CLI (9子命令 + 4导出格式)
 ```bash
 python3 engine/cli.py init my-analysis            # 初始化项目
 python3 engine/cli.py derive --project my-analysis  # 结构分析

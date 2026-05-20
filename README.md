@@ -5,7 +5,7 @@
 > 从"工具匹配 → 事实 → 本体 → 推论 → 方案"的全链路可追溯分析。
 > 核心能力：ToolForge工具匹配 + 元建模 + 正向推导 + 反向规约校验 + 多轮迭代收敛 + 自举验证。
 
-[![Version](https://img.shields.io/badge/version-3.3.0-blue)](engine/derive.py)
+[![Version](https://img.shields.io/badge/version-3.5.0-blue)](engine/derive.py)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8+-orange)]()
 
@@ -75,13 +75,16 @@ python3 engine/derive.py --project self-verify/docs --check
 
 | 指标 | 数值 |
 |------|------|
-| 核心引擎 | ~5,200行 Python (25模块+5子包) |
+| 核心引擎 | ~8,600行 Python (57模块+5层架构) |
 | ToolForge 匹配引擎 | TF-IDF + keyword + hybrid 三模式 |
+| 推理规则 | 19条 (R1-R19) + 23条YAML规则 |
+| 分析模式 | 9个 (A1-A9), 连续推理谱系 (semantic_depth 0-5) |
 | 元类型 | 10 (DOMAIN/FACT/INFERENCE/STATE/DOCUMENT/CONSTRAINT/PROCESSOR) |
 | 规约 | 13条 (C-01 ~ C-13) |
-| 测试 | 114个，全部通过 |
+| 测试 | 197个，全部通过 |
 | 思维工具目录 | 73工具 (6维度) |
 | MCP工具总数 | 11 (统一入口) |
+| 导出格式 | HTML / JSON / Markdown / JSON-LD / Turtle |
 | 生态适配器 | Minerva / Sophia / Agora / eCOS |
 
 ## 🔗 生态协作

@@ -1,6 +1,6 @@
-# OntoDerive Agent Guide
+# OntoDerive Agent Guide v3.5
 
-> 面向AI agent的标准操作流程。当agent被加载到OntoDerive项目时，按以下步骤执行。
+> AI Agent标准操作流程。57模块, 197 tests, 9分析模式。
 
 ## 标准操作流程 (SOP)
 
@@ -8,11 +8,14 @@
 
 ```python
 # 检查项目状态
-python3 engine/derive.py --project . --check
+python3 engine/cli.py check --project .
+# 期望: 197 tests passed
 
 # 读取关键文件
-# - CLAUDE.md: 项目入口
+# - CLAUDE.md: 项目入口+架构速览
+# - docs/AGENTS.md: Agent能力清单
 # - README.md: 项目概述
+# - CHANGELOG.md: v3.1→v3.5 完整记录
 # - facts/data.md: 事实基座
 # - entities/*.md: 实体定义
 # - inferences/*.md: 推论体系
