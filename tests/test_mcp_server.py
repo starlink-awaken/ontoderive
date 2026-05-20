@@ -9,7 +9,7 @@ from mcp_server import handle_request, TOOL_DEFS
 def test_tools_list():
     resp = json.loads(handle_request({"id": 1, "method": "tools/list"}))
     tools = resp["result"]["tools"]
-    assert len(tools) == 11
+    assert len(tools) == 14
     names = [t["name"] for t in tools]
     assert "ontoderive_init" in names
     assert "ontoderive_derive" in names
