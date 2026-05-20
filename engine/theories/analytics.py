@@ -118,6 +118,15 @@ class AnalyticsEngine:
                 analyze=self._analyze_strategic_options,
                 semantic_depth=2,  # 嵌入向量级别
             ),
+            # ═══ A9: 信息生态健康度 ═══
+            AnalyticalPattern(
+                name="info_ecology",
+                description="虚假信息占比×公众信任度×专家共识度→信息生态健康评分",
+                category="strategic",
+                detect=self._detect_info_ecology,
+                analyze=self._analyze_info_ecology,
+                semantic_depth=0,  # 纯公式计算
+            ),
         ]
 
     def run(self, facts, entities, inferences, relations=None, patterns=None,
@@ -442,21 +451,27 @@ class AnalyticsEngine:
 
     # ═══ A6: 市场结构分析 ═══
 
+    _MARKET_KW = ("份额", "占比", "集中度", "CR", "寡头", "垄断", "竞争格局",
+                   "玩家", "市场占有率", "渗透率", "市占", "HHI", "CR3", "CR5")
+
     def _detect_market_structure(self, facts, entities, relations):
-        """检测: 存在实体数量数据+份额分布"""
+        """检测: ≥3实体 或 存在市场份额关键词"""
         n_entities = len(entities) if isinstance(entities, dict) else len(entities)
-        return n_entities >= 3
+        if n_entities >= 3:
+            return True
+        for _, info in _iter_facts(facts):
+            if any(kw in info.get("desc", "") for kw in self._MARKET_KW):
+                return True
+        return False
 
     def _analyze_market_structure(self, facts, entities, relations, enhancer):
         """HHI集中度 + 市场类型判定"""
         results = []
-        # 提取实体数量作为市场参与者
         n = len(entities) if isinstance(entities, dict) else len(entities)
-        # 从事实中找份额/占比数据
         shares = []
         for fid, info in _iter_facts(facts):
             desc = info.get("desc", "")
-            if any(kw in desc for kw in ("份额", "占比", "集中度", "CR")):
+            if any(kw in desc for kw in self._MARKET_KW):
                 shares.append(_extract_num(info.get("value", "")))
         if not shares:
             return results
@@ -528,13 +543,58 @@ class AnalyticsEngine:
                      if any(kw in info.get("desc", "") for kw in ("预算", "团队", "储备", "现金"))]
         if not goals and not constraints:
             return results
-        # 策略框架
+        # 策略空间 + 帕累托分析
+        n_combos = 2 ** len(goals) if goals else 1
+        feasible = max(1, n_combos - len(constraints))
+        pareto_note = ""
+        tree_depth = len(goals) + len(constraints)
+        if len(goals) >= 2 and len(constraints) >= 1:
+            pareto_note = f", 约束{len(constraints)}个→帕累托前沿需在{feasible}个可行解中寻找"
+        depth_str = f", 博弈树深度≈{tree_depth}" if goals else ""
         results.append({
             "type": "analytics",
             "conclusion": f"策略空间: {len(goals)}目标×{len(constraints)}约束×{len(resources)}资源"
-                          f"→ 需评估{2**len(goals) if goals else 1}种策略组合",
+                          f"→ {n_combos}种组合{depth_str}{pareto_note}",
             "derives_from": [fid for fid in facts],
             "confidence": 0.60,
+        })
+        return results
+
+    # ═══ A9: 信息生态健康度 (v3.5) ═══
+
+    def _detect_info_ecology(self, facts, entities, relations):
+        """检测: 虚假信息/可信度/信任度/共识度相关数据"""
+        kw = ("虚假信息", "可信度", "信任度", "共识度", "信息", "公众信任")
+        for _, info in _iter_facts(facts):
+            if any(k in info.get("desc", "") for k in kw):
+                return True
+        return False
+
+    def _analyze_info_ecology(self, facts, entities, relations, enhancer):
+        """信息生态健康度评分"""
+        results = []
+        disinfo = trust = consensus = 0.0
+        for _, info in _iter_facts(facts):
+            desc = info.get("desc", "")
+            val = _extract_num(info.get("value", ""))
+            if "虚假" in desc:
+                disinfo = val
+            elif "信任" in desc and val > 0:
+                trust = val
+            elif "共识" in desc and val > 0:
+                consensus = val
+        if not (disinfo or trust or consensus):
+            return results
+        # 信息生态健康度 = (1 - 虚假率) × 信任度 × 共识度归一化
+        health = (100 - disinfo) / 100 * (trust / 100) * (consensus / 100) * 100
+        status = "崩溃" if health < 5 else ("危机" if health < 15 else ("脆弱" if health < 30 else "健康"))
+        results.append({
+            "type": "analytics",
+            "conclusion": f"信息生态健康度: {health:.1f}/100({status}), "
+                          f"虚假{disinfo}%+信任{trust}%+共识{consensus}%→"
+                          f"{'事实共识已瓦解' if health < 15 else '尚可正常决策'}",
+            "derives_from": [],
+            "confidence": 0.75,
         })
         return results
 
