@@ -112,7 +112,7 @@ def main():
             goal = getattr(args, "goal", "") or ""
             context = getattr(args, "tool_context", "") or ""
             print(f"\n{'━' * 50}")
-            print(f"  🧰 ToolForge 前置匹配")
+            print("  🧰 ToolForge 前置匹配")
             print(f"     目标: {goal or '(未指定)'}")
             print(f"{'━' * 50}")
             guide = tf.to_inference_guide(goal, context)

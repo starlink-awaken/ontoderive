@@ -3,7 +3,8 @@ OntoDerive 规约检查引擎 — 从derive.py拆分
 ===========================================
 13条规约检查(C-01~C-13)，独立模块。
 """
-import datetime, re
+import datetime
+import re
 from pathlib import Path
 
 try:

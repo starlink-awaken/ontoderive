@@ -12,7 +12,9 @@ OntoDerive 分析引擎 v3.1
     python3 derive.py --check               # 规约检查
     python3 derive.py --rounds 5            # 多轮迭代
 """
-import datetime, re, sys
+import datetime
+import re
+import sys
 from pathlib import Path
 
 try:
@@ -151,7 +153,7 @@ class OntoDerive(DeriveInterface):
         Phase1: LLM提取(降级规则) → Phase2: 符号化 → Phase3: 形式推理 → Phase4: 解读
         """
         try:
-            from .pipeline_v4 import FormalPipeline
+            from engine.pipeline_v4 import FormalPipeline
         except ImportError:
             from engine.pipeline_v4 import FormalPipeline
         enhancer = self._try_llm()
