@@ -128,15 +128,41 @@ class OntoDerive(DeriveInterface):
                 text = rf(f)
                 for block in re.split(r'^##\s+', text, flags=re.MULTILINE)[1:]:
                     title = block.strip().split('\n')[0].strip()
-                    # 只从 derives_from 行捕获引用, 不扫描全文
                     df_line = re.search(r'derives_from:\s*\[([^\]]+)\]', block)
                     df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', df_line.group(1)) if df_line else []
                     inferences_dict[title] = {"derives_from": list(set(df)), "text": block[:300]}
-            rr_results = rr.derive(facts["data"], inferences_dict)
+            # v3.3: 解析关系声明 (scheme/report.md中 "- ORG-A cooperates_with ORG-B")
+            relations = []
+            for sf in all_md(self.scheme_dir):
+                text = rf(sf)
+                for m in re.finditer(
+                    r'[-*]\s+((?:ORG|ROL|PRJ|RES|DOC|STD)-[\w一-鿿-]+)'
+                    r'\s+(\w+)\s+'
+                    r'((?:ORG|ROL|PRJ|RES|DOC|STD)-[\w一-鿿-]+)',
+                    text
+                ):
+                    relations.append({
+                        "subject": m.group(1), "relation_type": m.group(2),
+                        "object": m.group(3),
+                    })
+            rr_results = rr.derive(facts["data"], inferences_dict, relations if relations else None)
+            # v3.3: 分析模式引擎 (A1-A5, 领域洞察)
+            ae_results = []
+            try:
+                from engine.theories.analytics import AnalyticsEngine
+                ae = AnalyticsEngine(enhancer=self._try_llm())
+                ae_results = ae.run(
+                    facts["data"], entities, inferences_dict,
+                    relations if relations else None
+                )
+            except Exception:
+                pass
+            all_results = rr_results[:15] + ae_results[:5]
             summary["derived_conclusions"] = [
                 {"conclusion": r["conclusion"], "confidence": r["confidence"],
-                 "type": r["type"], "method": "rule_engine"}
-                for r in rr_results[:10]
+                 "type": r.get("type", r.get("pattern", "analytics")),
+                 "method": "analytics" if "pattern" in r else "rule_engine"}
+                for r in all_results[:20]
             ]
         except Exception:
             pass

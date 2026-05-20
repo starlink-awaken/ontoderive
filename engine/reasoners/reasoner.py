@@ -543,11 +543,30 @@ class RuleReasoner:
         "DOCUMENT": ["COL", "DOC", "CH", "SEC", "STD"],
     }
 
-    # 已知前缀→推荐父类型
+    # ID前缀模式 → 元类型 (用于正确的ID归类)
+    _ID_PREFIX_MAP = {
+        "ORG-": "DOMAIN", "ROL-": "DOMAIN", "PRJ-": "DOMAIN", "RES-": "DOMAIN",
+        "D-F": "FACT", "P-F": "FACT",
+        "INF-": "INFERENCE", "INF-V2-": "INFERENCE",
+        "DOC-": "DOCUMENT", "CH-": "DOCUMENT", "SEC-": "DOCUMENT",
+        "DCH-": "DOCUMENT", "STD-": "DOCUMENT",
+        "CON-": "CONSTRAINT", "IP": "CONSTRAINT",
+        "T": "STATE", "F": "STATE", "H": "STATE",
+    }
+
     _PREFIX_TO_PARENT = {}
     for _parent, _subs in ONTOLOGY_HIERARCHY.items():
         for _sub in _subs:
             _PREFIX_TO_PARENT[_sub] = _parent
+
+    def _extract_prefix(self, id_str):
+        """从ID中提取完整前缀模式 (如 D-F1→D-F, ORG-xxx→ORG-)"""
+        # 按长度降序匹配, 优先匹配更长模式 (INF-V2- 优先于 INF-)
+        for prefix in sorted(self._ID_PREFIX_MAP.keys(), key=lambda x: -len(x)):
+            if id_str.startswith(prefix):
+                return prefix
+        # 回退: 首个分隔符前的部分
+        return id_str.split("-")[0] if "-" in id_str else id_str[:3]
 
     def _subsumption_check(self, inferences, facts):
         """增强包含推理 — 分类建议+新类型检测+误分类检测"""
@@ -555,27 +574,17 @@ class RuleReasoner:
         all_ids = list(inferences.keys()) + list(facts.keys())
         type_map = {}
         for id_str in all_ids:
-            prefix = id_str.split("-")[0] if "-" in id_str else id_str[:3]
+            prefix = self._extract_prefix(id_str)
             type_map[id_str] = prefix
 
-        # 统计
-        known_in_hierarchy = set()
-        for subs in self.ONTOLOGY_HIERARCHY.values():
-            known_in_hierarchy.update(subs)
-
+        # 统计: 正确的标准 = 前缀在_ID_PREFIX_MAP中
+        known_prefixes = set(self._ID_PREFIX_MAP.keys())
         unknown_prefixes = {}
-        misclassified = []
         correct = 0
 
         for id_str, prefix in type_map.items():
-            if prefix in known_in_hierarchy:
+            if prefix in known_prefixes:
                 correct += 1
-                # 检测可能的误分类: 检查前缀是否在正确的父类型下
-                expected_parent = self._PREFIX_TO_PARENT.get(prefix)
-                if expected_parent:
-                    for other_parent, other_subs in self.ONTOLOGY_HIERARCHY.items():
-                        if other_parent != expected_parent and prefix in other_subs:
-                            misclassified.append(f"{id_str}: 前缀'{prefix}'同时属于{expected_parent}和{other_parent}")
             else:
                 unknown_prefixes[prefix] = unknown_prefixes.get(prefix, 0) + 1
 
@@ -616,37 +625,32 @@ class RuleReasoner:
                     "method": "rule_engine",
                 })
 
-        # 输出3: 误分类检测
-        for mc in misclassified[:5]:
-            results.append({
-                "type": "subsumption",
-                "conclusion": f"误分类: {mc}",
-                "derived_from": [],
-                "confidence": 0.60,
-                "method": "rule_engine",
-            })
-
         return results
 
     def _guess_parent(self, prefix, type_map):
-        """根据前缀相似度猜测最可能的父类型"""
-        # 基于已知前缀的字符重叠
+        """根据前缀模式猜测最可能的父类型 — 基于ID前缀→类型映射"""
+        known = self._ID_PREFIX_MAP
+        # 直接匹配: 如果前缀以已知前缀开头, 返回对应类型
+        for kp, parent in sorted(known.items(), key=lambda x: -len(x[0])):
+            if prefix.startswith(kp) or kp.startswith(prefix):
+                return parent
+        # 单字母/短前缀: 基于字符重叠找最相似的已知前缀
         best, best_score = "DOMAIN", 0
-        for known in self._PREFIX_TO_PARENT:
-            score = len(set(prefix) & set(known)) / max(len(set(prefix) | set(known)), 1)
+        for kp in known:
+            score = len(set(prefix) & set(kp))
             if score > best_score:
                 best_score = score
-                best = self._PREFIX_TO_PARENT[known]
+                best = known[kp]
         return best
 
     def _closest_known(self, prefix):
-        """找到最相似的已知前缀"""
-        best, best_score = "ORG", 0
-        for known in self._PREFIX_TO_PARENT:
-            score = len(set(prefix) & set(known))
+        """找到最相似的已知ID前缀"""
+        best, best_score = "ORG-", 0
+        for kp in self._ID_PREFIX_MAP:
+            score = len(set(prefix) & set(kp))
             if score > best_score:
                 best_score = score
-                best = known
+                best = kp
         return best
 
     # ═══ R10: 影响传播 (Influence Analysis) ═══

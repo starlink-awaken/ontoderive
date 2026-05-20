@@ -5,3 +5,4 @@ from engine.theories.controller import PIDController
 from engine.theories.logic import EntailmentGraph, build_from_project
 from engine.theories.turing_k import KnowledgeTM
 from engine.theories.ontolang import OntoLangParser
+from engine.theories.analytics import AnalyticsEngine, AnalyticalPattern
