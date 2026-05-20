@@ -118,10 +118,9 @@ class OntoDerive(DeriveInterface):
         if derivation_hints:
             summary["derivation_hints"] = derivation_hints[:15]
 
-        # v3.1: 集成RuleReasoner → derived_conclusions (真正的推导结论)
+        # v3.4: 统一推理引擎 (RuleReasoner + FormalReasoner + AnalyticsEngine)
         try:
-            from engine.reasoners.reasoner import RuleReasoner
-            rr = RuleReasoner()
+            from engine.reasoners.unified_reasoner import UnifiedReasoner
             # 重建推论dict
             inferences_dict = {}
             for f in all_md(self.inferences_dir):
@@ -131,7 +130,7 @@ class OntoDerive(DeriveInterface):
                     df_line = re.search(r'derives_from:\s*\[([^\]]+)\]', block)
                     df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', df_line.group(1)) if df_line else []
                     inferences_dict[title] = {"derives_from": list(set(df)), "text": block[:300]}
-            # v3.3: 解析关系声明 (scheme/report.md中 "- ORG-A cooperates_with ORG-B")
+            # 解析关系声明
             relations = []
             for sf in all_md(self.scheme_dir):
                 text = rf(sf)
@@ -145,26 +144,12 @@ class OntoDerive(DeriveInterface):
                         "subject": m.group(1), "relation_type": m.group(2),
                         "object": m.group(3),
                     })
-            rr_results = rr.derive(facts["data"], inferences_dict, relations if relations else None)
-            # v3.3: 分析模式引擎 (A1-A5, 领域洞察)
-            ae_results = []
-            try:
-                from engine.theories.analytics import AnalyticsEngine
-                ae = AnalyticsEngine(enhancer=self._try_llm())
-                ae_results = ae.run(
-                    facts["data"], entities, inferences_dict,
-                    relations if relations else None
-                )
-            except Exception:
-                pass
-            all_results = rr_results[:15] + ae_results[:5]
-            summary["derived_conclusions"] = [
-                {"conclusion": r["conclusion"], "confidence": r["confidence"],
-                 "type": r.get("type", r.get("pattern", "analytics")),
-                 "method": "analytics" if "pattern" in r else "rule_engine",
-                 "derivation_trail": r.get("derivation_trail", r.get("pattern", "?"))}
-                for r in all_results[:20]
-            ]
+            ur = UnifiedReasoner()
+            uc_list = ur.reason(
+                facts["data"], inferences_dict, relations=relations if relations else None,
+                enhancer=self._try_llm()
+            )
+            summary["derived_conclusions"] = [uc.to_dict() for uc in uc_list[:25]]
         except Exception:
             pass
 

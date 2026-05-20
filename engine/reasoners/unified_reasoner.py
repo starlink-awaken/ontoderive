@@ -22,7 +22,9 @@ class UnifiedConclusion:
     derivation_trail: str = ""
 
     def to_dict(self):
-        return asdict(self)
+        d = asdict(self)
+        d["type"] = self.method  # 向后兼容: type=method
+        return d
 
 
 class UnifiedReasoner:
