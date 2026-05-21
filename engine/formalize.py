@@ -122,41 +122,90 @@ class Formalizer:
 
         return knowledge
 
-    EXTRACT_PROMPT = """你是知识工程提取专家。从以下文本中提取结构化知识。输出JSON。
+    EXTRACT_PROMPT = """从文本提取结构化JSON。只输出JSON，不要解释。
 
-文本:
-{text}
+文本: {text}
 
-提取规则:
-1. facts: 找出具体的数据事实。每条包含id(D-F1~D-Fn), description(20字内), value(含单位), source(出处)
-2. entities: 找出关键组织和角色。每条包含id(ORG-/ROL-/PRJ-), name(实体名), type(组织/角色/项目), role(职能)
-3. inferences: 找出文中的推论/结论/判断。每条包含id(INF-L1~), title, derives_from(引用的事实id), conclusion
+输出格式 (严格JSON):
+{{"facts":[{{"id":"D-F1","desc":"入驻企业数","val":"240家"}}],"entities":[{{"id":"ORG-A","name":"国家中心","type":"ORG","role":"运营"}}],"inferences":[{{"id":"INF-1","title":"推论标题","from":["D-F1"],"conc":"结论"}}]}}
 
-输出格式(只输出JSON):
-{{"facts":[{{"id":"D-F1","description":"入驻企业","value":"240家","source":"第三章"}}],"entities":[{{"id":"ORG-国转中心","name":"国家技术转移中心","type":"组织","role":"运营主体"}}],"inferences":[{{"id":"INF-L1","title":"数字化是必然趋势","derives_from":["D-F1"],"conclusion":"需要建设平台"}}]}}"""
+规则:
+- facts: 数字+单位 (id= D-F1..D-Fn, desc≤15字, val含单位)
+- entities: 组织/角色/项目 (id= ORG-/ROL-/PRJ-, type=组织|角色|项目)
+- inferences: 结论/判断 (id= INF-1.., from=引用的事实id列表, conc≤80字)"""
 
     def __init__(self, enhancer=None):
         self.enhancer = enhancer
+
+    def _smart_chunk(self, text: str, max_chars=3000, max_total=12000):
+        """智能分块: 按段落边界切割, 避免截断句子"""
+        text = text[:max_total]
+        if len(text) <= max_chars:
+            return [text]
+        chunks = []
+        pos = 0
+        while pos < len(text):
+            end = min(pos + max_chars, len(text))
+            if end < len(text):
+                # 回退到最近的段落边界
+                boundary = max(text.rfind('\n\n', pos, end), text.rfind('\n', pos, end))
+                if boundary > pos + max_chars // 2:
+                    end = boundary + 1
+            chunks.append(text[pos:end])
+            pos = end
+        return chunks
+
+    def _parse_llm_fact(self, f: dict, idx: int) -> SymbolicFact:
+        """解析LLM提取的事实 — 兼容新旧Prompt格式"""
+        return SymbolicFact(
+            id=f.get("id", f"D-F{idx}"),
+            description=f.get("desc", f.get("description", ""))[:20],
+            value=str(f.get("val", f.get("value", ""))),
+            source=f.get("source", "LLM提取"),
+            confidence=0.90,
+        )
+
+    def _parse_llm_entity(self, e: dict, idx: int) -> SymbolicEntity:
+        """解析LLM提取的实体"""
+        etype = e.get("type", "组织")
+        if etype in ("组织", "ORG"): etype = "ORG"
+        elif etype in ("角色", "ROL"): etype = "ROL"
+        elif etype in ("项目", "PRJ"): etype = "PRJ"
+        return SymbolicEntity(
+            id=e.get("id", f"{etype}-{e.get('name','未知')[:10]}"),
+            name=e.get("name", ""),
+            entity_type=etype,
+            role=e.get("role", ""),
+        )
+
+    def _parse_llm_inference(self, inf: dict, idx: int) -> SymbolicInference:
+        """解析LLM提取的推论"""
+        return SymbolicInference(
+            id=inf.get("id", f"INF-L{idx}"),
+            title=inf.get("title", ""),
+            derives_from=inf.get("from", inf.get("derives_from", [])),
+            conclusion=inf.get("conc", inf.get("conclusion", "")),
+        )
 
     def extract_from_text(self, text: str, mode="llm_first") -> FormalKnowledge:
         """Phase 1: LLM主提取 → 降级规则引擎
 
         mode: llm_first (默认, LLM优先+规则降级)
-              llm_only (仅LLM, 无降级)
-              rule_only (仅规则, 零LLM)
+              llm_only (仅LLM)
+              rule_only (仅规则)
         """
         knowledge = FormalKnowledge()
 
         # LLM主提取
         if mode != "rule_only" and self.enhancer and self.enhancer.available:
             print(f"[formalize] 🤖 LLM提取中 ({self.enhancer.model})...")
-            # 分块处理长文本
-            chunks = [text[i:i+2500] for i in range(0, min(len(text), 8000), 2500)]
+            # 智能分块: 按段落边界切割, 最大3000字/块
+            chunks = self._smart_chunk(text, max_chars=3000, max_total=12000)
             for chunk in chunks:
                 data = {}
                 result = self.enhancer._call(
                     self.EXTRACT_PROMPT.format(text=chunk),
-                    "你是知识提取专家。只输出JSON。", 0.2
+                    "只输出JSON。", 0.1  # 低temperature适合结构化提取
                 )
                 if result:
                     try:
@@ -166,29 +215,11 @@ class Formalizer:
                         data = json.loads(m.group()) if m else {}
 
                 for f in data.get("facts", []):
-                    knowledge.facts.append(SymbolicFact(
-                        id=f.get("id", f"D-F{len(knowledge.facts)+1}"),
-                        description=f.get("description", ""),
-                        value=str(f.get("value", "")),
-                        source=f.get("source", "LLM提取"),
-                        confidence=0.90,
-                    ))
-
+                    knowledge.facts.append(self._parse_llm_fact(f, len(knowledge.facts)+1))
                 for e in data.get("entities", []):
-                    knowledge.entities.append(SymbolicEntity(
-                        id=e.get("id", f"ORG-{e.get('name','未知')[:10]}"),
-                        name=e.get("name", ""),
-                        entity_type=e.get("type", "组织"),
-                        role=e.get("role", ""),
-                    ))
-
+                    knowledge.entities.append(self._parse_llm_entity(e, len(knowledge.entities)+1))
                 for inf in data.get("inferences", []):
-                    knowledge.inferences.append(SymbolicInference(
-                        id=inf.get("id", f"INF-L{len(knowledge.inferences)+1}"),
-                        title=inf.get("title", ""),
-                        derives_from=inf.get("derives_from", []),
-                        conclusion=inf.get("conclusion", ""),
-                    ))
+                    knowledge.inferences.append(self._parse_llm_inference(inf, len(knowledge.inferences)+1))
 
         # LLM失败/超时 → 规则引擎降级 (仅llm_first模式)
         if not knowledge.facts:

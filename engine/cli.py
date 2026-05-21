@@ -36,6 +36,7 @@ def main():
     p_derive.add_argument("--with-tools", action="store_true", help="前置 ToolForge 匹配")
     p_derive.add_argument("--goal", help="目标描述")
     p_derive.add_argument("--tool-context", default="", help="ToolForge 上下文关键词")
+    p_derive.add_argument("--eidos", action="store_true", help="输出 Eidos 格式")
 
     # check
     p_check = sub.add_parser("check", help="规约检查")
@@ -126,7 +127,23 @@ def main():
                     print(f"      {t['id']} {t['name']} (匹配度:{t['score']})")
 
         if args.command == "derive":
-            od.derive()
+            results = od.derive()
+            if getattr(args, "eidos", False):
+                try:
+                    import importlib
+
+                    sys.path.insert(0, "/Users/xiamingxing/Workspace/eidos/src")
+                    eidos_adapter = importlib.import_module("engine.ecosystem.eidos_adapter")
+                    batch_convert = getattr(eidos_adapter, "batch_convert", None)
+                    if not callable(batch_convert):
+                        raise AttributeError("batch_convert 未找到")
+
+                    eidos_results = batch_convert(results, item_type="entity")
+                    print(f"\nEidos 输出: {len(eidos_results)} 个 OntologyNode")
+                    for r in eidos_results[:5]:
+                        print(f"  - {r.name} ({r.node_type})")
+                except Exception as e:
+                    print(f"Eidos 不可用: {e}")
         elif args.command == "check":
             od.check()
         elif args.command == "rounds":
