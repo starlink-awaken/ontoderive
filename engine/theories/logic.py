@@ -7,19 +7,18 @@ OntoDerive 逻辑层 — 蕴含图分析
 - 瓶颈节点、冗余路径检测
 - GraphML导出用于可视化
 """
+
 from collections import defaultdict
-try:
-    from .utils import detect_cycles
-except ImportError:
-    from engine.foundation.utils import detect_cycles  # noqa
+
+from engine.foundation.utils import detect_cycles
 
 
 class EntailmentGraph:
     """蕴含图：节点=事实+推论，边=derives_from"""
 
     def __init__(self):
-        self.nodes = {}       # id -> {type(fact|inference), label}
-        self.edges = defaultdict(list)   # from -> [to]
+        self.nodes = {}  # id -> {type(fact|inference), label}
+        self.edges = defaultdict(list)  # from -> [to]
         self.reverse = defaultdict(list)  # to -> [from]
 
     def add_node(self, nid, ntype="fact", label=""):
@@ -101,19 +100,23 @@ class EntailmentGraph:
         return paths
 
     def to_graphml(self):
-        lines = ['<?xml version="1.0" encoding="UTF-8"?>',
-                 '<graphml xmlns="http://graphml.graphdrawing.org/xmlns">',
-                 '  <graph id="entailment" edgedefault="directed">']
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<graphml xmlns="http://graphml.graphdrawing.org/xmlns">',
+            '  <graph id="entailment" edgedefault="directed">',
+        ]
         for nid, info in self.nodes.items():
-            lines.append(f'    <node id="{nid}"><data key="label">{info["label"]}</data><data key="type">{info["type"]}</data></node>')
+            lines.append(
+                f'    <node id="{nid}"><data key="label">{info["label"]}</data><data key="type">{info["type"]}</data></node>'
+            )
         edge_id = 0
         for u in self.nodes:
             for v in self.edges.get(u, []):
                 lines.append(f'    <edge id="e{edge_id}" source="{u}" target="{v}"/>')
                 edge_id += 1
-        lines.append('  </graph>')
-        lines.append('</graphml>')
-        return '\n'.join(lines)
+        lines.append("  </graph>")
+        lines.append("</graphml>")
+        return "\n".join(lines)
 
     def stats(self):
         cycles = self.detect_cycles()
@@ -141,15 +144,34 @@ class EntailmentGraph:
         """检测矛盾推论：共享事实+对立词 或 否定模式 或 多层共享"""
         inf_nodes = [(nid, info) for nid, info in self.nodes.items() if info["type"] == "inference"]
         opposite_pairs = [
-            ("增加", "减少"), ("增加", "控制"), ("上升", "下降"), ("增长", "衰退"),
-            ("优势", "劣势"), ("机会", "威胁"), ("成功", "失败"),
-            ("应该", "不应"), ("需要", "无需"), ("建议", "避免"),
-            ("优化", "削减"), ("扩大", "缩减"), ("提升", "加剧"),
-            ("成效", "垄断"), ("合理", "泡沫"), ("进步", "停滞"),
-            ("道德", "压力"), ("保障", "暴力"), ("市场", "扭曲"),
-            ("吸收", "制度"), ("回报", "租金"), ("创新", "泡沫"),
-            ("促进", "阻碍"), ("推动", "抵制"), ("加强", "削弱"),
-            ("改进", "恶化"), ("真实", "虚假"), ("合理", "过度"),
+            ("增加", "减少"),
+            ("增加", "控制"),
+            ("上升", "下降"),
+            ("增长", "衰退"),
+            ("优势", "劣势"),
+            ("机会", "威胁"),
+            ("成功", "失败"),
+            ("应该", "不应"),
+            ("需要", "无需"),
+            ("建议", "避免"),
+            ("优化", "削减"),
+            ("扩大", "缩减"),
+            ("提升", "加剧"),
+            ("成效", "垄断"),
+            ("合理", "泡沫"),
+            ("进步", "停滞"),
+            ("道德", "压力"),
+            ("保障", "暴力"),
+            ("市场", "扭曲"),
+            ("吸收", "制度"),
+            ("回报", "租金"),
+            ("创新", "泡沫"),
+            ("促进", "阻碍"),
+            ("推动", "抵制"),
+            ("加强", "削弱"),
+            ("改进", "恶化"),
+            ("真实", "虚假"),
+            ("合理", "过度"),
         ]
         negation_patterns = ["不是", "并非", "不应被", "不能简单", "而非", "不是简单"]
         contradictions = []
@@ -167,13 +189,17 @@ class EntailmentGraph:
                 matched = False
                 for pos_word, neg_word in opposite_pairs:
                     if (pos_word in t1 and neg_word in t2) or (neg_word in t1 and pos_word in t2):
-                        contradictions.append({
-                            "inference_a": id1, "inference_b": id2,
-                            "shared_facts": list(shared), "strength": "strong" if len(shared) >= 2 else "weak",
-                            "opposing_terms": [pos_word, neg_word],
-                            "method": "keyword",
-                            "coverage_note": "词对法覆盖约6%中文对立空间, LLM升级可提升至80%+",
-                        })
+                        contradictions.append(
+                            {
+                                "inference_a": id1,
+                                "inference_b": id2,
+                                "shared_facts": list(shared),
+                                "strength": "strong" if len(shared) >= 2 else "weak",
+                                "opposing_terms": [pos_word, neg_word],
+                                "method": "keyword",
+                                "coverage_note": "词对法覆盖约6%中文对立空间, LLM升级可提升至80%+",
+                            }
+                        )
                         seen.add((id1, id2))
                         matched = True
                         break
@@ -181,12 +207,16 @@ class EntailmentGraph:
                 if not matched and len(shared) >= 1:
                     for np in negation_patterns:
                         if np in t2 and any(kw in t1 for kw in t2.split(np)[0].split() if len(kw) >= 2):
-                            contradictions.append({
-                                "inference_a": id1, "inference_b": id2,
-                                "shared_facts": list(shared), "strength": "medium",
-                                "opposing_terms": [np, "negation"],
-                                "method": "negation",
-                            })
+                            contradictions.append(
+                                {
+                                    "inference_a": id1,
+                                    "inference_b": id2,
+                                    "shared_facts": list(shared),
+                                    "strength": "medium",
+                                    "opposing_terms": [np, "negation"],
+                                    "method": "negation",
+                                }
+                            )
                             seen.add((id1, id2))
                             break
         # Phase 2: LLM语义增强 (可选, 覆盖率 ~80%+)
@@ -201,17 +231,20 @@ class EntailmentGraph:
                             continue
                         shared = parents1 & set(self.reverse.get(id2, []))
                         if len(shared) >= 1:
-                            result = enhancer.detect_contradictions(
-                                t1, inf2.get("label", ""), list(shared))
+                            result = enhancer.detect_contradictions(t1, inf2.get("label", ""), list(shared))
                             if result:
-                                contradictions.append({
-                                    "inference_a": id1, "inference_b": id2,
-                                    "shared_facts": list(shared),
-                                    "strength": "llm_semantic",
-                                    "method": "llm",
-                                })
+                                contradictions.append(
+                                    {
+                                        "inference_a": id1,
+                                        "inference_b": id2,
+                                        "shared_facts": list(shared),
+                                        "strength": "llm_semantic",
+                                        "method": "llm",
+                                    }
+                                )
                                 seen.add((id1, id2))
-            except Exception:
+            except Exception as e:
+                import sys; print(f"[logic] find_contradictions error: {e}", file=sys.stderr)
                 pass
 
         return contradictions
@@ -221,10 +254,8 @@ def build_from_project(project_root):
     """从OntoDerive项目目录构建蕴含图"""
     import re
     from pathlib import Path
-    try:
-        from .utils import rf, all_md
-    except ImportError:
-        from engine.foundation.utils import rf, all_md  # noqa
+
+    from engine.foundation.utils import all_md, rf
 
     root = Path(project_root)
     graph = EntailmentGraph()
@@ -233,7 +264,7 @@ def build_from_project(project_root):
     fact_ids = set()
     for f in all_md(root / "facts"):
         text = rf(f)
-        for m in re.finditer(r'(D-F\d+|P-F\d+)', text):
+        for m in re.finditer(r"(D-F\d+|P-F\d+)", text):
             fid = m.group(0)
             if fid not in graph.nodes:
                 graph.add_node(fid, "fact", fid)
@@ -243,11 +274,11 @@ def build_from_project(project_root):
     inf_titles = {}
     for f in all_md(root / "inferences"):
         text = rf(f)
-        blocks = re.split(r'^##\s+', text, flags=re.MULTILINE)
+        blocks = re.split(r"^##\s+", text, flags=re.MULTILINE)
         for block in blocks[1:]:
             title = block.strip().split("\n")[0].strip()
-            df_facts = re.findall(r'(D-F\d+|P-F\d+)', block)
-            df_infs = re.findall(r'(INF-[\w\d]+)', block)
+            df_facts = re.findall(r"(D-F\d+|P-F\d+)", block)
+            df_infs = re.findall(r"(INF-[\w\d]+)", block)
             if title not in graph.nodes:
                 graph.add_node(title, "inference", title[:80])
                 inf_titles[title] = True

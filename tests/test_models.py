@@ -1,11 +1,21 @@
 """
 测试数据模型模块
 """
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from engine.foundation.models import Fact, Entity, Inference, CheckResult, DeriveSnapshot
+from engine.foundation.models import (
+    CheckResult,
+    DeriveSnapshot,
+    Entity,
+    Fact,
+    Inference,
+    _normalize_type,
+    list_valid_types,
+)
 
 
 def test_fact_defaults():
@@ -23,9 +33,19 @@ def test_fact_policy():
     assert f.source == "国务院"
 
 
+def test_fact_type_normalized():
+    fact = Fact(fid="f1", description="test", type="fact")
+    assert fact.type == "fact"
+
+
+def test_fact_type_unknown_fallback():
+    fact = Fact(fid="f2", description="test", type="unknown")
+    assert fact.type == "domain"
+
+
 def test_entity():
     e = Entity(eid="ORG-测试", name="测试组织", entity_type="Organization", role="运营方", count="1")
-    assert e.entity_type == "Organization"
+    assert e.entity_type == "domain"
     assert e.facts_ref == []
 
 
@@ -33,6 +53,16 @@ def test_entity_with_refs():
     e = Entity(eid="ROL-经理", name="经理人", entity_type="Role", facts_ref=["D-F1", "D-F2"])
     assert len(e.facts_ref) == 2
     assert "D-F1" in e.facts_ref
+
+
+def test_normalize_type():
+    assert _normalize_type("domain") == "domain"
+    assert _normalize_type("fact") == "fact"
+    assert _normalize_type("unknown") == "domain"
+
+
+def test_list_valid_types():
+    assert list_valid_types() == ["domain", "data", "policy", "fact", "inference", "relation", "state", "document", "constraint", "processor"]
 
 
 def test_inference():
@@ -52,8 +82,14 @@ def test_check_result():
 
 
 def test_check_result_with_fixes():
-    cr = CheckResult(pid="C-04", name="事实可追溯性", passed=False, severity="WARN",
-                     detail="0/5事实被引用", fixes=["在推论中添加事实引用"])
+    cr = CheckResult(
+        pid="C-04",
+        name="事实可追溯性",
+        passed=False,
+        severity="WARN",
+        detail="0/5事实被引用",
+        fixes=["在推论中添加事实引用"],
+    )
     assert not cr.passed
     assert len(cr.fixes) == 1
 
@@ -67,5 +103,7 @@ def test_derive_snapshot():
 
 def test_derive_snapshot_with_metrics():
     metrics = {"kqi": 0.42, "entropy": 5.6}
-    ds = DeriveSnapshot(timestamp="2026-05-18T10:00:00", facts=8, entities=4, inferences=2, scheme_files=1, metrics=metrics)
+    ds = DeriveSnapshot(
+        timestamp="2026-05-18T10:00:00", facts=8, entities=4, inferences=2, scheme_files=1, metrics=metrics
+    )
     assert ds.metrics["kqi"] == 0.42

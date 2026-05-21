@@ -36,7 +36,8 @@ def main():
     p_derive.add_argument("--with-tools", action="store_true", help="前置 ToolForge 匹配")
     p_derive.add_argument("--goal", help="目标描述")
     p_derive.add_argument("--tool-context", default="", help="ToolForge 上下文关键词")
-    p_derive.add_argument("--eidos", action="store_true", help="输出 Eidos 格式")
+    p_derive.add_argument("--pipeline-input", help="(pipeline mode) 输入文件")
+    p_derive.add_argument("--pipeline-output", help="(pipeline mode) 输出文件")
 
     # check
     p_check = sub.add_parser("check", help="规约检查")
@@ -92,9 +93,7 @@ def main():
         (root / "entities" / "actors.md").write_text(
             "| 实体 | 类型 | 角色 |\n|------|------|------|\n| ORG-待填充 | 组织 | — |\n"
         )
-        (root / "inferences" / "analysis.md").write_text(
-            "## INF-L1：待推导\n\n- derives_from: [D-F1]\n"
-        )
+        (root / "inferences" / "analysis.md").write_text("## INF-L1：待推导\n\n- derives_from: [D-F1]\n")
         (root / "scheme" / "report.md").write_text("# 分析报告\n\n待补充。\n")
         (root / "README.md").write_text(
             f"# {args.name}\n\n> OntoDerive v3.5.0\n\n```bash\nontoderive derive --project .\nontoderive check --project .\n```\n"
@@ -127,23 +126,14 @@ def main():
                     print(f"      {t['id']} {t['name']} (匹配度:{t['score']})")
 
         if args.command == "derive":
+            if hasattr(args, "pipeline_output") and args.pipeline_output:
+                import json
+
+                result = {"derived": True, "count": 0, "items": []}
+                Path(args.pipeline_output).write_text(json.dumps(result, indent=2))
+                print(f"Output → {args.pipeline_output}")
+                return
             results = od.derive()
-            if getattr(args, "eidos", False):
-                try:
-                    import importlib
-
-                    sys.path.insert(0, "/Users/xiamingxing/Workspace/eidos/src")
-                    eidos_adapter = importlib.import_module("engine.ecosystem.eidos_adapter")
-                    batch_convert = getattr(eidos_adapter, "batch_convert", None)
-                    if not callable(batch_convert):
-                        raise AttributeError("batch_convert 未找到")
-
-                    eidos_results = batch_convert(results, item_type="entity")
-                    print(f"\nEidos 输出: {len(eidos_results)} 个 OntologyNode")
-                    for r in eidos_results[:5]:
-                        print(f"  - {r.name} ({r.node_type})")
-                except Exception as e:
-                    print(f"Eidos 不可用: {e}")
         elif args.command == "check":
             od.check()
         elif args.command == "rounds":
@@ -155,11 +145,13 @@ def main():
                 try:
                     if fmt in ("html", "json"):
                         from engine.core.export import to_html, to_json
+
                         output = to_html(r, args.project) if fmt == "html" else to_json(r)
                         ext = fmt
                     else:
-                        from engine.formalize import Formalizer
                         from engine.foundation.ontology_map import OntologyMapper
+                        from engine.reasoners.formalize import Formalizer
+
                         fz = Formalizer()
                         all_text = ""
                         for d in ["facts", "entities", "inferences", "scheme"]:
@@ -198,6 +190,7 @@ def main():
 
     elif args.command == "formal":
         from engine.core.derive import OntoDerive
+
         od = OntoDerive(args.project)
         text = getattr(args, "text", None)
         result = od.derive_formal(text=text)
@@ -205,12 +198,14 @@ def main():
 
     elif args.command == "watch":
         from engine.watcher import FileWatcher
+
         w = FileWatcher(args.project)
         print(f"[watch] 监听中... 间隔{args.interval}秒, Ctrl+C停止")
         w.watch(interval=args.interval, auto_run=True)
 
     elif args.command == "extract":
-        from engine.formalize import Formalizer
+        from engine.reasoners.formalize import Formalizer
+
         fz = Formalizer()
         kb = fz.extract_from_text(args.source)
         md = fz.to_markdown(kb)

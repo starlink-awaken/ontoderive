@@ -7,10 +7,12 @@ OntoDerive 文件监听器 — 变化检测 + 自动重推导
     python3 engine/watcher.py --project . --interval 5
     python3 engine/watcher.py --project . --auto-derive-check
 """
+
 import hashlib
 import subprocess
 import time
 from pathlib import Path
+
 
 class FileWatcher:
     def __init__(self, project_root, watch_dirs=None):
@@ -33,7 +35,7 @@ class FileWatcher:
     def _hash(self, filepath):
         try:
             return hashlib.md5(Path(filepath).read_bytes()).hexdigest()
-        except (OSError, IOError):
+        except OSError:
             return ""
 
     def check(self):
@@ -76,7 +78,9 @@ class FileWatcher:
                     if auto_run:
                         result = subprocess.run(
                             ["python3", "engine/derive.py", "--project", str(self.root), "--derive", "--check"],
-                            capture_output=True, text=True)
+                            capture_output=True,
+                            text=True,
+                        )
                         # 输出摘要
                         for line in result.stdout.split("\n"):
                             if "📊" in line or "✅" in line or "🟠" in line or "🟡" in line or "🔴" in line:
@@ -87,6 +91,7 @@ class FileWatcher:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="OntoDerive 文件监听器")
     parser.add_argument("--project", default=".", help="项目路径")
     parser.add_argument("--interval", type=int, default=5, help="检测间隔(秒)")

@@ -4,17 +4,18 @@ OntoDerive 图灵机层 v2 — 知识状态机(K-TM)
 基于模型的状态管理：每次derive产生DeriveSnapshot，
 状态转移可追踪，delta趋近于零时自动停机。
 """
+
 import datetime
-import json
 import hashlib
+import json
 from pathlib import Path
 
 try:
-    from .utils import all_md, rf, wf
     from .models import DeriveSnapshot
+    from .utils import all_md, rf, wf
 except ImportError:
     from engine.foundation.utils import all_md, rf, wf  # noqa
-    from engine.foundation.models import DeriveSnapshot  # noqa
+    from engine.foundation.models import DeriveSnapshot
 
 
 class KnowledgeTM:
@@ -49,19 +50,19 @@ class KnowledgeTM:
         facts_text = ""
         for f in all_md(self.root / "facts"):
             facts_text += rf(f)
-        n_facts = len(set(re.findall(r'(D-F\d+|P-F\d+)', facts_text)))
+        n_facts = len(set(re.findall(r"(D-F\d+|P-F\d+)", facts_text)))
 
         infs_text = ""
         inf_blocks = 0
         for f in all_md(self.root / "inferences"):
             text = rf(f)
             infs_text += text
-            inf_blocks += len(re.findall(r'^##\s+', text, re.MULTILINE))
+            inf_blocks += len(re.findall(r"^##\s+", text, re.MULTILINE))
 
         entities_text = ""
         for f in all_md(self.root / "entities"):
             entities_text += rf(f)
-        n_entities = len(set(re.findall(r'\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+)\*\*', entities_text)))
+        n_entities = len(set(re.findall(r"\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+)\*\*", entities_text)))
 
         n_schemes = len(all_md(self.root / "scheme"))
 
@@ -88,22 +89,43 @@ class KnowledgeTM:
 
         # 保存为JSON
         snapshot_path = self.log_dir / f"snapshot-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
-        wf(snapshot_path, json.dumps({
-            "timestamp": state.timestamp,
-            "facts": state.facts,
-            "entities": state.entities,
-            "inferences": state.inferences,
-            "scheme_files": state.scheme_files,
-            "file_count": len(files),
-        }, ensure_ascii=False, indent=2))
+        wf(
+            snapshot_path,
+            json.dumps(
+                {
+                    "timestamp": state.timestamp,
+                    "facts": state.facts,
+                    "entities": state.entities,
+                    "inferences": state.inferences,
+                    "scheme_files": state.scheme_files,
+                    "file_count": len(files),
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+        )
 
-        wf(self.log_dir / "latest-snapshot.json",
-           json.dumps({"timestamp": state.timestamp, "file_count": len(files), "state": {
-               "facts": state.facts, "entities": state.entities,
-               "inferences": state.inferences, "scheme_files": state.scheme_files,
-           }}, ensure_ascii=False, indent=2))
+        wf(
+            self.log_dir / "latest-snapshot.json",
+            json.dumps(
+                {
+                    "timestamp": state.timestamp,
+                    "file_count": len(files),
+                    "state": {
+                        "facts": state.facts,
+                        "entities": state.entities,
+                        "inferences": state.inferences,
+                        "scheme_files": state.scheme_files,
+                    },
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+        )
 
-        print(f"[turing] ✅ 快照: {state.facts}事实/{state.entities}实体/{state.inferences}推论/{state.scheme_files}方案")
+        print(
+            f"[turing] ✅ 快照: {state.facts}事实/{state.entities}实体/{state.inferences}推论/{state.scheme_files}方案"
+        )
         return state
 
     def delta(self):
@@ -118,12 +140,14 @@ class KnowledgeTM:
             old_val = getattr(prev, field, 0)
             new_val = getattr(curr, field, 0)
             if old_val != new_val:
-                changes.append({
-                    "field": field,
-                    "old": old_val,
-                    "new": new_val,
-                    "delta": new_val - old_val,
-                })
+                changes.append(
+                    {
+                        "field": field,
+                        "old": old_val,
+                        "new": new_val,
+                        "delta": new_val - old_val,
+                    }
+                )
         return {"type": "delta", "changes": changes, "timestamp": curr.timestamp}
 
     def should_halt(self, epsilon=0):

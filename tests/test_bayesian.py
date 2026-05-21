@@ -1,8 +1,10 @@
 """
 测试贝叶斯层
 """
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 from engine.theories.bayesian import BayesianLayer

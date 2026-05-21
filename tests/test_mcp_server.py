@@ -1,9 +1,12 @@
 """MCP服务器测试"""
-import sys, json
+
+import json
+import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from mcp_server import handle_request, TOOL_DEFS
+from mcp_server import TOOL_DEFS, handle_request
 
 
 def test_tools_list():
@@ -34,46 +37,57 @@ def test_unknown_method():
 
 
 def test_toolforge_select():
-    resp = json.loads(handle_request({
-        "id": 4, "method": "tools/call",
-        "params": {"name": "toolforge_select", "arguments": {"goal": "分析市场", "top_n": 3}}
-    }))
+    resp = json.loads(
+        handle_request(
+            {
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "toolforge_select", "arguments": {"goal": "分析市场", "top_n": 3}},
+            }
+        )
+    )
     result = json.loads(resp) if isinstance(resp, str) else resp
     assert "result" in result
 
 
 def test_toolforge_guide():
-    resp = json.loads(handle_request({
-        "id": 5, "method": "tools/call",
-        "params": {"name": "toolforge_guide", "arguments": {"goal": "分析市场"}}
-    }))
+    resp = json.loads(
+        handle_request(
+            {"id": 5, "method": "tools/call", "params": {"name": "toolforge_guide", "arguments": {"goal": "分析市场"}}}
+        )
+    )
     result = json.loads(resp) if isinstance(resp, str) else resp
     assert "result" in result or "error" in result
 
 
 def test_ontoderive_check():
-    resp = json.loads(handle_request({
-        "id": 6, "method": "tools/call",
-        "params": {"name": "ontoderive_check", "arguments": {"project": "examples/z-park"}}
-    }))
+    resp = json.loads(
+        handle_request(
+            {
+                "id": 6,
+                "method": "tools/call",
+                "params": {"name": "ontoderive_check", "arguments": {"project": "examples/z-park"}},
+            }
+        )
+    )
     result = json.loads(resp) if isinstance(resp, str) else resp
     assert "result" in result
 
 
 def test_ontoderive_config():
-    resp = json.loads(handle_request({
-        "id": 7, "method": "tools/call",
-        "params": {"name": "ontoderive_config", "arguments": {"project": "."}}
-    }))
+    resp = json.loads(
+        handle_request(
+            {"id": 7, "method": "tools/call", "params": {"name": "ontoderive_config", "arguments": {"project": "."}}}
+        )
+    )
     result = json.loads(resp) if isinstance(resp, str) else resp
     assert "result" in result
 
 
 def test_unknown_tool():
-    resp = json.loads(handle_request({
-        "id": 8, "method": "tools/call",
-        "params": {"name": "nonexistent_tool", "arguments": {}}
-    }))
+    resp = json.loads(
+        handle_request({"id": 8, "method": "tools/call", "params": {"name": "nonexistent_tool", "arguments": {}}})
+    )
     result = json.loads(resp) if isinstance(resp, str) else resp
     assert "error" in result
 

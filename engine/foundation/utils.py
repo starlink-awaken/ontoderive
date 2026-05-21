@@ -4,7 +4,9 @@ OntoDerive 共享工具函数 v2.3
 消除各模块重复的 rf/wf/all_md/load_json/save_json 拷贝。
 v2.3: 添加 CachedReader 消除单次 run_check 中的重复文件 I/O。
 """
+
 import json
+import re
 from pathlib import Path
 
 
@@ -12,7 +14,7 @@ class CachedReader:
     """单次检查生命周期内的文件读缓存 — 每个文件只从磁盘读一次"""
 
     def __init__(self):
-        self._files = {}     # path_str → text
+        self._files = {}  # path_str → text
         self._listings = {}  # dir_str → [Path]
 
     def rf(self, path):
@@ -68,6 +70,27 @@ def save_json(path, data):
     p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def scan_facts_from_md(text: str) -> dict:
+    """从Markdown表格中扫描事实数据 (D-F / P-F)"""
+    facts = {"data": {}, "policy": {}}
+    for m in re.finditer(r'\| (D-F\d+)\s*\|([^|]+)\|([^|]+)\|', text):
+        facts["data"][m.group(1)] = {"desc": m.group(2).strip(), "value": m.group(3).strip()}
+    for m in re.finditer(r'\| (P-F\d+)\s*\|([^|]+)\|', text):
+        facts["policy"][m.group(1)] = {"desc": m.group(2).strip()}
+    return facts
+
+
+def scan_inferences_from_md(text: str) -> dict:
+    """从Markdown中扫描推论块 (INF-)"""
+    inferences = {}
+    for block in re.split(r'^##\s+', text, flags=re.MULTILINE)[1:]:
+        title = block.strip().split('\n')[0].strip()
+        df_line = re.search(r'derives_from:\s*\[([^\]]+)\]', block)
+        df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', df_line.group(1)) if df_line else []
+        inferences[title] = {"derives_from": list(set(df)), "text": block[:300]}
+    return inferences
+
+
 def detect_cycles(nodes, edges):
     """
     共享的三色DFS环检测算法。
@@ -98,4 +121,3 @@ def detect_cycles(nodes, edges):
         if color.get(n) == WHITE:
             dfs(n, [])
     return cycles
-

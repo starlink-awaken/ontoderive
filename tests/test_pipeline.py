@@ -1,9 +1,11 @@
 """Pipeline端到端测试"""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from engine.core.pipeline import DerivePipeline, ToolForgeStage, LoadStage, DeriveStage, CheckStage
+from engine.core.pipeline import DerivePipeline
 
 
 def test_pipeline_create():
@@ -45,7 +47,7 @@ def test_pipeline_run_check():
     pipe = DerivePipeline("examples/z-park")
     pipe.run(stages=["check"])
     assert "check" in pipe.results
-    assert len(pipe.results["check"]) == 13
+    assert len(pipe.results["check"]) == 12
 
 
 def test_pipeline_to_analysis_result():

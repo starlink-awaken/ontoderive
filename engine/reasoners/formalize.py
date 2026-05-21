@@ -3,10 +3,11 @@ Formalizer — 符号化引擎 (Phase 1+2)
 =====================================
 LLM从自然语言提取结构化知识 → 本体对齐 → OntoLang符号化
 """
+
 import json
 import re
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import Dict, List
 
 
 @dataclass
@@ -19,6 +20,7 @@ class SymbolicFact:
     category: str = "data"  # data | policy
     meta_type: str = "FACT"
 
+
 @dataclass
 class SymbolicEntity:
     id: str
@@ -26,6 +28,7 @@ class SymbolicEntity:
     entity_type: str  # ORG | ROL | PRJ
     role: str = ""
     meta_type: str = "DOMAIN"
+
 
 @dataclass
 class SymbolicInference:
@@ -36,19 +39,20 @@ class SymbolicInference:
     confidence: str = "inference"
     meta_type: str = "INFERENCE"
 
+
 @dataclass
 class FormalKnowledge:
     facts: List[SymbolicFact] = field(default_factory=list)
     entities: List[SymbolicEntity] = field(default_factory=list)
     inferences: List[SymbolicInference] = field(default_factory=list)
-    abox: Dict = field(default_factory=dict)   # 断言箱: 具体实例
-    tbox: Dict = field(default_factory=dict)   # 术语箱: 类型层级
+    abox: Dict = field(default_factory=dict)  # 断言箱: 具体实例
+    tbox: Dict = field(default_factory=dict)  # 术语箱: 类型层级
 
 
 class Formalizer:
     """LLM提取 + 规则降级 + 符号化"""
 
-    _CONNECTOR_PREFIX = re.compile(r'^[与和及的]+')
+    _CONNECTOR_PREFIX = re.compile(r"^[与和及的]+")
 
     def _rule_extract(self, text: str) -> FormalKnowledge:
         """规则引擎降级提取 — 零LLM, 正则匹配数值和实体"""
@@ -56,81 +60,94 @@ class Formalizer:
         fid_counter = 1
         # 提取数值事实 — 精确模式, 避免垃圾匹配
         patterns = [
-            (r'(\d+)\s*家\s*(入驻)?企[业商]', '入驻企业数', '家'),
-            (r'(\d+)\s*次.*?(对接|交易|调用)', '对接量', '次'),
-            (r'(\d+\.?\d*)\s*%\s*(转化|成功|覆盖|增长|满意)', '比率', '%'),
-            (r'与\s*(\d+)\s*所\s*(高校|大学|机构)', '合作高校', '所'),
-            (r'(\d+)\s*[人名位个].*?(经理|专家|博士|导师)', '人员数', '人'),
-            (r'NPS.*?(\d+)', 'NPS得分', '分'),
-            (r'(\d+\.?\d*)\s*[万亿千百]\s*(元|美元|营收|收入|预算|成本)', '金额', ''),
-            (r'(\d+)\s*[台次个].*?(服务器|设备|机器)', '设备数', '台'),
+            (r"(\d+)\s*家\s*(入驻)?企[业商]", "入驻企业数", "家"),
+            (r"(\d+)\s*次.*?(对接|交易|调用)", "对接量", "次"),
+            (r"(\d+\.?\d*)\s*%\s*(转化|成功|覆盖|增长|满意)", "比率", "%"),
+            (r"与\s*(\d+)\s*所\s*(高校|大学|机构)", "合作高校", "所"),
+            (r"(\d+)\s*[人名位个].*?(经理|专家|博士|导师)", "人员数", "人"),
+            (r"NPS.*?(\d+)", "NPS得分", "分"),
+            (r"(\d+\.?\d*)\s*[万亿千百]\s*(元|美元|营收|收入|预算|成本)", "金额", ""),
+            (r"(\d+)\s*[台次个].*?(服务器|设备|机器)", "设备数", "台"),
             # 新增模式 — 覆盖更多常见文档事实
-            (r'(\d+)\s*[件项个].*?(专利|发明|软著|著作权)', '知识产权数', '件'),
-            (r'成立于\s*(\d{4})\s*年', '成立年份', '年'),
-            (r'(\d+\.?\d*)\s*[万亿千百]?(平方米|亩|公顷|平方公里)', '占地面积', ''),
-            (r'(?:投资|融资|投入)\s*(\d+\.?\d*)\s*[万亿千百]?(元|美元|万元)', '投资金额', ''),
-            (r'(\d+\.?\d*)\s*%\s*(?:同比)?增[长速]', '增长率', '%'),
-            (r'(?:排名|位居).*?[第前]?\s*(\d+)\s*[名位]', '排名', '名'),
-            (r'(?:用户|会员|注册|访问).*?(\d+\.?\d*)\s*[万亿千百]?(人|个|次)', '用户量', ''),
-            (r'(?:历时|周期|耗时).*?(\d+\.?\d*)\s*(天|月|年|小时)', '耗时', ''),
+            (r"(\d+)\s*[件项个].*?(专利|发明|软著|著作权)", "知识产权数", "件"),
+            (r"成立于\s*(\d{4})\s*年", "成立年份", "年"),
+            (r"(\d+\.?\d*)\s*[万亿千百]?(平方米|亩|公顷|平方公里)", "占地面积", ""),
+            (r"(?:投资|融资|投入)\s*(\d+\.?\d*)\s*[万亿千百]?(元|美元|万元)", "投资金额", ""),
+            (r"(\d+\.?\d*)\s*%\s*(?:同比)?增[长速]", "增长率", "%"),
+            (r"(?:排名|位居).*?[第前]?\s*(\d+)\s*[名位]", "排名", "名"),
+            (r"(?:用户|会员|注册|访问).*?(\d+\.?\d*)\s*[万亿千百]?(人|个|次)", "用户量", ""),
+            (r"(?:历时|周期|耗时).*?(\d+\.?\d*)\s*(天|月|年|小时)", "耗时", ""),
             # v3.6: 政府公文+财报+专利+政策
-            (r'(?:批准|批复)日期\s*[：:]?\s*(\d{4}[年/-]\d{1,2}[月/-]\d{1,2})', '批准日期', ''),
-            (r'(\d+\.?\d*)\s*[万亿千百]?(?:营收|收入)', '营收额', ''),
-            (r'(?:净利润|利润).*?(\d+\.?\d*)\s*[万亿千百]?(?:元|美元)', '净利润', ''),
-            (r'ROE\s*[：:＝=]?\s*(\d+\.?\d*)\s*%?', 'ROE', '%'),
-            (r'(?:资产负债率|负债率)\s*[：:＝=]?\s*(\d+\.?\d*)\s*%?', '资产负债率', '%'),
-            (r'专利号\s*[：:＝=]?\s*([A-Z]{2}\d+[A-Z]?\d*)', '专利号', ''),
-            (r'IPC分类\s*[：:＝=]?\s*([A-H]\d{2}[A-Z]/\d+)', 'IPC分类', ''),
-            (r'(?:补贴|资助).*?(\d+\.?\d*)\s*[万亿千百]?(?:元|万元)', '补贴金额', ''),
-            (r'(?:补贴|资助)比例\s*[：:＝=]?\s*(\d+\.?\d*)\s*%', '补贴比例', '%'),
-            (r'(?:覆盖|涉及).*?(\d+\.?\d*)\s*[万亿千百]?(人|家|个|项)', '覆盖范围', ''),
+            (r"(?:批准|批复)日期\s*[：:]?\s*(\d{4}[年/-]\d{1,2}[月/-]\d{1,2})", "批准日期", ""),
+            (r"(\d+\.?\d*)\s*[万亿千百]?(?:营收|收入)", "营收额", ""),
+            (r"(?:净利润|利润).*?(\d+\.?\d*)\s*[万亿千百]?(?:元|美元)", "净利润", ""),
+            (r"ROE\s*[：:＝=]?\s*(\d+\.?\d*)\s*%?", "ROE", "%"),
+            (r"(?:资产负债率|负债率)\s*[：:＝=]?\s*(\d+\.?\d*)\s*%?", "资产负债率", "%"),
+            (r"专利号\s*[：:＝=]?\s*([A-Z]{2}\d+[A-Z]?\d*)", "专利号", ""),
+            (r"IPC分类\s*[：:＝=]?\s*([A-H]\d{2}[A-Z]/\d+)", "IPC分类", ""),
+            (r"(?:补贴|资助).*?(\d+\.?\d*)\s*[万亿千百]?(?:元|万元)", "补贴金额", ""),
+            (r"(?:补贴|资助)比例\s*[：:＝=]?\s*(\d+\.?\d*)\s*%", "补贴比例", "%"),
+            (r"(?:覆盖|涉及).*?(\d+\.?\d*)\s*[万亿千百]?(人|家|个|项)", "覆盖范围", ""),
         ]
         for pattern, desc, unit in patterns:
             for m in re.finditer(pattern, text):
                 val = f"{m.group(1)}{unit}"
-                knowledge.facts.append(SymbolicFact(
-                    id=f"D-F{fid_counter}", description=desc, value=val,
-                    source="规则提取", confidence=0.85,
-                ))
+                knowledge.facts.append(
+                    SymbolicFact(
+                        id=f"D-F{fid_counter}",
+                        description=desc,
+                        value=val,
+                        source="规则提取",
+                        confidence=0.85,
+                    )
+                )
                 fid_counter += 1
 
         # 提取实体 — 精确模式, 去重, 避免垃圾匹配
         seen_names = set()
         entity_patterns = [
             # 机构/组织
-            (r'(国家.{2,6}(?:中心|平台|基地|实验室))', 'ORG', '运营主体'),
-            (r'((?:中关村|北京|上海|深圳|广东|浙江|江苏).{2,4}(?:园区|新区|开发区|高新区))', 'ORG', '区域'),
-            (r'([一-鿿]{2,6}(?:大学|学院|研究院|研究所))', 'ORG', '合作方'),
-            (r'([一-鿿]{2,8}(?:公司|集团|有限公司|股份有限公司))', 'ORG', '企业'),
+            (r"(国家.{2,6}(?:中心|平台|基地|实验室))", "ORG", "运营主体"),
+            (r"((?:中关村|北京|上海|深圳|广东|浙江|江苏).{2,4}(?:园区|新区|开发区|高新区))", "ORG", "区域"),
+            (r"([一-鿿]{2,6}(?:大学|学院|研究院|研究所))", "ORG", "合作方"),
+            (r"([一-鿿]{2,8}(?:公司|集团|有限公司|股份有限公司))", "ORG", "企业"),
             # 项目/平台
-            (r'((?:技术|成果|创新|产业|数字).{2,6}(?:平台|系统|体系|工程))', 'PRJ', '核心项目'),
+            (r"((?:技术|成果|创新|产业|数字).{2,6}(?:平台|系统|体系|工程))", "PRJ", "核心项目"),
             # 政策/文件
-            (r'([一-鿿]{2,6}[发|办|字|函]\s*[\[［]\s*\d{4}\s*[\]］]\s*\d+\s*号)', 'DOC', '政策文件'),
+            (r"([一-鿿]{2,6}[发|办|字|函]\s*[\[［]\s*\d{4}\s*[\]］]\s*\d+\s*号)", "DOC", "政策文件"),
             # 标准/认证
-            (r'(ISO\s*\d+|GB/T\s*\d+|国家标准.{2,6}|行业标准.{2,6})', 'STD', '标准规范'),
+            (r"(ISO\s*\d+|GB/T\s*\d+|国家标准.{2,6}|行业标准.{2,6})", "STD", "标准规范"),
         ]
         for pattern, etype, role in entity_patterns:
             for m in re.finditer(pattern, text):
                 name = m.group(1)
-                name = self._CONNECTOR_PREFIX.sub('', name)
+                name = self._CONNECTOR_PREFIX.sub("", name)
                 if name not in seen_names and len(name) >= 3:
                     seen_names.add(name)
-                    knowledge.entities.append(SymbolicEntity(
-                        id=f"{etype}-{name[:10]}",
-                        name=name, entity_type=etype, role=role,
-                    ))
+                    knowledge.entities.append(
+                        SymbolicEntity(
+                            id=f"{etype}-{name[:10]}",
+                            name=name,
+                            entity_type=etype,
+                            role=role,
+                        )
+                    )
 
         # L1 NER: 命名实体识别增强 — 补正则到LLM之间的能力断层
         try:
             from engine.intelligence.ner import extract_entities
+
             for name, etype in extract_entities(text, use_jieba=True):
                 if name not in seen_names and len(name) >= 3:
                     seen_names.add(name)
-                    knowledge.entities.append(SymbolicEntity(
-                        id=f"{etype}-{name[:10]}",
-                        name=name, entity_type=etype,
-                        role="NER识别" if etype == "ORG" else "人员",
-                    ))
+                    knowledge.entities.append(
+                        SymbolicEntity(
+                            id=f"{etype}-{name[:10]}",
+                            name=name,
+                            entity_type=etype,
+                            role="NER识别" if etype == "ORG" else "人员",
+                        )
+                    )
         except ImportError:
             pass
 
@@ -162,7 +179,7 @@ class Formalizer:
             end = min(pos + max_chars, len(text))
             if end < len(text):
                 # 回退到最近的段落边界
-                boundary = max(text.rfind('\n\n', pos, end), text.rfind('\n', pos, end))
+                boundary = max(text.rfind("\n\n", pos, end), text.rfind("\n", pos, end))
                 if boundary > pos + max_chars // 2:
                     end = boundary + 1
             chunks.append(text[pos:end])
@@ -182,11 +199,14 @@ class Formalizer:
     def _parse_llm_entity(self, e: dict, idx: int) -> SymbolicEntity:
         """解析LLM提取的实体"""
         etype = e.get("type", "组织")
-        if etype in ("组织", "ORG"): etype = "ORG"
-        elif etype in ("角色", "ROL"): etype = "ROL"
-        elif etype in ("项目", "PRJ"): etype = "PRJ"
+        if etype in ("组织", "ORG"):
+            etype = "ORG"
+        elif etype in ("角色", "ROL"):
+            etype = "ROL"
+        elif etype in ("项目", "PRJ"):
+            etype = "PRJ"
         return SymbolicEntity(
-            id=e.get("id", f"{etype}-{e.get('name','未知')[:10]}"),
+            id=e.get("id", f"{etype}-{e.get('name', '未知')[:10]}"),
             name=e.get("name", ""),
             entity_type=etype,
             role=e.get("role", ""),
@@ -219,21 +239,22 @@ class Formalizer:
                 data = {}
                 result = self.enhancer._call(
                     self.EXTRACT_PROMPT.format(text=chunk),
-                    "只输出JSON。", 0.1  # 低temperature适合结构化提取
+                    "只输出JSON。",
+                    0.1,  # 低temperature适合结构化提取
                 )
                 if result:
                     try:
                         data = json.loads(result)
                     except json.JSONDecodeError:
-                        m = re.search(r'\{[\s\S]*\}', result)
+                        m = re.search(r"\{[\s\S]*\}", result)
                         data = json.loads(m.group()) if m else {}
 
                 for f in data.get("facts", []):
-                    knowledge.facts.append(self._parse_llm_fact(f, len(knowledge.facts)+1))
+                    knowledge.facts.append(self._parse_llm_fact(f, len(knowledge.facts) + 1))
                 for e in data.get("entities", []):
-                    knowledge.entities.append(self._parse_llm_entity(e, len(knowledge.entities)+1))
+                    knowledge.entities.append(self._parse_llm_entity(e, len(knowledge.entities) + 1))
                 for inf in data.get("inferences", []):
-                    knowledge.inferences.append(self._parse_llm_inference(inf, len(knowledge.inferences)+1))
+                    knowledge.inferences.append(self._parse_llm_inference(inf, len(knowledge.inferences) + 1))
 
         # LLM失败/超时 → 规则引擎降级 (仅llm_first模式)
         if not knowledge.facts:
@@ -251,7 +272,7 @@ class Formalizer:
     def _validate(self, knowledge: FormalKnowledge):
         """规则校验: TypeValidator检查ID格式 + 属性约束校验"""
         try:
-            from .typesystem import TypeValidator
+            from engine.foundation.typesystem import TypeValidator
         except ImportError:
             from engine.foundation.typesystem import TypeValidator
         tv = TypeValidator()

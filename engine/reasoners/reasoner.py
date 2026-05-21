@@ -17,15 +17,18 @@ OntoDerive 规则推导引擎 — 8种推理规则 + 13种结构检查
 ❌ 新概念的创造性发现
 ❌ 隐喻/类比推理
 """
+
 import re
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import Dict, List
 
 from engine.foundation.rule_loader import RuleLoader
+
 
 @dataclass
 class DerivationRule:
     """一条推导规则 = 三段论模式"""
+
     name: str
     premises: List[str]  # 前提模式(正则)
     conclusion_template: str  # 结论模板
@@ -37,17 +40,29 @@ class RuleReasoner:
     """基于规则的确定性推导引擎 — 零依赖，永远可用"""
 
     _TYPE_TO_RULE = {
-        "numeric_comparison": "R1", "shared_premise": "R2", "missing_reference": "R3",
-        "evidence_gap": "R4", "threshold_alert": "R5", "chain_break": "R6",
-        "modus_ponens_valid": "R7", "modus_ponens_fail": "R7",
-        "transitive_dependency": "R8", "subsumption": "R9",
-        "influence_analysis": "R10", "redundancy_warning": "R11",
-        "coverage": "R12", "disjunctive_syllogism": "R13",
-        "hypothetical_syllogism": "R14", "temporal_sequence": "R15",
-        "consistency_warning": "R16", "structural_hole": "R17",
+        "numeric_comparison": "R1",
+        "shared_premise": "R2",
+        "missing_reference": "R3",
+        "evidence_gap": "R4",
+        "threshold_alert": "R5",
+        "chain_break": "R6",
+        "modus_ponens_valid": "R7",
+        "modus_ponens_fail": "R7",
+        "transitive_dependency": "R8",
+        "subsumption": "R9",
+        "influence_analysis": "R10",
+        "redundancy_warning": "R11",
+        "coverage": "R12",
+        "disjunctive_syllogism": "R13",
+        "hypothetical_syllogism": "R14",
+        "temporal_sequence": "R15",
+        "consistency_warning": "R16",
+        "structural_hole": "R17",
         "constraint_propagation": "R18",
-        "relation_transitive": "R19", "relation_inverse": "R19",
-        "relation_domain": "R19", "relation_range": "R19",
+        "relation_transitive": "R19",
+        "relation_inverse": "R19",
+        "relation_domain": "R19",
+        "relation_range": "R19",
         "shallow_chain": "R6",
     }
 
@@ -61,11 +76,24 @@ class RuleReasoner:
     }
 
     VALUE_UNIT_MAP = {
-        "%": "百分比", "万元": "金额", "亿元": "金额", "美元": "金额",
-        "人": "人数", "家": "数量", "次": "数量", "件": "数量", "台": "数量",
-        "月": "时间", "天": "时间", "小时": "时间",
-        "平方米": "面积", "亩": "面积", "公顷": "面积",
-        "万辆": "数量", "万单": "数量", "万台": "数量",
+        "%": "百分比",
+        "万元": "金额",
+        "亿元": "金额",
+        "美元": "金额",
+        "人": "人数",
+        "家": "数量",
+        "次": "数量",
+        "件": "数量",
+        "台": "数量",
+        "月": "时间",
+        "天": "时间",
+        "小时": "时间",
+        "平方米": "面积",
+        "亩": "面积",
+        "公顷": "面积",
+        "万辆": "数量",
+        "万单": "数量",
+        "万台": "数量",
     }
 
     def __init__(self, loaded_rules: list = None):
@@ -88,8 +116,8 @@ class RuleReasoner:
 
     def _char_overlap(self, label_a, label_b):
         """检测两个标签的共同CJK字符数 ≥ 阈值"""
-        chars_a = {c for c in label_a if '一' <= c <= '鿿' and c not in self._STOP_CHARS}
-        chars_b = {c for c in label_b if '一' <= c <= '鿿' and c not in self._STOP_CHARS}
+        chars_a = {c for c in label_a if "一" <= c <= "鿿" and c not in self._STOP_CHARS}
+        chars_b = {c for c in label_b if "一" <= c <= "鿿" and c not in self._STOP_CHARS}
         return len(chars_a & chars_b) >= 2
 
     def _comparable(self, label_a, label_b, val_a=None, val_b=None):
@@ -155,8 +183,7 @@ class RuleReasoner:
             ),
         ]
 
-    def derive(self, facts: Dict[str, dict], inferences: Dict[str, dict],
-               relations: List[dict] = None) -> List[dict]:
+    def derive(self, facts: Dict[str, dict], inferences: Dict[str, dict], relations: List[dict] = None) -> List[dict]:
         """
         基于规则库做确定性推导。
         facts: {id: {desc, value, ...}}   inferences: {title: {text, derives_from, ...}}
@@ -260,17 +287,24 @@ class RuleReasoner:
                     a_text = a_info.get("text", "")
                     b_text = b_info.get("text", "")
                     # 检测排中结构: "应A" vs "应B" 且 A和B可能是互斥选项
-                    dichotomy_pairs = [("研发", "营销"), ("增加", "控制"), ("优先", "推迟"),
-                                       ("内部", "外部"), ("自建", "采购")]
+                    dichotomy_pairs = [
+                        ("研发", "营销"),
+                        ("增加", "控制"),
+                        ("优先", "推迟"),
+                        ("内部", "外部"),
+                        ("自建", "采购"),
+                    ]
                     for w1, w2 in dichotomy_pairs:
                         if (w1 in a_text and w2 in b_text) or (w2 in a_text and w1 in b_text):
-                            results.append({
-                                "type": "disjunctive_syllogism",
-                                "conclusion": f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), 需明确优先级",
-                                "derived_from": list(shared),
-                                "confidence": 0.70,
-                                "method": "rule_engine",
-                            })
+                            results.append(
+                                {
+                                    "type": "disjunctive_syllogism",
+                                    "conclusion": f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), 需明确优先级",
+                                    "derived_from": list(shared),
+                                    "confidence": 0.70,
+                                    "method": "rule_engine",
+                                }
+                            )
                             break
         return results
 
@@ -284,13 +318,15 @@ class RuleReasoner:
             chain = self._find_chain(title, inferences, set())
             if len(chain) >= 3:
                 decay = 0.9 ** (len(chain) - 1)
-                results.append({
-                    "type": "hypothetical_syllogism",
-                    "conclusion": f"推导链:{'→'.join(chain[:5])}, 衰减系数={decay:.2f}({len(chain)}层)",
-                    "derived_from": chain,
-                    "confidence": 0.80,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "hypothetical_syllogism",
+                        "conclusion": f"推导链:{'→'.join(chain[:5])}, 衰减系数={decay:.2f}({len(chain)}层)",
+                        "derived_from": chain,
+                        "confidence": 0.80,
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     def _find_chain(self, node, inferences, visited):
@@ -312,20 +348,22 @@ class RuleReasoner:
         results = []
         dated = []
         for fid, info in facts.items():
-            text = f"{info.get('desc','')} {info.get('value','')}"
+            text = f"{info.get('desc', '')} {info.get('value', '')}"
             # 检测年份/季度
-            years = re.findall(r'(20\d{2})', text)
+            years = re.findall(r"(20\d{2})", text)
             if years:
                 dated.append((fid, info, years))
         if len(dated) >= 2:
             dated.sort(key=lambda x: x[2][0])
-            results.append({
-                "type": "temporal_sequence",
-                "conclusion": f"检测到{len(dated)}个带时间戳的事实, 时间跨度{dated[0][2][0]}-{dated[-1][2][0]}",
-                "derived_from": [d[0] for d in dated],
-                "confidence": 0.85,
-                "method": "rule_engine",
-            })
+            results.append(
+                {
+                    "type": "temporal_sequence",
+                    "conclusion": f"检测到{len(dated)}个带时间戳的事实, 时间跨度{dated[0][2][0]}-{dated[-1][2][0]}",
+                    "derived_from": [d[0] for d in dated],
+                    "confidence": 0.85,
+                    "method": "rule_engine",
+                }
+            )
         return results
 
     # ═══ R16: 一致性分析 (Consistency Analysis) ═══
@@ -339,7 +377,7 @@ class RuleReasoner:
         # 计算平均置信度
         confs = []
         for info in inferences.values():
-            m = re.search(r'confidence:\s*(\w+)', info.get("text", ""))
+            m = re.search(r"confidence:\s*(\w+)", info.get("text", ""))
             if m:
                 conf_map = {"high": 0.92, "inference": 0.85, "medium": 0.70}
                 confs.append(conf_map.get(m.group(1), 0.85))
@@ -348,25 +386,29 @@ class RuleReasoner:
             high_conf_count = sum(1 for c in confs if c >= 0.85)
             # 如果所有推论都标high但推导链深度只有1 → 不一致
             if high_conf_count == len(confs) and n_inf >= 3:
-                results.append({
-                    "type": "consistency_warning",
-                    "conclusion": f"所有{len(confs)}个推论置信度过高(均≥0.85)但推导链深度不足, 可能存在过度自信",
-                    "derived_from": [],
-                    "confidence": 0.70,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "consistency_warning",
+                        "conclusion": f"所有{len(confs)}个推论置信度过高(均≥0.85)但推导链深度不足, 可能存在过度自信",
+                        "derived_from": [],
+                        "confidence": 0.70,
+                        "method": "rule_engine",
+                    }
+                )
 
         # 事实数:推偶数比例
         if n_facts > 0 and n_inf > 0:
             ratio = n_inf / n_facts
             if ratio > 3:
-                results.append({
-                    "type": "consistency_warning",
-                    "conclusion": f"推偶数/事实数={ratio:.1f}, 可能过度推导(建议<3)",
-                    "derived_from": [],
-                    "confidence": 0.60,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "consistency_warning",
+                        "conclusion": f"推偶数/事实数={ratio:.1f}, 可能过度推导(建议<3)",
+                        "derived_from": [],
+                        "confidence": 0.60,
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     # ═══ R17: 结构洞检测 (Structural Holes) ═══
@@ -388,24 +430,31 @@ class RuleReasoner:
         for node in inferences:
             neighbors = len(graph.get(node, set()))
             if neighbors >= 3:
-                results.append({
-                    "type": "structural_hole",
-                    "conclusion": f"节点'{node[:30]}'连接{neighbors}个其他节点, 是潜在结构洞/瓶颈",
-                    "derived_from": list(graph.get(node, set()))[:5],
-                    "confidence": 0.65,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "structural_hole",
+                        "conclusion": f"节点'{node[:30]}'连接{neighbors}个其他节点, 是潜在结构洞/瓶颈",
+                        "derived_from": list(graph.get(node, set()))[:5],
+                        "confidence": 0.65,
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     # ═══ R19: 关系推理 (Relation Reasoning) ═══
 
     # 逆关系映射
     _INVERSE_RELATIONS = {
-        "employs": "employed_by", "part_of": "contains",
-        "contains": "part_of", "cooperates_with": "cooperates_with",
-        "competes_with": "competes_with", "depends_on": "depended_on_by",
-        "authored_by": "authors", "precedes": "follows",
-        "belongs_to": "contains", "influences": "influenced_by",
+        "employs": "employed_by",
+        "part_of": "contains",
+        "contains": "part_of",
+        "cooperates_with": "cooperates_with",
+        "competes_with": "competes_with",
+        "depends_on": "depended_on_by",
+        "authored_by": "authors",
+        "precedes": "follows",
+        "belongs_to": "contains",
+        "influences": "influenced_by",
     }
 
     def _relation_reasoning(self, relations):
@@ -430,27 +479,31 @@ class RuleReasoner:
                     for r2, p in rel_graph[o]:
                         if r2 == r and s != p and (s, p) not in seen_pairs:
                             seen_pairs.add((s, p))
-                            results.append({
-                                "type": "relation_transitive",
-                                "conclusion": f"关系传递: {s}→{r}→{o}→{r2}→{p} ∴ {s} {r} {p}",
-                                "derived_from": [s, o, p],
-                                "confidence": 0.80,
-                                "method": "rule_engine",
-                            })
+                            results.append(
+                                {
+                                    "type": "relation_transitive",
+                                    "conclusion": f"关系传递: {s}→{r}→{o}→{r2}→{p} ∴ {s} {r} {p}",
+                                    "derived_from": [s, o, p],
+                                    "confidence": 0.80,
+                                    "method": "rule_engine",
+                                }
+                            )
 
         # 2. 逆关系检测
         for rel in relations:
             r_type = rel.get("relation_type", "")
             inverse = self._INVERSE_RELATIONS.get(r_type)
             if inverse:
-                results.append({
-                    "type": "relation_inverse",
-                    "conclusion": f"逆关系: {rel.get('subject')}→{r_type}→{rel.get('object')} ⇒ "
-                                 f"{rel.get('object')}→{inverse}→{rel.get('subject')}",
-                    "derived_from": [rel.get("subject", ""), rel.get("object", "")],
-                    "confidence": 0.90,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "relation_inverse",
+                        "conclusion": f"逆关系: {rel.get('subject')}→{r_type}→{rel.get('object')} ⇒ "
+                        f"{rel.get('object')}→{inverse}→{rel.get('subject')}",
+                        "derived_from": [rel.get("subject", ""), rel.get("object", "")],
+                        "confidence": 0.90,
+                        "method": "rule_engine",
+                    }
+                )
 
         # 3. 域约束检测: employs的domain应为ORG, range应为ROL
         domain_rules = {
@@ -464,21 +517,25 @@ class RuleReasoner:
                 subj_prefix = rel.get("subject", "").split("-")[0] if "-" in rel.get("subject", "") else ""
                 obj_prefix = rel.get("object", "").split("-")[0] if "-" in rel.get("object", "") else ""
                 if subj_prefix and subj_prefix not in exp_dom:
-                    results.append({
-                        "type": "relation_domain",
-                        "conclusion": f"域约束: {r_type}的domain应为{exp_dom}, 但subject'{rel.get('subject')}'前缀为'{subj_prefix}'",
-                        "derived_from": [rel.get("subject", "")],
-                        "confidence": 0.70,
-                        "method": "rule_engine",
-                    })
+                    results.append(
+                        {
+                            "type": "relation_domain",
+                            "conclusion": f"域约束: {r_type}的domain应为{exp_dom}, 但subject'{rel.get('subject')}'前缀为'{subj_prefix}'",
+                            "derived_from": [rel.get("subject", "")],
+                            "confidence": 0.70,
+                            "method": "rule_engine",
+                        }
+                    )
                 if obj_prefix and obj_prefix not in exp_rng:
-                    results.append({
-                        "type": "relation_range",
-                        "conclusion": f"域约束: {r_type}的range应为{exp_rng}, 但object'{rel.get('object')}'前缀为'{obj_prefix}'",
-                        "derived_from": [rel.get("object", "")],
-                        "confidence": 0.70,
-                        "method": "rule_engine",
-                    })
+                    results.append(
+                        {
+                            "type": "relation_range",
+                            "conclusion": f"域约束: {r_type}的range应为{exp_rng}, 但object'{rel.get('object')}'前缀为'{obj_prefix}'",
+                            "derived_from": [rel.get("object", "")],
+                            "confidence": 0.70,
+                            "method": "rule_engine",
+                        }
+                    )
 
         return results
 
@@ -491,7 +548,7 @@ class RuleReasoner:
         total_assertions = 0
         for info in inferences.values():
             text = info.get("text", "")
-            assertions = re.findall(r'[^。\n]*?(?:应该|必须|需要)[^。]*?[。]', text)
+            assertions = re.findall(r"[^。\n]*?(?:应该|必须|需要)[^。]*?[。]", text)
             total_assertions += len([a for a in assertions if len(a) >= 15])
 
         if total_assertions > 0:
@@ -499,18 +556,20 @@ class RuleReasoner:
             traced = 0
             for info in inferences.values():
                 text = info.get("text", "")
-                for a in re.findall(r'[^。\n]*?(?:应该|必须|需要)[^。]*?[。]', text):
-                    if re.search(r'D-F\d+|P-F\d+', a):
+                for a in re.findall(r"[^。\n]*?(?:应该|必须|需要)[^。]*?[。]", text):
+                    if re.search(r"D-F\d+|P-F\d+", a):
                         traced += 1
             rate = traced / total_assertions if total_assertions > 0 else 1
             if rate < 0.5:
-                results.append({
-                    "type": "constraint_violation",
-                    "conclusion": f"断言追溯率{rate:.0%}低于50%阈值(C-05), 建议为{total_assertions-traced}个断言标注事实引用",
-                    "derived_from": [],
-                    "confidence": 0.90,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "constraint_violation",
+                        "conclusion": f"断言追溯率{rate:.0%}低于50%阈值(C-05), 建议为{total_assertions - traced}个断言标注事实引用",
+                        "derived_from": [],
+                        "confidence": 0.90,
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     # ═══ R7: 假言推理 (Modus Ponens/Tollens) ═══
@@ -523,21 +582,25 @@ class RuleReasoner:
             satisfied = [p for p in premises if p in facts or p in inferences]
             if len(satisfied) < len(premises):
                 missing = [p for p in premises if p not in satisfied]
-                results.append({
-                    "type": "modus_ponens_fail",
-                    "conclusion": f"推论'{title[:30]}'的前提{missing}不成立, 推论有效性存疑",
-                    "derived_from": premises,
-                    "confidence": 0.85,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "modus_ponens_fail",
+                        "conclusion": f"推论'{title[:30]}'的前提{missing}不成立, 推论有效性存疑",
+                        "derived_from": premises,
+                        "confidence": 0.85,
+                        "method": "rule_engine",
+                    }
+                )
             elif len(satisfied) >= len(premises) >= 2:
-                results.append({
-                    "type": "modus_ponens_valid",
-                    "conclusion": f"推论'{title[:30]}'的{len(premises)}个前提全部成立, 推论有效",
-                    "derived_from": premises,
-                    "confidence": 0.90,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "modus_ponens_valid",
+                        "conclusion": f"推论'{title[:30]}'的{len(premises)}个前提全部成立, 推论有效",
+                        "derived_from": premises,
+                        "confidence": 0.90,
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     # ═══ R8: 传递推理 (Transitive Closure) ═══
@@ -557,13 +620,15 @@ class RuleReasoner:
                             indirect_deps.add(grandparent)
                             queue.append(grandparent)
             if indirect_deps:
-                results.append({
-                    "type": "transitive_dependency",
-                    "conclusion": f"推论'{title[:30]}'间接依赖{len(indirect_deps)}个前提: {list(indirect_deps)[:5]}",
-                    "derived_from": list(indirect_deps),
-                    "confidence": 0.75,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "transitive_dependency",
+                        "conclusion": f"推论'{title[:30]}'间接依赖{len(indirect_deps)}个前提: {list(indirect_deps)[:5]}",
+                        "derived_from": list(indirect_deps),
+                        "confidence": 0.75,
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     # ═══ R9: 包含推理 (Ontology Subsumption) ═══
@@ -578,13 +643,24 @@ class RuleReasoner:
 
     # ID前缀模式 → 元类型 (用于正确的ID归类)
     _ID_PREFIX_MAP = {
-        "ORG-": "DOMAIN", "ROL-": "DOMAIN", "PRJ-": "DOMAIN", "RES-": "DOMAIN",
-        "D-F": "FACT", "P-F": "FACT",
-        "INF-": "INFERENCE", "INF-V2-": "INFERENCE",
-        "DOC-": "DOCUMENT", "CH-": "DOCUMENT", "SEC-": "DOCUMENT",
-        "DCH-": "DOCUMENT", "STD-": "DOCUMENT",
-        "CON-": "CONSTRAINT", "IP": "CONSTRAINT",
-        "T": "STATE", "F": "STATE", "H": "STATE",
+        "ORG-": "DOMAIN",
+        "ROL-": "DOMAIN",
+        "PRJ-": "DOMAIN",
+        "RES-": "DOMAIN",
+        "D-F": "FACT",
+        "P-F": "FACT",
+        "INF-": "INFERENCE",
+        "INF-V2-": "INFERENCE",
+        "DOC-": "DOCUMENT",
+        "CH-": "DOCUMENT",
+        "SEC-": "DOCUMENT",
+        "DCH-": "DOCUMENT",
+        "STD-": "DOCUMENT",
+        "CON-": "CONSTRAINT",
+        "IP": "CONSTRAINT",
+        "T": "STATE",
+        "F": "STATE",
+        "H": "STATE",
     }
 
     _PREFIX_TO_PARENT = {}
@@ -626,37 +702,43 @@ class RuleReasoner:
             return results
 
         # 输出1: 归类统计
-        results.append({
-            "type": "subsumption",
-            "conclusion": f"本体归类: {correct}/{n_total}个ID正确({correct*100//n_total}%)",
-            "derived_from": [],
-            "confidence": 0.85,
-            "method": "rule_engine",
-        })
+        results.append(
+            {
+                "type": "subsumption",
+                "conclusion": f"本体归类: {correct}/{n_total}个ID正确({correct * 100 // n_total}%)",
+                "derived_from": [],
+                "confidence": 0.85,
+                "method": "rule_engine",
+            }
+        )
 
         # 输出2: 未知前缀 → 新类型建议
         for prefix, count in sorted(unknown_prefixes.items(), key=lambda x: -x[1]):
             if count >= 2:  # 至少出现2次才建议
                 # 猜测最可能的父类型
                 guess = self._guess_parent(prefix, type_map)
-                results.append({
-                    "type": "subsumption",
-                    "conclusion": f"新类型建议: '{prefix}'出现{count}次, 建议归入{guess}类型",
-                    "derived_from": [k for k, v in type_map.items() if v == prefix],
-                    "confidence": 0.55,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "subsumption",
+                        "conclusion": f"新类型建议: '{prefix}'出现{count}次, 建议归入{guess}类型",
+                        "derived_from": [k for k, v in type_map.items() if v == prefix],
+                        "confidence": 0.55,
+                        "method": "rule_engine",
+                    }
+                )
             elif count == 1:
                 # 孤立未知前缀 → 可能是拼写错误
                 example_id = next(k for k, v in type_map.items() if v == prefix)
                 closest = self._closest_known(prefix)
-                results.append({
-                    "type": "subsumption",
-                    "conclusion": f"孤立前缀: '{prefix}'(仅{example_id})可能是'{closest}'的拼写错误",
-                    "derived_from": [example_id],
-                    "confidence": 0.40,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "subsumption",
+                        "conclusion": f"孤立前缀: '{prefix}'(仅{example_id})可能是'{closest}'的拼写错误",
+                        "derived_from": [example_id],
+                        "confidence": 0.40,
+                        "method": "rule_engine",
+                    }
+                )
 
         return results
 
@@ -698,13 +780,15 @@ class RuleReasoner:
         if influence:
             top = sorted(influence.items(), key=lambda x: -x[1])[:3]
             top_str = "; ".join(f"{k}(被{count}个推论引用)" for k, count in top)
-            results.append({
-                "type": "influence_analysis",
-                "conclusion": f"最具影响力的前提: {top_str}",
-                "derived_from": [k for k, _ in top],
-                "confidence": 0.80,
-                "method": "rule_engine",
-            })
+            results.append(
+                {
+                    "type": "influence_analysis",
+                    "conclusion": f"最具影响力的前提: {top_str}",
+                    "derived_from": [k for k, _ in top],
+                    "confidence": 0.80,
+                    "method": "rule_engine",
+                }
+            )
         return results
 
     # ═══ R11: 冗余检测 (Redundancy Check) ═══
@@ -719,13 +803,15 @@ class RuleReasoner:
                 b_id, b_info = inf_list[j]
                 shared = set(a_info.get("derives_from", [])) & set(b_info.get("derives_from", []))
                 if len(shared) >= 3:
-                    results.append({
-                        "type": "redundancy_warning",
-                        "conclusion": f"'{a_id[:25]}'和'{b_id[:25]}'共享{len(shared)}个前提, 可能冗余",
-                        "derived_from": list(shared),
-                        "confidence": 0.65,
-                        "method": "rule_engine",
-                    })
+                    results.append(
+                        {
+                            "type": "redundancy_warning",
+                            "conclusion": f"'{a_id[:25]}'和'{b_id[:25]}'共享{len(shared)}个前提, 可能冗余",
+                            "derived_from": list(shared),
+                            "confidence": 0.65,
+                            "method": "rule_engine",
+                        }
+                    )
         return results
 
     # ═══ R12: 覆盖度分析 (Coverage Analysis) ═══
@@ -742,13 +828,15 @@ class RuleReasoner:
         cited_facts = fact_ids & cited
         uncited = fact_ids - cited
         rate = len(cited_facts) / len(fact_ids) * 100 if fact_ids else 100
-        results.append({
-            "type": "coverage",
-            "conclusion": f"事实覆盖率{rate:.0f}%({len(cited_facts)}/{len(fact_ids)}), 未引用: {list(uncited)[:5]}",
-            "derived_from": list(uncited),
-            "confidence": 0.95,
-            "method": "rule_engine",
-        })
+        results.append(
+            {
+                "type": "coverage",
+                "conclusion": f"事实覆盖率{rate:.0f}%({len(cited_facts)}/{len(fact_ids)}), 未引用: {list(uncited)[:5]}",
+                "derived_from": list(uncited),
+                "confidence": 0.95,
+                "method": "rule_engine",
+            }
+        )
         return results
 
     def _numeric_derive(self, facts):
@@ -756,7 +844,7 @@ class RuleReasoner:
         results = []
         numeric = {}
         for fid, info in facts.items():
-            m = re.search(r'(\d+\.?\d*)', str(info.get("value", "")))
+            m = re.search(r"(\d+\.?\d*)", str(info.get("value", "")))
             if m:
                 numeric[fid] = {"label": info.get("desc", fid)[:30], "value": float(m.group(1))}
 
@@ -769,13 +857,15 @@ class RuleReasoner:
                 if not self._comparable(a["label"], b["label"], a["value"], b["value"]):
                     continue
                 if b["value"] > 0 and a["value"] > b["value"] * 1.5:  # 显著差异
-                    results.append({
-                        "type": "numeric_comparison",
-                        "conclusion": f"{a['label']}({a['value']})是{b['label']}({b['value']})的{a['value']/b['value']:.1f}倍",
-                        "derived_from": [ids[i], ids[j]],
-                        "confidence": 0.95,
-                        "method": "rule_engine",
-                    })
+                    results.append(
+                        {
+                            "type": "numeric_comparison",
+                            "conclusion": f"{a['label']}({a['value']})是{b['label']}({b['value']})的{a['value'] / b['value']:.1f}倍",
+                            "derived_from": [ids[i], ids[j]],
+                            "confidence": 0.95,
+                            "method": "rule_engine",
+                        }
+                    )
         return results
 
     def _shared_premise_check(self, inferences):
@@ -788,13 +878,15 @@ class RuleReasoner:
                 b_id, b_info = inf_list[j]
                 shared = set(a_info.get("derives_from", [])) & set(b_info.get("derives_from", []))
                 if len(shared) >= 2:
-                    results.append({
-                        "type": "shared_premise",
-                        "conclusion": f"推论'{a_id[:30]}'和'{b_id[:30]}'共享{len(shared)}个前提({list(shared)[:3]})",
-                        "derived_from": list(shared),
-                        "confidence": 0.75,
-                        "method": "rule_engine",
-                    })
+                    results.append(
+                        {
+                            "type": "shared_premise",
+                            "conclusion": f"推论'{a_id[:30]}'和'{b_id[:30]}'共享{len(shared)}个前提({list(shared)[:3]})",
+                            "derived_from": list(shared),
+                            "confidence": 0.75,
+                            "method": "rule_engine",
+                        }
+                    )
         return results
 
     def _missing_ref_check(self, inferences, all_ids):
@@ -803,13 +895,15 @@ class RuleReasoner:
         for title, info in inferences.items():
             for ref in info.get("derives_from", []):
                 if ref not in all_ids:
-                    results.append({
-                        "type": "missing_reference",
-                        "conclusion": f"推论'{title[:30]}'引用了未定义的'{ref}'",
-                        "derived_from": [ref],
-                        "confidence": 0.99,
-                        "method": "rule_engine",
-                    })
+                    results.append(
+                        {
+                            "type": "missing_reference",
+                            "conclusion": f"推论'{title[:30]}'引用了未定义的'{ref}'",
+                            "derived_from": [ref],
+                            "confidence": 0.99,
+                            "method": "rule_engine",
+                        }
+                    )
         return results
 
     def _evidence_gap_check(self, inferences):
@@ -818,38 +912,45 @@ class RuleReasoner:
         for title, info in inferences.items():
             n = len(info.get("derives_from", []))
             if 0 < n < 2:
-                results.append({
-                    "type": "evidence_gap",
-                    "conclusion": f"推论'{title[:30]}'仅{n}个前提，建议增加到2+",
-                    "derived_from": info.get("derives_from", []),
-                    "confidence": 0.80,
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "evidence_gap",
+                        "conclusion": f"推论'{title[:30]}'仅{n}个前提，建议增加到2+",
+                        "derived_from": info.get("derives_from", []),
+                        "confidence": 0.80,
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     def _threshold_check(self, facts, thresholds=None):
         """R5: 阈值触发 — 预设基准检查"""
         if thresholds is None:
             thresholds = {
-                "转化率": 10.0, "成功率": 80.0, "覆盖率": 60.0,
-                "满意度": 70.0, "测试覆盖率": 60.0,
+                "转化率": 10.0,
+                "成功率": 80.0,
+                "覆盖率": 60.0,
+                "满意度": 70.0,
+                "测试覆盖率": 60.0,
             }
         results = []
         for fid, info in facts.items():
             desc = info.get("desc", "")
             for metric, threshold in thresholds.items():
                 if metric in desc:
-                    m = re.search(r'(\d+\.?\d*)', str(info.get("value", "")))
+                    m = re.search(r"(\d+\.?\d*)", str(info.get("value", "")))
                     if m:
                         val = float(m.group(1))
                         if val < threshold:
-                            results.append({
-                                "type": "threshold_alert",
-                                "conclusion": f"{desc}({val})低于基准{threshold}",
-                                "derived_from": [fid],
-                                "confidence": 0.90,
-                                "method": "rule_engine",
-                            })
+                            results.append(
+                                {
+                                    "type": "threshold_alert",
+                                    "conclusion": f"{desc}({val})低于基准{threshold}",
+                                    "derived_from": [fid],
+                                    "confidence": 0.90,
+                                    "method": "rule_engine",
+                                }
+                            )
         return results
 
     def _chain_integrity_check(self, inferences):
@@ -859,26 +960,30 @@ class RuleReasoner:
         for title, info in inferences.items():
             for ref in info.get("derives_from", []):
                 if ref.startswith("INF") and ref not in inf_ids:
-                    results.append({
-                        "type": "chain_break",
-                        "conclusion": f"推导链断裂: '{title[:30]}'引用了未定义的'{ref}'",
-                        "derived_from": [ref],
-                        "confidence": 0.99,
-                        "method": "rule_engine",
-                    })
+                    results.append(
+                        {
+                            "type": "chain_break",
+                            "conclusion": f"推导链断裂: '{title[:30]}'引用了未定义的'{ref}'",
+                            "derived_from": [ref],
+                            "confidence": 0.99,
+                            "method": "rule_engine",
+                        }
+                    )
         # 检测推导深度
         depths = {}
         for title in inferences:
             self._calc_depth(title, inferences, depths, set())
         max_depth = max(depths.values()) if depths else 0
         if max_depth <= 1 and len(inferences) >= 3:
-            results.append({
-                "type": "shallow_chain",
-                "conclusion": f"推导链深度仅{max_depth}，{len(inferences)}个推论间缺少递进关系",
-                "derived_from": [],
-                "confidence": 0.70,
-                "method": "rule_engine",
-            })
+            results.append(
+                {
+                    "type": "shallow_chain",
+                    "conclusion": f"推导链深度仅{max_depth}，{len(inferences)}个推论间缺少递进关系",
+                    "derived_from": [],
+                    "confidence": 0.70,
+                    "method": "rule_engine",
+                }
+            )
         return results
 
     def _calc_depth(self, node, inferences, depths, visited):
@@ -912,13 +1017,15 @@ class RuleReasoner:
             case_profile = self._project_profile(case)
             similarity = self._cosine_similarity(current_profile, case_profile)
             if similarity > 0.3:
-                results.append({
-                    "type": "case_match",
-                    "conclusion": f"案例'{case.get('name','未命名')}'与当前项目相似度{similarity:.0%}, 参考结果: {case.get('outcome','')[:80]}",
-                    "derived_from": [],
-                    "confidence": round(similarity, 2),
-                    "method": "rule_engine",
-                })
+                results.append(
+                    {
+                        "type": "case_match",
+                        "conclusion": f"案例'{case.get('name', '未命名')}'与当前项目相似度{similarity:.0%}, 参考结果: {case.get('outcome', '')[:80]}",
+                        "derived_from": [],
+                        "confidence": round(similarity, 2),
+                        "method": "rule_engine",
+                    }
+                )
         return results
 
     def _project_profile(self, project):
@@ -928,14 +1035,16 @@ class RuleReasoner:
         n_f = len(facts)
         n_i = len(infs)
         avg_df = sum(len(i.get("derives_from", [])) for i in infs.values()) / max(n_i, 1)
-        num_ratio = sum(1 for f in facts.values() for v in [str(f.get("value", ""))] if re.search(r'\d', v)) / max(n_f, 1)
+        num_ratio = sum(1 for f in facts.values() for v in [str(f.get("value", ""))] if re.search(r"\d", v)) / max(
+            n_f, 1
+        )
         pol_ratio = sum(1 for f in facts.values() if "政策" in str(f.get("desc", ""))) / max(n_f, 1)
-        return [n_f/20, n_i/10, avg_df/5, num_ratio, pol_ratio]
+        return [n_f / 20, n_i / 10, avg_df / 5, num_ratio, pol_ratio]
 
     def _cosine_similarity(self, a, b):
-        dot = sum(x*y for x, y in zip(a, b))
-        norm_a = (sum(x*x for x in a) or 1) ** 0.5
-        norm_b = (sum(x*x for x in b) or 1) ** 0.5
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = (sum(x * x for x in a) or 1) ** 0.5
+        norm_b = (sum(x * x for x in b) or 1) ** 0.5
         return dot / (norm_a * norm_b)
 
     # ═══ R20: 依赖图增量重算 (Incremental Dependency Graph) ═══
@@ -965,13 +1074,15 @@ class RuleReasoner:
                     if title in i2.get("derives_from", []):
                         affected.add(t2)
 
-        results.append({
-            "type": "incremental_recalc",
-            "conclusion": f"{len(changed)}个事实变更 → {len(affected)}个推论需重新评估: {list(affected)[:3]}",
-            "derived_from": list(changed),
-            "confidence": 0.95,
-            "method": "rule_engine",
-        })
+        results.append(
+            {
+                "type": "incremental_recalc",
+                "conclusion": f"{len(changed)}个事实变更 → {len(affected)}个推论需重新评估: {list(affected)[:3]}",
+                "derived_from": list(changed),
+                "confidence": 0.95,
+                "method": "rule_engine",
+            }
+        )
         return results
 
     # ═══ R21: Allen区间时态推理 (简化版) ═══
@@ -984,9 +1095,9 @@ class RuleReasoner:
         results = []
         dated = []
         for fid, info in facts.items():
-            text = f"{info.get('desc','')} {info.get('value','')}"
-            years = re.findall(r'(20\d{2})', text)
-            months = re.findall(r'(20\d{2}-\d{2})', text)
+            text = f"{info.get('desc', '')} {info.get('value', '')}"
+            years = re.findall(r"(20\d{2})", text)
+            months = re.findall(r"(20\d{2}-\d{2})", text)
             if months:
                 dated.append((fid, months[0], info))
             elif years:
@@ -999,13 +1110,15 @@ class RuleReasoner:
         newest = dated[-1]
         oldest = dated[0]
 
-        results.append({
-            "type": "temporal_sequence",
-            "conclusion": f"时间跨度: {oldest[1]}-{newest[1]}, {len(dated)}个带时态的事实",
-            "derived_from": [d[0] for d in dated],
-            "confidence": 0.85,
-            "method": "rule_engine",
-        })
+        results.append(
+            {
+                "type": "temporal_sequence",
+                "conclusion": f"时间跨度: {oldest[1]}-{newest[1]}, {len(dated)}个带时态的事实",
+                "derived_from": [d[0] for d in dated],
+                "confidence": 0.85,
+                "method": "rule_engine",
+            }
+        )
 
         # 检测"过时事实": 推论基于旧事实, 存在更新的事实
         for i in range(len(dated) - 1):

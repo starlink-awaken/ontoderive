@@ -10,26 +10,28 @@ OntoDerive 提示词系统 v1 — 一等公民的提示词工程
 
 长远看: 提示词是OntoDerive的"推理引擎"。优质提示词 > 优质模型。
 """
+
 import json
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import Dict, List
 
 
 @dataclass
 class PromptTemplate:
     """一等公民的提示词模板"""
-    name: str                    # 唯一标识
-    version: str                 # 语义版本
-    purpose: str                 # 这个提示词解决什么问题
-    domain: str                  # academic | business | policy | tech | general
-    system_prompt: str           # 系统提示
-    user_prompt_template: str    # 用户提示模板（{var}占位）
-    variables: List[str]         # 需要的输入变量
-    output_format: str           # json | markdown | text | list
-    temperature: float           # 0.0(确定性) ~ 1.0(创造性)
-    max_tokens: int              # 输出上限
-    chain_of_thought: bool       # 是否要求推理链
-    fallback: str                # LLM不可用时的回退策略
+
+    name: str  # 唯一标识
+    version: str  # 语义版本
+    purpose: str  # 这个提示词解决什么问题
+    domain: str  # academic | business | policy | tech | general
+    system_prompt: str  # 系统提示
+    user_prompt_template: str  # 用户提示模板（{var}占位）
+    variables: List[str]  # 需要的输入变量
+    output_format: str  # json | markdown | text | list
+    temperature: float  # 0.0(确定性) ~ 1.0(创造性)
+    max_tokens: int  # 输出上限
+    chain_of_thought: bool  # 是否要求推理链
+    fallback: str  # LLM不可用时的回退策略
     examples: List[Dict] = field(default_factory=list)  # few-shot示例
 
     def render(self, **kwargs) -> str:

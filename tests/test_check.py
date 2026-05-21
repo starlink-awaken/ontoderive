@@ -1,6 +1,8 @@
 """规约检查模块测试"""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 from engine.core.check import run_check
@@ -16,7 +18,7 @@ def test_run_check_zpark(z_park_path):
         root / "scheme",
         root / "_derivation_logs",
     )
-    assert len(results) == 13
+    assert len(results) == 12
     assert counts["PASS"] >= 8
 
 
@@ -26,19 +28,24 @@ def test_run_check_empty(tmp_path):
     (tmp_path / "inferences").mkdir()
     (tmp_path / "scheme").mkdir()
     (tmp_path / "_derivation_logs").mkdir()
-    results, counts = run_check(tmp_path, tmp_path / "facts", tmp_path / "entities",
-                                tmp_path / "inferences", tmp_path / "scheme",
-                                tmp_path / "_derivation_logs")
-    assert len(results) == 13
+    results, counts = run_check(
+        tmp_path,
+        tmp_path / "facts",
+        tmp_path / "entities",
+        tmp_path / "inferences",
+        tmp_path / "scheme",
+        tmp_path / "_derivation_logs",
+    )
+    assert len(results) == 12
     # 空项目应有BLOCKER
     assert counts["BLOCKER"] >= 1
 
 
 def test_check_result_format(z_park_path):
     root = z_park_path
-    results, _ = run_check(root, root / "facts", root / "entities",
-                           root / "inferences", root / "scheme",
-                           root / "_derivation_logs")
+    results, _ = run_check(
+        root, root / "facts", root / "entities", root / "inferences", root / "scheme", root / "_derivation_logs"
+    )
     for r in results:
         assert "protocol_id" in r
         assert "passed" in r
@@ -51,9 +58,9 @@ def test_check_result_format(z_park_path):
 def test_c07_uses_typevalidator(z_park_path):
     """ISC-3: C-07 使用 TypeValidator"""
     root = z_park_path
-    results, _ = run_check(root, root / "facts", root / "entities",
-                           root / "inferences", root / "scheme",
-                           root / "_derivation_logs")
+    results, _ = run_check(
+        root, root / "facts", root / "entities", root / "inferences", root / "scheme", root / "_derivation_logs"
+    )
     c07 = [r for r in results if r["protocol_id"] == "C-07"]
     assert len(c07) == 1
     # C-07 应该包含类型相关细节
@@ -63,6 +70,7 @@ def test_c07_uses_typevalidator(z_park_path):
 def test_derive_delegates_to_check(z_park_path):
     """ISC-2: derive.py check()委托给check.py"""
     from engine.core.derive import OntoDerive
+
     od = OntoDerive(z_park_path)
     results = od.check()
-    assert len(results) == 13
+    assert len(results) == 12

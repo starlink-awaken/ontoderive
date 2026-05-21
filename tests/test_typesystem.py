@@ -1,9 +1,11 @@
 """类型系统测试"""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-from engine.foundation.typesystem import TypeValidator, META_TYPES, PREFIX_TO_META
+from engine.foundation.typesystem import META_TYPES, PREFIX_TO_META, TypeValidator
 
 
 def test_meta_types_defined():
@@ -82,6 +84,7 @@ def test_summary():
     s = tv.summary()
     assert s["total"] == 2
     assert s["valid"] == 2
+
 
 def test_v2_prefixes():
     tv = TypeValidator()

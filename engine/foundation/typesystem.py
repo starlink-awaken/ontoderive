@@ -6,9 +6,9 @@ OntoDerive 类型系统 — MOF十元类型校验
 - 类型一致性检查：ID前缀与声明类型匹配
 - 元关系域/值域约束
 """
+
 from dataclasses import dataclass, field
 from typing import List, Optional
-
 
 # ── 十元类型定义 ──
 META_TYPES = {
@@ -96,9 +96,7 @@ class TypeValidator:
 
         # 检查声明类型与实际前缀是否一致
         if declared_meta_type and inferred_type and declared_meta_type != inferred_type:
-            result.errors.append(
-                f"'{node_id}': ID前缀推断为'{inferred_type}'但声明为'{declared_meta_type}'"
-            )
+            result.errors.append(f"'{node_id}': ID前缀推断为'{inferred_type}'但声明为'{declared_meta_type}'")
 
         # 检查子类型前缀是否匹配
         if inferred_type:

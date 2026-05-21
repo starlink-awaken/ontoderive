@@ -8,6 +8,7 @@
   推理规则(R1-R19): 回答"推导对不对" — 逻辑一致性
   分析模式(A1-Ax):  回答"这意味着什么" — 领域洞察
 """
+
 import re
 from dataclasses import dataclass
 from typing import Callable
@@ -27,6 +28,7 @@ class AnalyticalPattern:
       4 = 小语言模型 (本地)
       5 = 大语言模型 (云端LLM)
     """
+
     name: str
     description: str
     category: str  # game_theory | economics | supply_chain | organizational | strategic
@@ -156,8 +158,7 @@ class AnalyticsEngine:
             ),
         ]
 
-    def run(self, facts, entities, inferences, relations=None, patterns=None,
-            max_depth: int = 5):
+    def run(self, facts, entities, inferences, relations=None, patterns=None, max_depth: int = 5):
         """运行所有(或指定)分析模式, 返回洞察列表
 
         max_depth: 最大推理深度 (0=仅纯规则, 3=含分类器, 5=含LLM)
@@ -168,7 +169,7 @@ class AnalyticsEngine:
         available_depth = 0
         if self.enhancer and self.enhancer.available:
             available_depth = 5
-        elif hasattr(self, 'matcher') and self.matcher:
+        elif hasattr(self, "matcher") and self.matcher:
             available_depth = 1
         effective_depth = min(max_depth, available_depth)
 
@@ -197,7 +198,7 @@ class AnalyticsEngine:
         for fid, info in _iter_facts(facts):
             desc = info.get("desc", "") + info.get("description", "")
             val = info.get("value", "")
-            if ("利用率" in desc or "产能" in desc):
+            if "利用率" in desc or "产能" in desc:
                 num = _extract_num(val)
                 if num > 90 or (num > 0 and num < 60):
                     return True
@@ -220,23 +221,27 @@ class AnalyticsEngine:
             # 利用率分析 (供给紧张)
             if "利用率" in desc and num > 90 and num <= 100:
                 elasticity = max(0, (100 - num) / num)  # 剩余产能比例
-                results.append({
-                    "type": "analytics",
-                    "conclusion": f"供给弹性≈{elasticity:.2f}: '{desc}'={val}, "
-                                  f"仅余{100-num:.0f}%产能, 需求波动将直接传导为短缺",
-                    "derives_from": [fid],
-                    "confidence": 0.85,
-                })
+                results.append(
+                    {
+                        "type": "analytics",
+                        "conclusion": f"供给弹性≈{elasticity:.2f}: '{desc}'={val}, "
+                        f"仅余{100 - num:.0f}%产能, 需求波动将直接传导为短缺",
+                        "derives_from": [fid],
+                        "confidence": 0.85,
+                    }
+                )
             # 产能过剩检测 (v3.4)
             elif "利用率" in desc and num > 0 and num < 60:
                 excess_pct = 100 - num
-                results.append({
-                    "type": "analytics",
-                    "conclusion": f"产能过剩: '{desc}'={val}, 闲置{excess_pct:.0f}%产能, "
-                                  f"供过于求→价格下行→行业出清压力",
-                    "derives_from": [fid],
-                    "confidence": 0.80,
-                })
+                results.append(
+                    {
+                        "type": "analytics",
+                        "conclusion": f"产能过剩: '{desc}'={val}, 闲置{excess_pct:.0f}%产能, "
+                        f"供过于求→价格下行→行业出清压力",
+                        "derives_from": [fid],
+                        "confidence": 0.80,
+                    }
+                )
             # 库存vs安全基准
             if "库存" in desc:
                 for fid2, info2 in _iter_facts(facts):
@@ -244,13 +249,15 @@ class AnalyticsEngine:
                         safe = _extract_num(info2.get("value", ""))
                         if safe > num:
                             gap_pct = (safe - num) / safe * 100
-                            results.append({
-                                "type": "analytics",
-                                "conclusion": f"库存缺口: '{desc}'={val}低于安全基准{safe}, "
-                                              f"缺口{gap_pct:.0f}%, 补库压力紧迫",
-                                "derives_from": [fid, fid2],
-                                "confidence": 0.90,
-                            })
+                            results.append(
+                                {
+                                    "type": "analytics",
+                                    "conclusion": f"库存缺口: '{desc}'={val}低于安全基准{safe}, "
+                                    f"缺口{gap_pct:.0f}%, 补库压力紧迫",
+                                    "derives_from": [fid, fid2],
+                                    "confidence": 0.90,
+                                }
+                            )
         return results
 
     # ═══ A2: 供应链风险放大 ═══
@@ -259,8 +266,7 @@ class AnalyticsEngine:
         """检测: 存在depends_on链 + 交付/库存异常"""
         has_chain = any(r.get("relation_type") == "depends_on" for r in (relations or []))
         has_issue = any(
-            "交付" in (f.get("desc", "") + f.get("description", ""))
-            and _extract_num(f.get("value", "")) < 80
+            "交付" in (f.get("desc", "") + f.get("description", "")) and _extract_num(f.get("value", "")) < 80
             for _, f in _iter_facts(facts)
         )
         return has_chain and has_issue
@@ -272,7 +278,7 @@ class AnalyticsEngine:
         matcher = SemanticMatcher(descs if descs else ["default"])
         # 构建依赖图
         deps = {}
-        for r in (relations or []):
+        for r in relations or []:
             if r.get("relation_type") == "depends_on":
                 deps.setdefault(r["subject"], []).append((r["object"], 1.0))
         # 查找交付异常
@@ -297,59 +303,62 @@ class AnalyticsEngine:
                     if "库存" in up_desc:
                         stock = _extract_num(info2.get("value", ""))
                         amplification = (100 - delivery) / 100 * ratio
-                        results.append({
-                            "type": "analytics",
-                            "conclusion": f"风险传导: {entity_name}交付{delivery}%→上游{up_name}"
-                                          f"库存{stock}天, 放大系数≈{amplification:.2f}",
-                            "derives_from": [fid, fid2],
-                            "confidence": 0.75,
-                        })
+                        results.append(
+                            {
+                                "type": "analytics",
+                                "conclusion": f"风险传导: {entity_name}交付{delivery}%→上游{up_name}"
+                                f"库存{stock}天, 放大系数≈{amplification:.2f}",
+                                "derives_from": [fid, fid2],
+                                "confidence": 0.75,
+                            }
+                        )
         return results
 
     # ═══ A3: 代理问题 ═══
 
     def _detect_agency_issue(self, facts, entities, relations):
         """检测: X employs Y, 且Y的工作输出实际服务于Z(≠X)"""
-        employs_pairs = [(r["subject"], r["object"])
-                         for r in (relations or [])
-                         if r.get("relation_type") == "employs"]
+        employs_pairs = [(r["subject"], r["object"]) for r in (relations or []) if r.get("relation_type") == "employs"]
         if not employs_pairs:
             return False
         # 检查被雇佣方是否通过其他关系服务于第三方
         for employer, employee in employs_pairs:
-            for r in (relations or []):
-                if r.get("subject") == employee and r.get("relation_type") in (
-                    "cooperates_with", "depends_on", "influences"
-                ) and r.get("object") != employer:
+            for r in relations or []:
+                if (
+                    r.get("subject") == employee
+                    and r.get("relation_type") in ("cooperates_with", "depends_on", "influences")
+                    and r.get("object") != employer
+                ):
                     return True
         return False
 
     def _analyze_agency(self, facts, entities, relations, enhancer):
         results = []
-        employs_pairs = [(r["subject"], r["object"])
-                         for r in (relations or [])
-                         if r.get("relation_type") == "employs"]
+        employs_pairs = [(r["subject"], r["object"]) for r in (relations or []) if r.get("relation_type") == "employs"]
         for employer, employee in employs_pairs:
-            for r in (relations or []):
+            for r in relations or []:
                 if r.get("subject") == employee and r.get("object") != employer:
-                    base = (f"潜在代理问题: {employer} employs {employee}, "
-                            f"但{employee}的'{r['relation_type']}'关系指向{r['object']}")
+                    base = (
+                        f"潜在代理问题: {employer} employs {employee}, "
+                        f"但{employee}的'{r['relation_type']}'关系指向{r['object']}"
+                    )
                     if enhancer and enhancer.available:
                         try:
                             enhanced = enhancer._call(
-                                f"分析以下代理问题的组织影响(一句话): {base}",
-                                "你是组织行为学专家。", 0.3
+                                f"分析以下代理问题的组织影响(一句话): {base}", "你是组织行为学专家。", 0.3
                             )
                             if enhanced:
                                 base += f"。LLM分析: {enhanced.strip()[:200]}"
                         except Exception:
                             pass
-                    results.append({
-                        "type": "analytics",
-                        "conclusion": base,
-                        "derives_from": [employer, employee, r.get("object", "")],
-                        "confidence": 0.70,
-                    })
+                    results.append(
+                        {
+                            "type": "analytics",
+                            "conclusion": base,
+                            "derives_from": [employer, employee, r.get("object", "")],
+                            "confidence": 0.70,
+                        }
+                    )
         return results
 
     # ═══ A4: 激励不相容 ═══
@@ -358,7 +367,7 @@ class AnalyticsEngine:
         """检测: 多实体共享资源(语义关联) + 有不同的事实描述"""
         # 找共享同一目标实体的多个主体
         targets = {}
-        for r in (relations or []):
+        for r in relations or []:
             obj = r.get("object", "")
             targets.setdefault(obj, []).append(r.get("subject", ""))
         shared_resources = [(t, subs) for t, subs in targets.items() if len(subs) >= 2]
@@ -371,7 +380,7 @@ class AnalyticsEngine:
         matcher = SemanticMatcher(fact_desc if fact_desc else ["default"])
 
         targets = {}
-        for r in (relations or []):
+        for r in relations or []:
             obj = r.get("object", "")
             targets.setdefault(obj, []).append(r.get("subject", ""))
 
@@ -393,13 +402,15 @@ class AnalyticsEngine:
                         if matcher.is_semantically_related(" ".join(f1), " ".join(f2), threshold=0.30):
                             continue  # 相似→目标一致
                         # 不相似→潜在激励冲突
-                        results.append({
-                            "type": "analytics",
-                            "conclusion": f"潜在激励冲突: {s1}({', '.join(f1[:2])})与"
-                                          f"{s2}({', '.join(f2[:2])})共享{target}但关注点不同",
-                            "derives_from": subjects + [target],
-                            "confidence": 0.60,
-                        })
+                        results.append(
+                            {
+                                "type": "analytics",
+                                "conclusion": f"潜在激励冲突: {s1}({', '.join(f1[:2])})与"
+                                f"{s2}({', '.join(f2[:2])})共享{target}但关注点不同",
+                                "derives_from": subjects + [target],
+                                "confidence": 0.60,
+                            }
+                        )
         return results
 
     # ═══ A5: 补救规划 ═══
@@ -438,48 +449,73 @@ class AnalyticsEngine:
         remaining_tasks = max(task_count, 1)
         feasibility = remaining_tasks / max(team_size * months, 1)
         status = "不可行⚠️" if feasibility > 1.5 else ("紧张" if feasibility > 1.0 else "可行")
-        results.append({
-            "type": "analytics",
-            "conclusion": f"整改可行性: {remaining_tasks}问题/{team_size}人/{months}月=人均{feasibility:.1f}个/月→{status}"
-                          f"{' 需增加人力或延长时间窗口' if feasibility > 1.0 else ''}",
-            "derives_from": [fid for fid, _ in _iter_facts(facts)
-                             if any(kw in facts.get(fid, {}).get('desc', '') for kw in ('审计', '整改'))][:5],
-            "confidence": 0.85,
-        })
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": f"整改可行性: {remaining_tasks}问题/{team_size}人/{months}月=人均{feasibility:.1f}个/月→{status}"
+                f"{' 需增加人力或延长时间窗口' if feasibility > 1.0 else ''}",
+                "derives_from": [
+                    fid
+                    for fid, _ in _iter_facts(facts)
+                    if any(kw in facts.get(fid, {}).get("desc", "") for kw in ("审计", "整改"))
+                ][:5],
+                "confidence": 0.85,
+            }
+        )
 
         # 严重度分类
         high_risk = sum(1 for p in problems if "高风险" in p or "差距" in p)
         if high_risk > 0:
-            results.append({
-                "type": "analytics",
-                "conclusion": f"短期(0-3月)优先: 解决{high_risk}个高风险项, 防止监管执法触发",
-                "derives_from": [fid for fid in facts],
-                "confidence": 0.80,
-            })
+            results.append(
+                {
+                    "type": "analytics",
+                    "conclusion": f"短期(0-3月)优先: 解决{high_risk}个高风险项, 防止监管执法触发",
+                    "derives_from": [fid for fid in facts],
+                    "confidence": 0.80,
+                }
+            )
 
         if enhancer and enhancer.available:
             try:
                 context = "; ".join(problems[:8])
                 plan = enhancer._call(
-                    f"基于以下问题生成分阶段补救方案(短/中/长期各1-2句话): {context}",
-                    "你是战略规划专家。", 0.4
+                    f"基于以下问题生成分阶段补救方案(短/中/长期各1-2句话): {context}", "你是战略规划专家。", 0.4
                 )
                 if plan:
-                    results.append({
-                        "type": "analytics",
-                        "conclusion": f"分阶段方案: {plan.strip()[:300]}",
-                        "derives_from": [fid for fid in facts if any(
-                            kw in facts[fid].get("desc", "") for kw in ("审计", "整改", "问题"))],
-                        "confidence": 0.65,
-                    })
+                    results.append(
+                        {
+                            "type": "analytics",
+                            "conclusion": f"分阶段方案: {plan.strip()[:300]}",
+                            "derives_from": [
+                                fid
+                                for fid in facts
+                                if any(kw in facts[fid].get("desc", "") for kw in ("审计", "整改", "问题"))
+                            ],
+                            "confidence": 0.65,
+                        }
+                    )
             except Exception:
                 pass
         return results
 
     # ═══ A6: 市场结构分析 ═══
 
-    _MARKET_KW = ("份额", "占比", "集中度", "CR", "寡头", "垄断", "竞争格局",
-                   "玩家", "市场占有率", "渗透率", "市占", "HHI", "CR3", "CR5")
+    _MARKET_KW = (
+        "份额",
+        "占比",
+        "集中度",
+        "CR",
+        "寡头",
+        "垄断",
+        "竞争格局",
+        "玩家",
+        "市场占有率",
+        "渗透率",
+        "市占",
+        "HHI",
+        "CR3",
+        "CR5",
+    )
 
     def _detect_market_structure(self, facts, entities, relations):
         """检测: ≥3实体 或 存在市场份额关键词"""
@@ -507,22 +543,22 @@ class AnalyticsEngine:
         hhi = sum((s / total * 100) ** 2 for s in shares)
         mtype = "垄断" if hhi > 2500 else ("寡头" if hhi > 1500 else ("集中" if hhi > 1000 else "分散"))
         cr3 = sum(sorted(shares, reverse=True)[:3]) / total * 100 if len(shares) >= 3 else 100
-        results.append({
-            "type": "analytics",
-            "conclusion": f"市场结构: HHI={hhi:.0f}({mtype}), CR3={cr3:.0f}%, {n}个参与者",
-            "derives_from": [fid for fid in facts],
-            "confidence": 0.80,
-        })
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": f"市场结构: HHI={hhi:.0f}({mtype}), CR3={cr3:.0f}%, {n}个参与者",
+                "derives_from": [fid for fid in facts],
+                "confidence": 0.80,
+            }
+        )
         return results
 
     # ═══ A7: 博弈均衡检测 ═══
 
     def _detect_game_equilibrium(self, facts, entities, relations):
         """检测: 多方竞争/合作关系"""
-        comp_count = sum(1 for r in (relations or [])
-                         if r.get("relation_type") == "competes_with")
-        coop_count = sum(1 for r in (relations or [])
-                         if r.get("relation_type") == "cooperates_with")
+        comp_count = sum(1 for r in (relations or []) if r.get("relation_type") == "competes_with")
+        coop_count = sum(1 for r in (relations or []) if r.get("relation_type") == "cooperates_with")
         return comp_count >= 1 or coop_count >= 2
 
     def _analyze_game_equilibrium(self, facts, entities, relations, enhancer):
@@ -532,21 +568,24 @@ class AnalyticsEngine:
         coops = [r for r in (relations or []) if r.get("relation_type") == "cooperates_with"]
         # 竞争+合作共存 → 潜在囚徒困境
         if comps and coops:
-            results.append({
-                "type": "analytics",
-                "conclusion": f"囚徒困境风险: {len(comps)}对竞争+{len(coops)}对合作共存, "
-                              f"个体理性可能导致集体次优",
-                "derives_from": [],
-                "confidence": 0.65,
-            })
+            results.append(
+                {
+                    "type": "analytics",
+                    "conclusion": f"囚徒困境风险: {len(comps)}对竞争+{len(coops)}对合作共存, 个体理性可能导致集体次优",
+                    "derives_from": [],
+                    "confidence": 0.65,
+                }
+            )
         # 纯竞争 → 零和或负和博弈
         if comps and not coops:
-            results.append({
-                "type": "analytics",
-                "conclusion": f"零和博弈: {len(comps)}对竞争关系, 无合作→可能陷入价格战/军备竞赛",
-                "derives_from": [],
-                "confidence": 0.70,
-            })
+            results.append(
+                {
+                    "type": "analytics",
+                    "conclusion": f"零和博弈: {len(comps)}对竞争关系, 无合作→可能陷入价格战/军备竞赛",
+                    "derives_from": [],
+                    "confidence": 0.70,
+                }
+            )
         return results
 
     # ═══ A8: 策略选项生成 ═══
@@ -554,20 +593,30 @@ class AnalyticsEngine:
     def _detect_strategic_options(self, facts, entities, relations):
         """检测: 存在问题+约束+资源"""
         has_problem = self._detect_remediation_needed(facts, entities, relations)
-        has_constraint = any("约束" in info.get("desc", "") or "限制" in info.get("desc", "")
-                             for _, info in _iter_facts(facts))
+        has_constraint = any(
+            "约束" in info.get("desc", "") or "限制" in info.get("desc", "") for _, info in _iter_facts(facts)
+        )
         return has_problem or has_constraint
 
     def _analyze_strategic_options(self, facts, entities, relations, enhancer):
         """生成策略选项 — 基于目标/约束/资源组合"""
         results = []
         # 收集目标、约束、资源
-        goals = [info.get("desc", "") for _, info in _iter_facts(facts)
-                 if any(kw in info.get("desc", "") for kw in ("目标", "计划", "预计"))]
-        constraints = [info.get("desc", "") for _, info in _iter_facts(facts)
-                       if any(kw in info.get("desc", "") for kw in ("限制", "约束", "上限", "不超过"))]
-        resources = [info.get("desc", "") for _, info in _iter_facts(facts)
-                     if any(kw in info.get("desc", "") for kw in ("预算", "团队", "储备", "现金"))]
+        goals = [
+            info.get("desc", "")
+            for _, info in _iter_facts(facts)
+            if any(kw in info.get("desc", "") for kw in ("目标", "计划", "预计"))
+        ]
+        constraints = [
+            info.get("desc", "")
+            for _, info in _iter_facts(facts)
+            if any(kw in info.get("desc", "") for kw in ("限制", "约束", "上限", "不超过"))
+        ]
+        resources = [
+            info.get("desc", "")
+            for _, info in _iter_facts(facts)
+            if any(kw in info.get("desc", "") for kw in ("预算", "团队", "储备", "现金"))
+        ]
         if not goals and not constraints:
             return results
         # 策略空间 + 帕累托分析
@@ -578,13 +627,15 @@ class AnalyticsEngine:
         if len(goals) >= 2 and len(constraints) >= 1:
             pareto_note = f", 约束{len(constraints)}个→帕累托前沿需在{feasible}个可行解中寻找"
         depth_str = f", 博弈树深度≈{tree_depth}" if goals else ""
-        results.append({
-            "type": "analytics",
-            "conclusion": f"策略空间: {len(goals)}目标×{len(constraints)}约束×{len(resources)}资源"
-                          f"→ {n_combos}种组合{depth_str}{pareto_note}",
-            "derives_from": [fid for fid in facts],
-            "confidence": 0.60,
-        })
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": f"策略空间: {len(goals)}目标×{len(constraints)}约束×{len(resources)}资源"
+                f"→ {n_combos}种组合{depth_str}{pareto_note}",
+                "derives_from": [fid for fid in facts],
+                "confidence": 0.60,
+            }
+        )
         return results
 
     # ═══ A9: 信息生态健康度 (v3.5) ═══
@@ -615,16 +666,17 @@ class AnalyticsEngine:
         # 信息生态健康度 = (1 - 虚假率) × 信任度 × 共识度归一化
         health = (100 - disinfo) / 100 * (trust / 100) * (consensus / 100) * 100
         status = "崩溃" if health < 5 else ("危机" if health < 15 else ("脆弱" if health < 30 else "健康"))
-        results.append({
-            "type": "analytics",
-            "conclusion": f"信息生态健康度: {health:.1f}/100({status}), "
-                          f"虚假{disinfo}%+信任{trust}%+共识{consensus}%→"
-                          f"{'事实共识已瓦解' if health < 15 else '尚可正常决策'}",
-            "derives_from": [],
-            "confidence": 0.75,
-        })
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": f"信息生态健康度: {health:.1f}/100({status}), "
+                f"虚假{disinfo}%+信任{trust}%+共识{consensus}%→"
+                f"{'事实共识已瓦解' if health < 15 else '尚可正常决策'}",
+                "derives_from": [],
+                "confidence": 0.75,
+            }
+        )
         return results
-
 
     # ═══ A10: 因果链分析 (v3.6) ═══
 
@@ -634,7 +686,7 @@ class AnalyticsEngine:
     def _analyze_causal_chain(self, facts, entities, relations, enhancer):
         results = []
         deps = {}
-        for r in (relations or []):
+        for r in relations or []:
             if r.get("relation_type") in ("depends_on", "causes", "influences"):
                 deps.setdefault(r["subject"], []).append(r["object"])
         if len(deps) < 2:
@@ -650,13 +702,16 @@ class AnalyticsEngine:
                             new_path = path + [up]
                             paths.append(new_path)
                             if len(new_path) >= 3:
-                                results.append({
-                                    "type": "analytics",
-                                    "conclusion": f"因果链: {'→'.join(new_path)}, "
-                                                  f"深度{len(new_path)-1}, "
-                                                  f"中介{new_path[1:-1]}, 根因={new_path[-1]}",
-                                    "derives_from": new_path[:3], "confidence": 0.75,
-                                })
+                                results.append(
+                                    {
+                                        "type": "analytics",
+                                        "conclusion": f"因果链: {'→'.join(new_path)}, "
+                                        f"深度{len(new_path) - 1}, "
+                                        f"中介{new_path[1:-1]}, 根因={new_path[-1]}",
+                                        "derives_from": new_path[:3],
+                                        "confidence": 0.75,
+                                    }
+                                )
         return results
 
     # ═══ A11: 情景规划 (v3.6) ═══
@@ -685,13 +740,16 @@ class AnalyticsEngine:
             (f"{u1[0]}低+{u2[0]}高", "基准偏下"),
             (f"{u1[0]}低+{u2[0]}低", "悲观"),
         ]
-        results.append({
-            "type": "analytics",
-            "conclusion": f"情景矩阵(2×2): {len(scenarios)}情景, "
-                          f"关键轴={u1[0]}({u1[1]:.0f})×{u2[0]}({u2[1]:.0f}), "
-                          f"早鸟指标: {u1[0]}趋势逆转或{u2[0]}突破阈值",
-            "derives_from": [], "confidence": 0.60,
-        })
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": f"情景矩阵(2×2): {len(scenarios)}情景, "
+                f"关键轴={u1[0]}({u1[1]:.0f})×{u2[0]}({u2[1]:.0f}), "
+                f"早鸟指标: {u1[0]}趋势逆转或{u2[0]}突破阈值",
+                "derives_from": [],
+                "confidence": 0.60,
+            }
+        )
         return results
 
     # ═══ A12: 权力地图 (v3.6) ═══
@@ -703,25 +761,29 @@ class AnalyticsEngine:
         results = []
         # Degree centrality (度中心性): 每个节点参与的关系数
         centrality = {}
-        for r in (relations or []):
+        for r in relations or []:
             s, o = r.get("subject", ""), r.get("object", "")
             centrality[s] = centrality.get(s, 0) + 1
             centrality[o] = centrality.get(o, 0) + 1
         if not centrality:
             return results
         top = sorted(centrality.items(), key=lambda x: -x[1])[:3]
-        results.append({
-            "type": "analytics",
-            "conclusion": f"权力地图: 关键节点={', '.join(f'{k}(度={v})' for k,v in top)}, "
-                          f"最大影响力={top[0][0]}({top[0][1]}连接), "
-                          f"潜在单点={'是' if top[0][1]>=len(centrality)/2 else '否'}",
-            "derives_from": [k for k, _ in top], "confidence": 0.70,
-        })
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": f"权力地图: 关键节点={', '.join(f'{k}(度={v})' for k, v in top)}, "
+                f"最大影响力={top[0][0]}({top[0][1]}连接), "
+                f"潜在单点={'是' if top[0][1] >= len(centrality) / 2 else '否'}",
+                "derives_from": [k for k, _ in top],
+                "confidence": 0.70,
+            }
+        )
         return results
 
 
 def _is_dict(val):
     return isinstance(val, dict)
+
 
 def _iter_facts(facts):
     """安全迭代facts — 过滤非dict值"""
@@ -731,13 +793,14 @@ def _iter_facts(facts):
         if _is_dict(info):
             yield fid, info
 
+
 def _extract_num(val):
     """从值中提取数字"""
     if isinstance(val, (int, float)):
         return float(val)
     if isinstance(val, bool):
         return 0.0  # bool→0.0 (bool在JSON中不应出现在value字段, 若出现视为0)
-    m = re.search(r'(\d+\.?\d*)', str(val))
+    m = re.search(r"(\d+\.?\d*)", str(val))
     return float(m.group(1)) if m else 0.0
 
 
@@ -747,8 +810,7 @@ def _find_entity_for_fact(fid, desc, entities, matcher=None):
         return fid
     # TF-IDF语义匹配
     if matcher:
-        candidates = [info.get("name", "") for info in entities.values()
-                      if isinstance(info, dict)]
+        candidates = [info.get("name", "") for info in entities.values() if isinstance(info, dict)]
         if candidates:
             best, score = matcher.best_match(desc, candidates, threshold=0.15)
             if best and score > 0.15:

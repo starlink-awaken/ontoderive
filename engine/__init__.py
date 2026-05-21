@@ -7,13 +7,16 @@
     from engine import OntoDerive, ToolForge, FormalPipeline
     od = OntoDerive("my-project").derive()
 """
+
 __version__ = "3.6.0"
 
 # 顶层 re-export — 保持向后兼容
-from engine.core.derive import OntoDerive as _OntoDerive, VERSION as _VERSION
+from engine.core.derive import VERSION as _VERSION
+from engine.core.derive import OntoDerive as _OntoDerive
+from engine.reasoners.formalize import Formalizer as _Formalizer
+from engine.reasoners.formalize import FormalKnowledge as _FormalKnowledge
+from engine.reasoners.pipeline_v4 import FormalPipeline as _FormalPipeline
 from engine.toolforge import ToolForge as _ToolForge
-from engine.formalize import Formalizer as _Formalizer, FormalKnowledge as _FormalKnowledge
-from engine.pipeline_v4 import FormalPipeline as _FormalPipeline
 
 OntoDerive = _OntoDerive
 VERSION = _VERSION
@@ -23,4 +26,4 @@ FormalKnowledge = _FormalKnowledge
 FormalPipeline = _FormalPipeline
 
 # 子包门面 — 可直接 from engine import xxx_layer
-from engine import core, reasoners, theories, intelligence, foundation  # noqa: F401
+from engine import core, foundation, intelligence, reasoners, theories  # noqa: F401

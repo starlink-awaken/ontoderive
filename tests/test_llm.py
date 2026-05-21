@@ -1,6 +1,8 @@
 """LLM增强层测试 — 降级方案验证"""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 from engine.intelligence.llm import LLMEnhancer, get_enhancer

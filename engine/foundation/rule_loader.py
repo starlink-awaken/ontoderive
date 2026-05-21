@@ -16,6 +16,7 @@
 
 支持规则类型: threshold_alert | numeric_comparison | evidence_gap | shared_premise
 """
+
 import json
 from pathlib import Path
 from typing import List
@@ -84,7 +85,7 @@ class RuleLoader:
         for r in rules:
             missing = required - set(r.keys())
             if missing:
-                print(f"[RuleLoader] 规则{r.get('id','?')}缺少字段: {missing}")
+                print(f"[RuleLoader] 规则{r.get('id', '?')}缺少字段: {missing}")
             else:
                 valid.append(r)
         return valid
@@ -111,5 +112,5 @@ class RuleLoader:
             "confidence": rule.get("confidence", 0.70),
             "derived_from": kwargs.get("derives_from", []),
             "method": "rule_loader",
-            "derivation_trail": f"{rule.get('id','Y?')}: {rule.get('name','?')}",
+            "derivation_trail": f"{rule.get('id', 'Y?')}: {rule.get('name', '?')}",
         }

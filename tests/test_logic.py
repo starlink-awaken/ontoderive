@@ -1,6 +1,8 @@
 """逻辑蕴含图测试"""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 from engine.theories.logic import EntailmentGraph, build_from_project

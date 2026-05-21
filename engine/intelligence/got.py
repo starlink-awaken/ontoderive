@@ -4,6 +4,7 @@ GoT (Graph of Thoughts) — 基于蕴含图的图推理引擎
 利用OntoDerive已有的EntailmentGraph作为推理骨架,
 LLM在图上游走, 在合并节点综合多路推理。
 """
+
 import re
 
 
@@ -51,9 +52,7 @@ class GraphOfThoughts:
 
     def _reason_on_node(self, node, parent_thoughts):
         """单节点推理"""
-        parents_str = "\n".join(
-            f"  {p}: {t.get('summary', '')[:100]}" for p, t in parent_thoughts.items()
-        )
+        parents_str = "\n".join(f"  {p}: {t.get('summary', '')[:100]}" for p, t in parent_thoughts.items())
         node_label = self.graph.nodes.get(node, {}).get("label", node)[:200]
 
         prompt = f"""分析这个推论的逻辑一致性。
@@ -73,12 +72,12 @@ class GraphOfThoughts:
         if not result:
             return {"summary": node_label[:100]}
         try:
-            return __import__('json').loads(result)
+            return __import__("json").loads(result)
         except Exception:
-            m = re.search(r'\{[^}]+\}', result)
+            m = re.search(r"\{[^}]+\}", result)
             if m:
                 try:
-                    return __import__('json').loads(m.group())
+                    return __import__("json").loads(m.group())
                 except Exception:
                     pass
         return {"summary": node_label[:100]}
@@ -87,8 +86,7 @@ class GraphOfThoughts:
         """合并多条推理路径"""
         thoughts = {n: self.thoughts.get(n, {}) for n in input_nodes}
         summaries = "\n".join(
-            f"路径{i+1}({n[:30]}): {t.get('summary', '')[:150]}"
-            for i, (n, t) in enumerate(thoughts.items())
+            f"路径{i + 1}({n[:30]}): {t.get('summary', '')[:150]}" for i, (n, t) in enumerate(thoughts.items())
         )
         prompt = f"""综合以下{len(input_nodes)}条推理路径, 给出合并判断。
 
@@ -103,7 +101,7 @@ class GraphOfThoughts:
 输出JSON: {{"merged": "...", "contradictions": [...], "confidence": 0.0-1.0}}"""
         result = self.llm._call(prompt, "输出JSON。", 0.2)
         try:
-            return __import__('json').loads(result)
+            return __import__("json").loads(result)
         except Exception:
             return {"merged": f"{len(input_nodes)}条路径综合"}
 

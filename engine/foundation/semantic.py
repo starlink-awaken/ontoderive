@@ -9,8 +9,9 @@
 
 原则: 零LLM, 零外部依赖, 纯Python实现
 """
-import re
+
 import math
+import re
 from collections import Counter
 from typing import List, Tuple
 
@@ -39,8 +40,7 @@ class SemanticMatcher:
                 df[term] += 1
 
         # IDF
-        self.idf = {term: math.log((n_docs + 1) / (count + 1)) + 1
-                    for term, count in df.items()}
+        self.idf = {term: math.log((n_docs + 1) / (count + 1)) + 1 for term, count in df.items()}
 
         # TF-IDF向量
         self.doc_vectors = []
@@ -55,10 +55,10 @@ class SemanticMatcher:
         """中文bigram + 英文/数字token化"""
         tokens = []
         # 提取英文词+数字
-        eng_tokens = re.findall(r'[a-zA-Z_]\w*|\d+\.?\d*', text)
+        eng_tokens = re.findall(r"[a-zA-Z_]\w*|\d+\.?\d*", text)
         tokens.extend(t.lower() for t in eng_tokens if len(t) >= 2)
         # 中文bigram
-        cjk_chars = re.findall(r'[一-鿿]', text)
+        cjk_chars = re.findall(r"[一-鿿]", text)
         for i in range(len(cjk_chars) - 1):
             tokens.append(cjk_chars[i] + cjk_chars[i + 1])
         return tokens
@@ -79,14 +79,13 @@ class SemanticMatcher:
         """两个TF-IDF向量的余弦相似度"""
         all_terms = set(vec_a) | set(vec_b)
         dot = sum(vec_a.get(t, 0) * vec_b.get(t, 0) for t in all_terms)
-        norm_a = math.sqrt(sum(v ** 2 for v in vec_a.values()))
-        norm_b = math.sqrt(sum(v ** 2 for v in vec_b.values()))
+        norm_a = math.sqrt(sum(v**2 for v in vec_a.values()))
+        norm_b = math.sqrt(sum(v**2 for v in vec_b.values()))
         if norm_a == 0 or norm_b == 0:
             return 0.0
         return dot / (norm_a * norm_b)
 
-    def match(self, query: str, candidates: List[str],
-              threshold: float = 0.15) -> List[Tuple[str, float]]:
+    def match(self, query: str, candidates: List[str], threshold: float = 0.15) -> List[Tuple[str, float]]:
         """查询与候选集的相似度排序"""
         q_vec = self._vectorize(query)
         results = []
@@ -97,14 +96,12 @@ class SemanticMatcher:
                 results.append((cand, sim))
         return sorted(results, key=lambda x: -x[1])
 
-    def best_match(self, query: str, candidates: List[str],
-                   threshold: float = 0.15) -> Tuple[str, float]:
+    def best_match(self, query: str, candidates: List[str], threshold: float = 0.15) -> Tuple[str, float]:
         """最佳匹配"""
         matches = self.match(query, candidates, threshold)
         return matches[0] if matches else ("", 0.0)
 
-    def is_semantically_related(self, text_a: str, text_b: str,
-                                threshold: float = 0.20) -> bool:
+    def is_semantically_related(self, text_a: str, text_b: str, threshold: float = 0.20) -> bool:
         """判断两个文本是否语义相关"""
         vec_a = self._vectorize(text_a)
         vec_b = self._vectorize(text_b)

@@ -3,11 +3,12 @@ OntoDerive 配置系统
 ==================
 支持 ontoderive.yaml 配置文件，合并链：defaults → project config → CLI args → env vars。
 """
+
 import os
 from pathlib import Path
 
 DEFAULTS = {
-    "toolforge_mode": "keyword",      # keyword | tfidf | hybrid
+    "toolforge_mode": "keyword",  # keyword | tfidf | hybrid
     "toolforge_top_n": 5,
     "check_thresholds": {
         "assertion_traceability": 0.30,
@@ -22,11 +23,13 @@ DEFAULTS = {
 def _load_yaml(path):
     try:
         import yaml
+
         with open(path) as f:
             return yaml.safe_load(f) or {}
     except ImportError:
         # 无 yaml 库时尝试 JSON
         import json
+
         try:
             return json.loads(open(path).read())
         except Exception:

@@ -4,15 +4,13 @@ OntoDerive 信息论层 v2 — 知识质量指数(KQI)与历史追踪
 使用贝叶斯网络真实置信度分布计算KQI。
 新增：KQI历史追踪、趋势分析、信息增益引导。
 """
+
 import datetime
 import math
 import re
 from pathlib import Path
 
-try:
-    from .utils import rf, wf, all_md, load_json, save_json
-except ImportError:
-    from engine.foundation.utils import rf, wf, all_md, load_json, save_json  # noqa
+from engine.foundation.utils import all_md, load_json, rf, save_json, wf
 
 
 class MetricsLayer:
@@ -30,7 +28,7 @@ class MetricsLayer:
         h = 0
         for p in probabilities:
             if 0 < p < 1:
-                h += -p * math.log2(p) - (1-p) * math.log2(1-p)
+                h += -p * math.log2(p) - (1 - p) * math.log2(1 - p)
         return round(h, 4)
 
     def get_real_confidences(self):
@@ -38,7 +36,7 @@ class MetricsLayer:
         try:
             from .bayesian import BayesianLayer
         except ImportError:
-            from bayesian import BayesianLayer  # noqa
+            from bayesian import BayesianLayer
 
         bl = BayesianLayer(self.root)
         facts, inferences = bl.propagate_all()
@@ -56,19 +54,19 @@ class MetricsLayer:
         facts_text = ""
         for f in all_md(self.facts_dir):
             facts_text += rf(f)
-        fact_ids = set(re.findall(r'(D-F\d+|P-F\d+)', facts_text))
+        fact_ids = set(re.findall(r"(D-F\d+|P-F\d+)", facts_text))
         n_facts = len(fact_ids)
 
         infs_text = ""
         for f in all_md(self.inferences_dir):
             infs_text += rf(f)
-        inf_blocks = len(re.findall(r'^##\s+', infs_text, re.MULTILINE))
+        inf_blocks = len(re.findall(r"^##\s+", infs_text, re.MULTILINE))
         n_inferences = max(0, inf_blocks - 1)
 
         entities_text = ""
         for f in all_md(self.entities_dir):
             entities_text += rf(f)
-        n_entities = len(set(re.findall(r'\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+)\*\*', entities_text)))
+        n_entities = len(set(re.findall(r"\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+)\*\*", entities_text)))
 
         scheme_text = ""
         for f in all_md(self.scheme_dir):
@@ -97,19 +95,27 @@ class MetricsLayer:
         # 推导链深度（最长/平均）
         max_depth = self._estimate_chain_depth(n_facts, n_inferences)
 
-        kqi = round((
-            0.25 * (1 - h_total / max(n_facts + n_inferences, 1)) +
-            0.25 * coverage +
-            0.20 * min(density / 0.5, 1.0) +
-            0.15 * min(n_entities / max(n_facts, 1), 1.0) +
-            0.15 * min(n_scheme_files / 3, 1.0)
-        ), 4)
+        kqi = round(
+            (
+                0.25 * (1 - h_total / max(n_facts + n_inferences, 1))
+                + 0.25 * coverage
+                + 0.20 * min(density / 0.5, 1.0)
+                + 0.15 * min(n_entities / max(n_facts, 1), 1.0)
+                + 0.15 * min(n_scheme_files / 3, 1.0)
+            ),
+            4,
+        )
 
         result = {
-            "kqi": kqi, "entropy": h_total, "mean_confidence": round(mean_conf, 4),
-            "n_facts": n_facts, "n_inferences": n_inferences,
-            "n_entities": n_entities, "n_scheme_files": n_scheme_files,
-            "coverage": round(coverage, 4), "density": round(density, 4),
+            "kqi": kqi,
+            "entropy": h_total,
+            "mean_confidence": round(mean_conf, 4),
+            "n_facts": n_facts,
+            "n_inferences": n_inferences,
+            "n_entities": n_entities,
+            "n_scheme_files": n_scheme_files,
+            "coverage": round(coverage, 4),
+            "density": round(density, 4),
             "max_chain_depth": max_depth,
         }
 
@@ -163,7 +169,8 @@ class MetricsLayer:
             trend = "declining"
 
         return {
-            "trend": trend, "slope": round(slope, 4),
+            "trend": trend,
+            "slope": round(slope, 4),
             "entries": len(entries),
             "latest_kqi": values[-1],
             "first_kqi": values[0],
@@ -201,23 +208,23 @@ title: 知识质量指数(KQI)报告 v2
 generated: {datetime.datetime.now().isoformat()}
 ---
 
-## KQI综合指数: {kqi['kqi']} | 趋势: {trend['trend']}
+## KQI综合指数: {kqi["kqi"]} | 趋势: {trend["trend"]}
 
 | 维度 | 数值 | 权重 |
 |------|------|------|
-| 知识熵 | {kqi['entropy']} bits | 25% |
-| 追溯覆盖率 | {kqi['coverage']*100:.0f}% | 25% |
-| 推导密度 | {kqi['density']:.2f} inf/fact | 20% |
-| 实体覆盖 | {kqi['n_entities']} | 15% |
-| 方案文件 | {kqi['n_scheme_files']} | 15% |
-| 平均置信度 | {kqi['mean_confidence']} | — |
-| 推导链深度 | {kqi['max_chain_depth']} | — |
+| 知识熵 | {kqi["entropy"]} bits | 25% |
+| 追溯覆盖率 | {kqi["coverage"] * 100:.0f}% | 25% |
+| 推导密度 | {kqi["density"]:.2f} inf/fact | 20% |
+| 实体覆盖 | {kqi["n_entities"]} | 15% |
+| 方案文件 | {kqi["n_scheme_files"]} | 15% |
+| 平均置信度 | {kqi["mean_confidence"]} | — |
+| 推导链深度 | {kqi["max_chain_depth"]} | — |
 
 ## KQI趋势分析
 
-- 记录数: {trend['entries']}
-- 最新KQI: {trend.get('latest_kqi', kqi['kqi'])}
-- 斜率: {trend['slope']}
+- 记录数: {trend["entries"]}
+- 最新KQI: {trend.get("latest_kqi", kqi["kqi"])}
+- 斜率: {trend["slope"]}
 
 ## 改善建议
 """

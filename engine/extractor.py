@@ -7,8 +7,10 @@ OntoDerive 上下文提取器 — 从本地文件/网页提取事实
     python3 engine/extractor.py --input ./docs/ --output facts/data.md
     python3 engine/extractor.py --url https://example.com --output facts/
 """
+
 import re
 from pathlib import Path
+
 
 class ContextExtractor:
     def __init__(self):
@@ -19,8 +21,8 @@ class ContextExtractor:
         """从文本中提取数值事实"""
         # 提取形如 "470项成果" "220亿基金" "133名" 的数字陈述
         patterns = [
-            (r'(\d+(?:\.\d+)?)\s*(项|个|所|家|名|亿|万|%|次|天|周|月|年)', 'auto'),
-            (r'([一二三四五六七八九十百千万亿]+)\s*(项|个|所|家|名|亿|万)', 'auto'),
+            (r"(\d+(?:\.\d+)?)\s*(项|个|所|家|名|亿|万|%|次|天|周|月|年)", "auto"),
+            (r"([一二三四五六七八九十百千万亿]+)\s*(项|个|所|家|名|亿|万)", "auto"),
         ]
         found = []
         for pattern, tag in patterns:
@@ -33,12 +35,14 @@ class ContextExtractor:
                 context = text[start:end].replace("\n", " ").strip()
                 if len(context) > 10 and context not in found:
                     found.append(context)
-                    self.facts.append({
-                        "id": f"D-F{self.fact_counter}",
-                        "value": f"{num}{unit}",
-                        "context": context[:80],
-                        "source": source,
-                    })
+                    self.facts.append(
+                        {
+                            "id": f"D-F{self.fact_counter}",
+                            "value": f"{num}{unit}",
+                            "context": context[:80],
+                            "source": source,
+                        }
+                    )
                     self.fact_counter += 1
         return found
 
@@ -71,6 +75,7 @@ class ContextExtractor:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="OntoDerive 上下文提取器")
     parser.add_argument("--input", help="输入目录")
     parser.add_argument("--url", help="输入URL(需配合web_fetch)")
@@ -83,6 +88,7 @@ if __name__ == "__main__":
     if args.url:
         try:
             from urllib.request import urlopen
+
             text = urlopen(args.url).read().decode("utf-8", errors="ignore")
             extractor.extract_from_text(text, source=args.url)
         except Exception as e:

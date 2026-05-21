@@ -1,5 +1,5 @@
 """AnalyticsEngine 测试 — A1-A5分析模式"""
-import pytest
+
 from engine.theories.analytics import AnalyticsEngine, _extract_num, _iter_facts
 
 

@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 try:
-    from .utils import rf, wf, all_md, load_json, save_json
+    from .utils import all_md, load_json, rf, save_json, wf
 except ImportError:
     from engine.foundation.utils import rf, wf, all_md, load_json, save_json  # noqa
 
@@ -27,7 +27,7 @@ VERSION = "3.6.0"
 try:
     from .protocols import DeriveInterface
 except ImportError:
-    from engine.foundation.protocols import DeriveInterface  # noqa
+    from engine.foundation.protocols import DeriveInterface
 
 
 class OntoDerive(DeriveInterface):
@@ -40,6 +40,7 @@ class OntoDerive(DeriveInterface):
         self.protocols_dir = self.root / "protocols"
         self.log_dir = self.root / "_derivation_logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        self._facts: dict = {"data": {}, "policy": {}}
         self._loaded_rules = self._init_rules()  # v3.4: 加载YAML规则
 
     def _init_rules(self):
@@ -56,14 +57,29 @@ class OntoDerive(DeriveInterface):
             return []
 
     def derive(self):
+        """正向推导 — 事实扫描 + 多引擎推理"""
+        summary = self._derive_baseline()
+        self._derive_bayesian(summary)
+        self._derive_entailment(summary)
+        self._derive_hints(summary)
+        self._derive_unified(summary)
+        print(f"[derive] 📊 事实={summary.get('facts',0)}, "
+              f"推论={summary.get('inferences',0)}, "
+              f"推导结论={len(summary.get('derived_conclusions',[]))}条, "
+              f"结构提示={len(summary.get("derivation_hints",[]))} "
+              + ("(LLM洞察需运行 analyze())" if not self._try_llm() else ""))
+        return summary
+
+    def _derive_baseline(self):
+        """扫描事实/实体/推论基线"""
         print("[derive] 事实基座扫描...")
-        facts = {"data": {}, "policy": {}}
+        self._facts = {"data": {}, "policy": {}}
         for f in all_md(self.facts_dir):
             text = rf(f)
             for m in re.finditer(r'\| (D-F\d+)\s*\|([^|]+)\|([^|]+)\|', text):
-                facts["data"][m.group(1)] = {"desc": m.group(2).strip(), "value": m.group(3).strip()}
+                self._facts["data"][m.group(1)] = {"desc": m.group(2).strip(), "value": m.group(3).strip()}
             for m in re.finditer(r'\| (P-F\d+)\s*\|([^|]+)\|', text):
-                facts["policy"][m.group(1)] = {"desc": m.group(2).strip()}
+                self._facts["policy"][m.group(1)] = {"desc": m.group(2).strip()}
 
         entities = {}
         for f in all_md(self.entities_dir):
@@ -75,10 +91,13 @@ class OntoDerive(DeriveInterface):
             infer_count += len(re.findall(r'^##\s+INF-', rf(f), re.MULTILINE))
 
         summary = {"derived_at": datetime.datetime.now().isoformat(),
-                   "facts": len(facts["data"]) + len(facts["policy"]),
+                   "facts": len(self._facts["data"]) + len(self._facts["policy"]),
                    "entities": len(entities), "inferences": infer_count,
                    "scheme_files": len(all_md(self.scheme_dir))}
+        return summary
 
+    def _derive_bayesian(self, summary):
+        """贝叶斯置信度传播"""
         # v2.1: 集成贝叶斯置信度分布+逻辑链深度
         try:
             from engine.theories.bayesian import BayesianLayer
@@ -90,6 +109,8 @@ class OntoDerive(DeriveInterface):
         except Exception as e:
             import sys; print(f"[derive] Bayesian skip: {e}", file=sys.stderr)
 
+    def _derive_entailment(self, summary):
+        """逻辑依赖图分析"""
         try:
             from engine.theories.logic import build_from_project
             g = build_from_project(self.root).stats()
@@ -97,6 +118,8 @@ class OntoDerive(DeriveInterface):
         except Exception as e:
             import sys; print(f"[derive] Logic skip: {e}", file=sys.stderr)
 
+    def _derive_hints(self, summary):
+        """内容推导 + DAG矛盾检测"""
         # v2.3: 内容推导 — 规则引擎 + DAG分析
         derivation_hints = []
         for f in all_md(self.inferences_dir):
@@ -132,6 +155,8 @@ class OntoDerive(DeriveInterface):
         if derivation_hints:
             summary["derivation_hints"] = derivation_hints[:15]
 
+    def _derive_unified(self, summary):
+        """统一推理引擎"""
         # v3.4: 统一推理引擎 (RuleReasoner + FormalReasoner + AnalyticsEngine)
         try:
             from engine.reasoners.unified_reasoner import UnifiedReasoner
@@ -160,7 +185,7 @@ class OntoDerive(DeriveInterface):
                     })
             ur = UnifiedReasoner(loaded_rules=self._loaded_rules)
             uc_list = ur.reason(
-                facts["data"], inferences_dict, relations=relations if relations else None,
+                self._facts["data"], inferences_dict, relations=relations if relations else None,
                 enhancer=self._try_llm()
             )
             summary["derived_conclusions"] = [uc.to_dict() for uc in uc_list[:25]]
@@ -168,10 +193,7 @@ class OntoDerive(DeriveInterface):
             pass
 
         save_json(self.log_dir / "derive-summary.json", summary)
-        print(f"[derive] 📊 事实={summary['facts']}, 推论={summary['inferences']}, "
-              f"推导结论={len(summary.get('derived_conclusions',[]))}条, 结构提示={len(derivation_hints)} " +
-              ("(LLM洞察需运行 analyze())" if not self._try_llm() else ""))
-        return summary
+
 
     def derive_formal(self, text=None):
         """
@@ -234,7 +256,7 @@ class OntoDerive(DeriveInterface):
         try:
             from .check import run_check
         except ImportError:
-            from engine.core.check import run_check  # noqa
+            from engine.core.check import run_check
         return run_check(self.root, self.facts_dir, self.entities_dir,
                          self.inferences_dir, self.scheme_dir, self.log_dir)[0]
 

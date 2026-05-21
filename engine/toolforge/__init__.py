@@ -11,6 +11,6 @@
     guide = tf.to_inference_guide("分析新能源汽车市场", "竞争,政策")
 """
 
-from .matcher import ToolForge, CATALOG_PATH
+from .matcher import CATALOG_PATH, ToolForge
 
 __all__ = ["ToolForge", "CATALOG_PATH"]

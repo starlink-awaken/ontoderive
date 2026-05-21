@@ -4,16 +4,17 @@ FormalReasoner — 形式推理引擎 (Phase 3, 零LLM)
 输入: ABox + TBox + 推理规则
 输出: 确定结论/推测建议/不确定性标注
 """
+
 import re
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import Dict, List
 
 
 @dataclass
 class FormalConclusion:
     conclusion: str
     certainty: str  # certain | probable | uncertain
-    method: str     # subsumption | transitivity | constraint | classification
+    method: str  # subsumption | transitivity | constraint | classification
     derives_from: List[str] = field(default_factory=list)
     confidence: float = 0.90
 
@@ -59,17 +60,25 @@ class FormalReasoner:
         for eid, info in entities.items():
             prefix = eid.split("-")[0] if "-" in eid else eid[:3]
             if prefix in domain_subtypes:
-                results.append(FormalConclusion(
-                    conclusion=f"{eid}({info.get('name','')}) ∈ DOMAIN (子类型: {prefix})",
-                    certainty="certain", method="subsumption",
-                    derives_from=[eid], confidence=0.95,
-                ))
+                results.append(
+                    FormalConclusion(
+                        conclusion=f"{eid}({info.get('name', '')}) ∈ DOMAIN (子类型: {prefix})",
+                        certainty="certain",
+                        method="subsumption",
+                        derives_from=[eid],
+                        confidence=0.95,
+                    )
+                )
         if not results and entities:
-            results.append(FormalConclusion(
-                conclusion="未检测到实体归属于已知本体层级",
-                certainty="uncertain", method="subsumption",
-                derives_from=list(entities.keys())[:3], confidence=0.40,
-            ))
+            results.append(
+                FormalConclusion(
+                    conclusion="未检测到实体归属于已知本体层级",
+                    certainty="uncertain",
+                    method="subsumption",
+                    derives_from=list(entities.keys())[:3],
+                    confidence=0.40,
+                )
+            )
         return results
 
     def _transitivity_reason(self, knowledge):
@@ -86,11 +95,15 @@ class FormalReasoner:
                         if other.id != inf.id and src in other.derives_from:
                             indirect.add(other.id)
             if indirect:
-                results.append(FormalConclusion(
-                    conclusion=f"{inf.id}通过{list(direct)[:3]}间接影响{list(indirect)[:3]}",
-                    certainty="probable", method="transitivity",
-                    derives_from=list(direct | indirect), confidence=0.75,
-                ))
+                results.append(
+                    FormalConclusion(
+                        conclusion=f"{inf.id}通过{list(direct)[:3]}间接影响{list(indirect)[:3]}",
+                        certainty="probable",
+                        method="transitivity",
+                        derives_from=list(direct | indirect),
+                        confidence=0.75,
+                    )
+                )
         return results
 
     def _constraint_propagation(self, facts):
@@ -101,15 +114,19 @@ class FormalReasoner:
             desc = info.get("description", "")
             for keyword, threshold in thresholds.items():
                 if keyword in desc:
-                    nums = re.findall(r'(\d+\.?\d*)', str(info.get("value", "")))
+                    nums = re.findall(r"(\d+\.?\d*)", str(info.get("value", "")))
                     if nums:
                         val = float(nums[0])
                         if threshold > 0 and val < threshold:
-                            results.append(FormalConclusion(
-                                conclusion=f"{desc}({val})低于基准{threshold}, 需关注",
-                                certainty="certain", method="constraint",
-                                derives_from=[fid], confidence=0.90,
-                            ))
+                            results.append(
+                                FormalConclusion(
+                                    conclusion=f"{desc}({val})低于基准{threshold}, 需关注",
+                                    certainty="certain",
+                                    method="constraint",
+                                    derives_from=[fid],
+                                    confidence=0.90,
+                                )
+                            )
         return results
 
     def _classification(self, facts, entities, tbox):
@@ -125,11 +142,15 @@ class FormalReasoner:
             else:
                 inferred = "DAT"
             if inferred in fact_subtypes:
-                results.append(FormalConclusion(
-                    conclusion=f"{fid}归类为FACT.{inferred}",
-                    certainty="certain", method="classification",
-                    derives_from=[fid], confidence=0.85,
-                ))
+                results.append(
+                    FormalConclusion(
+                        conclusion=f"{fid}归类为FACT.{inferred}",
+                        certainty="certain",
+                        method="classification",
+                        derives_from=[fid],
+                        confidence=0.85,
+                    )
+                )
         return results
 
     def summary(self) -> Dict:
@@ -139,6 +160,8 @@ class FormalReasoner:
         uncertain = [c for c in self.conclusions if c.certainty == "uncertain"]
         return {
             "total": len(self.conclusions),
-            "certain": len(certain), "probable": len(probable), "uncertain": len(uncertain),
+            "certain": len(certain),
+            "probable": len(probable),
+            "uncertain": len(uncertain),
             "methods": list(set(c.method for c in self.conclusions)),
         }

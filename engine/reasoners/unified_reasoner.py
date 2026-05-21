@@ -4,8 +4,9 @@ UnifiedReasoner — 统一推理引擎 v3.4
 合并 RuleReasoner + FormalReasoner + AnalyticsEngine 输出为统一格式。
 确定性/启发式/结构性/分析型四层分类 + certainty标注 + derivation_trail。
 """
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict
+
+from dataclasses import asdict, dataclass, field
+from typing import Dict, List
 
 from .reasoner import RuleReasoner
 from .reasoner_formal import FormalReasoner
@@ -35,70 +36,119 @@ class UnifiedReasoner:
         self.formal = FormalReasoner()
         self._last_results = []
 
-    def reason(self, facts: Dict, inferences: Dict, knowledge=None,
-               relations: List[dict] = None, enhancer=None) -> List[UnifiedConclusion]:
+    def reason(
+        self, facts: Dict, inferences: Dict, knowledge=None, relations: List[dict] = None, enhancer=None
+    ) -> List[UnifiedConclusion]:
         results = []
 
         # 1. 确定性推理
         rr = self.rule.derive(facts, inferences, relations)
         for r in rr:
-            if r["type"] in ("numeric_comparison", "modus_ponens_valid", "subsumption",
-                              "missing_reference", "chain_break", "threshold_alert"):
-                results.append(UnifiedConclusion(
-                    conclusion=r["conclusion"], certainty="certain",
-                    method=r["type"], confidence=r.get("confidence", 0.90),
-                    derives_from=r.get("derived_from", []), source="rule_engine",
-                    derivation_trail=r.get("derivation_trail", ""),
-                ))
+            if r["type"] in (
+                "numeric_comparison",
+                "modus_ponens_valid",
+                "subsumption",
+                "missing_reference",
+                "chain_break",
+                "threshold_alert",
+            ):
+                results.append(
+                    UnifiedConclusion(
+                        conclusion=r["conclusion"],
+                        certainty="certain",
+                        method=r["type"],
+                        confidence=r.get("confidence", 0.90),
+                        derives_from=r.get("derived_from", []),
+                        source="rule_engine",
+                        derivation_trail=r.get("derivation_trail", ""),
+                    )
+                )
 
         # 2. 启发式推理
         for r in rr:
-            if r["type"] in ("shared_premise", "disjunctive_syllogism", "evidence_gap",
-                              "influence_analysis", "structural_hole", "transitive_dependency",
-                              "relation_transitive", "relation_inverse"):
-                results.append(UnifiedConclusion(
-                    conclusion=r["conclusion"], certainty="probable",
-                    method=r["type"], confidence=r.get("confidence", 0.70),
-                    derives_from=r.get("derived_from", []), source="rule_engine",
-                    derivation_trail=r.get("derivation_trail", ""),
-                ))
+            if r["type"] in (
+                "shared_premise",
+                "disjunctive_syllogism",
+                "evidence_gap",
+                "influence_analysis",
+                "structural_hole",
+                "transitive_dependency",
+                "relation_transitive",
+                "relation_inverse",
+            ):
+                results.append(
+                    UnifiedConclusion(
+                        conclusion=r["conclusion"],
+                        certainty="probable",
+                        method=r["type"],
+                        confidence=r.get("confidence", 0.70),
+                        derives_from=r.get("derived_from", []),
+                        source="rule_engine",
+                        derivation_trail=r.get("derivation_trail", ""),
+                    )
+                )
 
         # 3. 结构性分析
         for r in rr:
-            if r["type"] in ("coverage", "redundancy_warning", "consistency_warning",
-                              "temporal_sequence", "incremental_recalc", "case_match",
-                              "relation_domain", "relation_range", "shallow_chain"):
-                results.append(UnifiedConclusion(
-                    conclusion=r["conclusion"], certainty="structural",
-                    method=r["type"], confidence=r.get("confidence", 0.80),
-                    derives_from=r.get("derived_from", []), source="rule_engine",
-                    derivation_trail=r.get("derivation_trail", ""),
-                ))
+            if r["type"] in (
+                "coverage",
+                "redundancy_warning",
+                "consistency_warning",
+                "temporal_sequence",
+                "incremental_recalc",
+                "case_match",
+                "relation_domain",
+                "relation_range",
+                "shallow_chain",
+            ):
+                results.append(
+                    UnifiedConclusion(
+                        conclusion=r["conclusion"],
+                        certainty="structural",
+                        method=r["type"],
+                        confidence=r.get("confidence", 0.80),
+                        derives_from=r.get("derived_from", []),
+                        source="rule_engine",
+                        derivation_trail=r.get("derivation_trail", ""),
+                    )
+                )
 
         # 4. 形式推理
         if knowledge:
             for c in self.formal.reason(knowledge):
-                results.append(UnifiedConclusion(
-                    conclusion=c.conclusion, certainty=c.certainty,
-                    method=c.method, confidence=c.confidence,
-                    derives_from=c.derives_from, source="formal",
-                ))
+                results.append(
+                    UnifiedConclusion(
+                        conclusion=c.conclusion,
+                        certainty=c.certainty,
+                        method=c.method,
+                        confidence=c.confidence,
+                        derives_from=c.derives_from,
+                        source="formal",
+                    )
+                )
 
         # 5. 分析模式 (v3.4: AnalyticsEngine纳入统一输出)
         try:
             from engine.theories.analytics import AnalyticsEngine
+
             ae = AnalyticsEngine(enhancer=enhancer)
             ae_results = ae.run(facts, {}, inferences, relations)
             for ar in ae_results:
-                results.append(UnifiedConclusion(
-                    conclusion=ar["conclusion"], certainty="analytical",
-                    method=ar.get("pattern", "analytics"),
-                    confidence=ar.get("confidence", 0.70),
-                    derives_from=ar.get("derives_from", []), source="analytics",
-                    derivation_trail=f"A{ar.get('pattern','?')}: {ar.get('category','?')}",
-                ))
+                results.append(
+                    UnifiedConclusion(
+                        conclusion=ar["conclusion"],
+                        certainty="analytical",
+                        method=ar.get("pattern", "analytics"),
+                        confidence=ar.get("confidence", 0.70),
+                        derives_from=ar.get("derives_from", []),
+                        source="analytics",
+                        derivation_trail=f"A{ar.get('pattern', '?')}: {ar.get('category', '?')}",
+                    )
+                )
         except Exception as e:
-            import sys; print(f"[unified] analytics skip: {e}", file=sys.stderr)
+            import sys
+
+            print(f"[unified] analytics skip: {e}", file=sys.stderr)
 
         self._last_results = results
         return results

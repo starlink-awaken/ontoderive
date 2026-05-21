@@ -1,8 +1,10 @@
 """
 测试图灵机层 v2
 """
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 from engine.theories.turing_k import KnowledgeTM

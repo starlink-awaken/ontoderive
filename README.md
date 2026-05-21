@@ -1,11 +1,11 @@
-# OntoDerive — 渊衍框架 v3.1
+# OntoDerive — 渊衍框架 v3.6.0
 
 > **知识工程分析平台** — 双模式：结构分析(无LLM) + 洞察推导(需LLM)
 >
 > 从"工具匹配 → 事实 → 本体 → 推论 → 方案"的全链路可追溯分析。
 > 核心能力：ToolForge工具匹配 + 元建模 + 正向推导 + 反向规约校验 + 多轮迭代收敛 + 自举验证。
 
-[![Version](https://img.shields.io/badge/version-3.5.0-blue)](engine/derive.py)
+[![Version](https://img.shields.io/badge/version-3.6.0-blue)](engine/derive.py)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8+-orange)]()
 

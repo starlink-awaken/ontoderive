@@ -1,9 +1,10 @@
 """配置系统测试"""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
-import pytest
 from engine.foundation.config import Config
 
 
@@ -44,6 +45,7 @@ def test_config_env_override(monkeypatch):
 
 def test_config_cli_override():
     import argparse
+
     ns = argparse.Namespace(toolforge_mode="tfidf", toolforge_top_n=None, derive_iterations=None)
     cfg = Config(".", cli_args=ns)
     assert cfg.get("toolforge_mode") == "tfidf"

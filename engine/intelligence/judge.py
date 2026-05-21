@@ -4,6 +4,7 @@ OntoDerive Judge — LLM驱动的真实推导与评估
 从"lint工具"升级到"judge工具"的核心模块。
 每个判断必须可追溯：引用具体事实/推论编号。
 """
+
 import json
 import re
 from pathlib import Path
@@ -27,6 +28,7 @@ class OntoDeriveJudge:
         if enhancer is None:
             try:
                 from .llm import get_enhancer
+
                 self.enhancer = get_enhancer()
             except Exception:
                 self.enhancer = None
@@ -45,15 +47,15 @@ class OntoDeriveJudge:
 
         for f in self._all_md(self.root / "facts"):
             text = self._rf(f)
-            for m in re.finditer(r'\| (D-F\d+|P-F\d+)\s*\|([^|]+)\|([^|]+)\|', text):
+            for m in re.finditer(r"\| (D-F\d+|P-F\d+)\s*\|([^|]+)\|([^|]+)\|", text):
                 ctx["facts"][m.group(1)] = {"desc": m.group(2).strip(), "value": m.group(3).strip()}
 
         for f in self._all_md(self.root / "inferences"):
             text = self._rf(f)
-            blocks = re.split(r'^##\s+', text, flags=re.MULTILINE)
+            blocks = re.split(r"^##\s+", text, flags=re.MULTILINE)
             for block in blocks[1:]:
                 title = block.strip().split("\n")[0].strip()
-                df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', block)
+                df = re.findall(r"(D-F\d+|P-F\d+|INF-[\w\d]+)", block)
                 ctx["inferences"][title] = {"text": block[:500], "derives_from": list(set(df))}
 
         for f in self._all_md(self.root / "scheme"):
@@ -94,7 +96,7 @@ class OntoDeriveJudge:
         for line in result.split("\n"):
             if not line.strip() or not line.startswith("洞察"):
                 continue
-            cites = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', line)
+            cites = re.findall(r"(D-F\d+|P-F\d+|INF-[\w\d]+)", line)
             conf = "high" if "high" in line.lower() else ("medium" if "medium" in line.lower() else "low")
             conf_map = {"high": 0.85, "medium": 0.65, "low": 0.45}
             insights.append({"insight": line.strip()[:200], "cites": cites, "confidence": conf_map.get(conf, 0.5)})
@@ -127,7 +129,7 @@ class OntoDeriveJudge:
             return json.loads(result)
         except json.JSONDecodeError:
             # try to extract JSON from the response
-            m = re.search(r'\{[^}]+\}', result)
+            m = re.search(r"\{[^}]+\}", result)
             if m:
                 try:
                     return json.loads(m.group())
@@ -163,15 +165,15 @@ class OntoDeriveJudge:
         prompt = f"""你是知识工程质量评审专家。评估以下项目的知识工程质量。
 
 项目概况:
-- 事实数: {len(ctx['facts'])}
-- 推偶数: {len(ctx['inferences'])}
-- 方案数: {len(ctx['schemes'])}
+- 事实数: {len(ctx["facts"])}
+- 推偶数: {len(ctx["inferences"])}
+- 方案数: {len(ctx["schemes"])}
 
 事实:
-{json.dumps({k: v['desc'][:40] for k, v in list(ctx['facts'].items())[:10]}, ensure_ascii=False)}
+{json.dumps({k: v["desc"][:40] for k, v in list(ctx["facts"].items())[:10]}, ensure_ascii=False)}
 
 推论摘要:
-{json.dumps({k: {'derives_from': v.get('derives_from',[]) } for k, v in list(ctx['inferences'].items())[:8]}, ensure_ascii=False)}
+{json.dumps({k: {"derives_from": v.get("derives_from", [])} for k, v in list(ctx["inferences"].items())[:8]}, ensure_ascii=False)}
 
 请给出项目整体质量评分(1-10)和三条最关键改善建议。
 输出JSON: {{"score": 7, "strengths": [...], "weaknesses": [...], "recommendations": [...], "verdict": "..."}}"""
@@ -181,7 +183,7 @@ class OntoDeriveJudge:
         try:
             return json.loads(result)
         except json.JSONDecodeError:
-            m = re.search(r'\{[\s\S]*\}', result)
+            m = re.search(r"\{[\s\S]*\}", result)
             if m:
                 try:
                     return json.loads(m.group())

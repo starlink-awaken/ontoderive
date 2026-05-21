@@ -1,6 +1,8 @@
 """文件监听器测试"""
+
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 from engine.watcher import FileWatcher

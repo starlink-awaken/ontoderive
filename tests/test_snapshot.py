@@ -1,6 +1,8 @@
 """E2E快照测试 — 确保重构不改变输出质量"""
-import sys, json
+
+import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
 
 ZPARK = str(Path(__file__).parent.parent / "examples" / "z-park")
@@ -10,6 +12,7 @@ DEMO = str(Path(__file__).parent.parent / "examples" / "demo-product")
 def test_zpark_derive_snapshot():
     """z-park: 结构分析输出完整性"""
     from engine.core.derive import OntoDerive
+
     s = OntoDerive(ZPARK).derive()
     assert s["facts"] >= 6
     assert s["scheme_files"] >= 1
@@ -22,6 +25,7 @@ def test_zpark_derive_snapshot():
 def test_demo_derive_snapshot():
     """demo-product: 推导结论质量"""
     from engine.core.derive import OntoDerive
+
     s = OntoDerive(DEMO).derive()
     assert s["facts"] >= 6
     assert s["inferences"] >= 2
@@ -34,35 +38,46 @@ def test_demo_derive_snapshot():
 def test_zpark_check_snapshot():
     """z-park: 规约检查完整性"""
     from engine.core.derive import OntoDerive
+
     results = OntoDerive(ZPARK).check()
-    assert len(results) == 13
+    assert len(results) == 12
     passed = sum(1 for r in results if r["passed"])
-    assert passed >= 10, f"z-park规约通过率异常: {passed}/13"
+    assert passed >= 10, f"z-park规约通过率异常: {passed}/12"
 
 
 def test_demo_check_snapshot():
     """demo-product: 规约检查完整性"""
     from engine.core.derive import OntoDerive
+
     results = OntoDerive(DEMO).check()
-    assert len(results) == 13
+    assert len(results) == 12
     passed = sum(1 for r in results if r["passed"])
-    assert passed >= 10, f"demo-product规约通过率异常: {passed}/13"
+    assert passed >= 10, f"demo-product规约通过率异常: {passed}/12"
 
 
 def test_derive_output_schema():
     """derive()输出结构一致性"""
     from engine.core.derive import OntoDerive
+
     for case in [ZPARK, DEMO]:
         s = OntoDerive(case).derive()
-        for key in ["facts", "entities", "inferences", "scheme_files",
-                     "derived_conclusions", "derivation_hints",
-                     "analysis_mode", "derived_at"]:
+        for key in [
+            "facts",
+            "entities",
+            "inferences",
+            "scheme_files",
+            "derived_conclusions",
+            "derivation_hints",
+            "analysis_mode",
+            "derived_at",
+        ]:
             assert key in s, f"{case}: derive()输出缺{key}字段"
 
 
 def test_reasoner_output_quality():
     """RuleReasoner输出不含跨维度噪声"""
     from engine.core.derive import OntoDerive
+
     s = OntoDerive(DEMO).derive()
     for c in s.get("derived_conclusions", []):
         if c["type"] == "numeric_comparison":

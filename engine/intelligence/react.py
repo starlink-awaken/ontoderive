@@ -4,6 +4,7 @@ ReAct (Reasoning + Acting) — 推理+行动交替引擎
 LLM在OntoDerive的工具系统上交替推理和行动。
 已有7个Action原语, 只需定义ReAct循环。
 """
+
 import re
 from pathlib import Path
 
@@ -28,8 +29,7 @@ class ReActEngine:
 
     def _build_action_prompt(self):
         tools = "\n".join(
-            f"- {name}({', '.join(info['args'])}): {info['desc']}"
-            for name, info in self.ACTION_SCHEMA.items()
+            f"- {name}({', '.join(info['args'])}): {info['desc']}" for name, info in self.ACTION_SCHEMA.items()
         )
         return f"""你是知识工程分析专家。你可以使用以下工具来验证你的推理。
 
@@ -54,10 +54,13 @@ Action: FINISH
         system = self._build_action_prompt()
 
         for step in range(max_steps):
-            history_str = "\n".join(
-                f"Step {i}: Thought: {t} → Action: {a} → Obs: {o[:150]}"
-                for i, (t, a, o) in enumerate(self.history)
-            ) if self.history else "(首次行动, 请从check_reference开始)"
+            history_str = (
+                "\n".join(
+                    f"Step {i}: Thought: {t} → Action: {a} → Obs: {o[:150]}" for i, (t, a, o) in enumerate(self.history)
+                )
+                if self.history
+                else "(首次行动, 请从check_reference开始)"
+            )
 
             prompt = f"历史:\n{history_str}\n\n请给出下一步的Thought和Action:"
             result = self.llm._call(prompt, system, 0.2)
@@ -79,11 +82,11 @@ Action: FINISH
         action_name = None
         action_arg = ""
 
-        tm = re.search(r'Thought:\s*(.+?)(?=\nAction:|\Z)', text, re.DOTALL)
+        tm = re.search(r"Thought:\s*(.+?)(?=\nAction:|\Z)", text, re.DOTALL)
         if tm:
             thought = tm.group(1).strip()[:300]
 
-        am = re.search(r'Action:\s*(\w+)\(?([^)]*)\)?', text)
+        am = re.search(r"Action:\s*(\w+)\(?([^)]*)\)?", text)
         if am:
             action_name = am.group(1).strip()
             action_arg = am.group(2).strip().strip("'\"")
@@ -99,7 +102,7 @@ Action: FINISH
                 for f in (self.root / "facts").rglob("*.md"):
                     t = f.read_text()
                     if arg in t:
-                        m = re.search(rf'\| {re.escape(arg)}\s*\|([^|]+)\|([^|]+)\|', t)
+                        m = re.search(rf"\| {re.escape(arg)}\s*\|([^|]+)\|([^|]+)\|", t)
                         if m:
                             return {"fact": arg, "desc": m.group(1).strip(), "value": m.group(2).strip()}
                 return {"error": f"事实{arg}不存在"}
@@ -108,10 +111,10 @@ Action: FINISH
                 for f in (self.root / "inferences").rglob("*.md"):
                     t = f.read_text()
                     if arg in t:
-                        blocks = re.split(r'^##\s+', t, re.MULTILINE)
+                        blocks = re.split(r"^##\s+", t, re.MULTILINE)
                         for b in blocks[1:]:
                             if arg in b:
-                                df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', b)
+                                df = re.findall(r"(D-F\d+|P-F\d+|INF-[\w\d]+)", b)
                                 return {"inference": arg, "derives_from": list(set(df)), "text": b[:300]}
                 return {"error": f"推论{arg}不存在"}
 
@@ -119,10 +122,10 @@ Action: FINISH
                 for f in (self.root / "inferences").rglob("*.md"):
                     t = f.read_text()
                     if arg in t:
-                        blocks = re.split(r'^##\s+', t, re.MULTILINE)
+                        blocks = re.split(r"^##\s+", t, re.MULTILINE)
                         for b in blocks[1:]:
                             if arg in b:
-                                refs = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', b)
+                                refs = re.findall(r"(D-F\d+|P-F\d+|INF-[\w\d]+)", b)
                                 valid = [r for r in refs if self._exists(r)]
                                 missing = [r for r in refs if not self._exists(r)]
                                 return {"valid_refs": valid, "missing_refs": missing, "all_valid": len(missing) == 0}
@@ -130,7 +133,8 @@ Action: FINISH
 
             if name == "get_confidence":
                 try:
-                    from bayesian import BayesianLayer
+                    from engine.theories.bayesian import BayesianLayer
+
                     bl = BayesianLayer(self.root)
                     _, infs = bl.propagate_all()
                     for k, v in infs.items():
@@ -145,10 +149,10 @@ Action: FINISH
                 try:
                     for f in (self.root / "inferences").rglob("*.md"):
                         t = f.read_text()
-                        blocks = re.split(r'^##\s+', t, re.MULTILINE)
+                        blocks = re.split(r"^##\s+", t, re.MULTILINE)
                         for b in blocks[1:]:
                             if arg in b:
-                                df = re.findall(r'(D-F\d+|P-F\d+)', b)
+                                df = re.findall(r"(D-F\d+|P-F\d+)", b)
                                 chain.extend(df)
                 except Exception:
                     pass
@@ -156,7 +160,8 @@ Action: FINISH
 
             if name == "find_contradictions":
                 try:
-                    from logic import build_from_project
+                    from engine.theories.logic import build_from_project
+
                     g = build_from_project(self.root)
                     return {"contradictions": g.find_contradictions()}
                 except Exception:
@@ -164,10 +169,11 @@ Action: FINISH
 
             if name == "compute_kqi":
                 try:
-                    from metrics import MetricsLayer
+                    from engine.theories.metrics import MetricsLayer
+
                     ml = MetricsLayer(self.root)
                     kqi = ml.compute_kqi()
-                    return {"kqi": kqi["kqi"], "coverage": f"{kqi['coverage']*100:.0f}%"}
+                    return {"kqi": kqi["kqi"], "coverage": f"{kqi['coverage'] * 100:.0f}%"}
                 except Exception:
                     return {"error": "KQI计算失败"}
 

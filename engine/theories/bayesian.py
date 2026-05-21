@@ -7,21 +7,24 @@ OntoDerive 贝叶斯层 v2 — DAG信念传播
 - 循环引用检测
 - Graphviz DOT可视化
 """
+
 import datetime
 import math
 import re
 from collections import defaultdict
 from pathlib import Path
 
-try:
-    from .utils import rf, wf, all_md, detect_cycles
-except ImportError:
-    from engine.foundation.utils import rf, wf, all_md, detect_cycles  # noqa
+from engine.foundation.utils import all_md, detect_cycles, rf, wf
 
 CONFIDENCE_MAP = {
-    "fact": 0.95, "high": 0.92, "inference": 0.85,
-    "medium": 0.70, "hypothesis": 0.50, "low": 0.30,
-    "estimated": 0.25, "assumption": 0.10,
+    "fact": 0.95,
+    "high": 0.92,
+    "inference": 0.85,
+    "medium": 0.70,
+    "hypothesis": 0.50,
+    "low": 0.30,
+    "estimated": 0.25,
+    "assumption": 0.10,
 }
 
 DIRECT_FACTOR = 0.90
@@ -34,8 +37,8 @@ class BayesianNetwork:
     """有向无环图：节点=事实+推论，边=derives_from"""
 
     def __init__(self):
-        self.nodes = {}       # id -> {confidence, type(fact|inference), label}
-        self.edges = {}       # from_id -> [to_id]
+        self.nodes = {}  # id -> {confidence, type(fact|inference), label}
+        self.edges = {}  # from_id -> [to_id]
         self.reverse = defaultdict(list)  # to_id -> [from_id]
         self.fact_ids = set()
         self.inf_ids = set()
@@ -65,7 +68,7 @@ class BayesianNetwork:
                     pass  # 忽略无效引用
 
     def _is_fact_id(self, fid):
-        return bool(re.match(r'^(D-F|P-F)\d+', fid))
+        return bool(re.match(r"^(D-F|P-F)\d+", fid))
 
     def detect_cycles(self):
         return detect_cycles(self.nodes, self.edges)
@@ -128,7 +131,7 @@ class BayesianNetwork:
 
     def to_dot(self):
         """生成Graphviz DOT格式"""
-        lines = ["digraph BayesianNetwork {", '  rankdir=LR;', '  node [shape=box];']
+        lines = ["digraph BayesianNetwork {", "  rankdir=LR;", "  node [shape=box];"]
         for nid, info in self.nodes.items():
             color = "green" if info["type"] == "fact" else "blue"
             conf = info["confidence"]
@@ -153,7 +156,7 @@ class BayesianLayer:
         facts = {}
         for f in all_md(self.facts_dir):
             text = rf(f)
-            for m in re.finditer(r'\| (D-F\d+|P-F\d+)\s*\|([^|]+)\|([^|]+)\|', text):
+            for m in re.finditer(r"\| (D-F\d+|P-F\d+)\s*\|([^|]+)\|([^|]+)\|", text):
                 fid = m.group(1)
                 source = m.group(3).strip() if m.lastindex and m.lastindex >= 3 else ""
                 # 基于来源可靠性差异化置信度
@@ -165,22 +168,21 @@ class BayesianLayer:
                     conf = 0.97  # 内部系统数据，较可靠
                 elif any(kw in source_lower for kw in ["调研", "供应商", "预估"]):
                     conf = 0.88  # 调研/供应商数据，需验证
-                facts[fid] = {"desc": m.group(2).strip(), "value": source,
-                               "confidence": conf, "type": "fact"}
+                facts[fid] = {"desc": m.group(2).strip(), "value": source, "confidence": conf, "type": "fact"}
         return facts
 
     def scan_inferences(self):
         inferences = {}
         for f in all_md(self.inferences_dir):
             text = rf(f)
-            blocks = re.split(r'^##\s+', text, flags=re.MULTILINE)
+            blocks = re.split(r"^##\s+", text, flags=re.MULTILINE)
             for block in blocks[1:]:
                 lines = block.strip().split("\n")
                 title = lines[0].strip() if lines else "unknown"
                 full_text = block
-                df_facts = re.findall(r'(D-F\d+|P-F\d+)', full_text)
-                df_infs = re.findall(r'(INF-[\w\d]+|INF-V2-[\w\d]+)', full_text)
-                conf_match = re.search(r'confidence:\s*(\w+)', full_text)
+                df_facts = re.findall(r"(D-F\d+|P-F\d+)", full_text)
+                df_infs = re.findall(r"(INF-[\w\d]+|INF-V2-[\w\d]+)", full_text)
+                conf_match = re.search(r"confidence:\s*(\w+)", full_text)
                 raw_conf = conf_match.group(1) if conf_match else "inference"
                 base_conf = CONFIDENCE_MAP.get(raw_conf, 0.85)
                 inferences[title] = {
@@ -226,7 +228,9 @@ class BayesianLayer:
         # 生成DOT文件
         dot = bn.to_dot()
         wf(self.log_dir / "bayesian-network.dot", dot)
-        print(f"[bayesian] ✅ DAG: {len(bn.nodes)}节点, {sum(len(v) for v in bn.edges.values())}边, {result.get('iterations', 0)}轮收敛")
+        print(
+            f"[bayesian] ✅ DAG: {len(bn.nodes)}节点, {sum(len(v) for v in bn.edges.values())}边, {result.get('iterations', 0)}轮收敛"
+        )
         print(f"[bayesian]    DOT: {self.log_dir / 'bayesian-network.dot'}")
 
         return facts, inferences
@@ -235,8 +239,17 @@ class BayesianLayer:
         """公开方法：返回置信度分布供Pipeline/Metrics消费"""
         facts, inferences = self.propagate_all()
         fact_confs = [f["confidence"] for f in facts.values()]
-        inf_confs = [i.get("propagated_confidence", i.get("base_confidence", 0.85)) for i in inferences.values() if i.get("propagated_confidence")]
-        return {"facts": fact_confs, "inferences": inf_confs, "n_facts": len(fact_confs), "n_inferences": len(inf_confs)}
+        inf_confs = [
+            i.get("propagated_confidence", i.get("base_confidence", 0.85))
+            for i in inferences.values()
+            if i.get("propagated_confidence")
+        ]
+        return {
+            "facts": fact_confs,
+            "inferences": inf_confs,
+            "n_facts": len(fact_confs),
+            "n_inferences": len(inf_confs),
+        }
 
     def _fallback_propagate(self, facts, inferences):
         """原加权平均传播（兼容循环引用场景）"""
@@ -253,7 +266,7 @@ class BayesianLayer:
 
     def recompute_if_changed(self, fact_id: str, new_value: float):
         """v3.6: What-if分析 — 修改一个事实值后重算下游置信度变化"""
-        if not hasattr(self, '_cached_facts'):
+        if not hasattr(self, "_cached_facts"):
             self._cached_facts, self._cached_inferences = self.propagate_all()
         facts = dict(self._cached_facts)  # 浅拷贝避免修改缓存
         inferences = dict(self._cached_inferences)
@@ -268,8 +281,13 @@ class BayesianLayer:
             old = self._cached_inferences.get(name, {}).get("propagated_confidence", 0)
             if abs(new_conf - old) > 0.001:
                 deltas[name] = {"old": old, "new": new_conf, "delta": round(new_conf - old, 4)}
-        return {"fact_id": fact_id, "old_confidence": old_conf, "new_confidence": new_value,
-                "affected_inferences": len(deltas), "deltas": deltas}
+        return {
+            "fact_id": fact_id,
+            "old_confidence": old_conf,
+            "new_confidence": new_value,
+            "affected_inferences": len(deltas),
+            "deltas": deltas,
+        }
 
     def confidence_report(self):
         facts, inferences = self.propagate_all()
@@ -292,14 +310,16 @@ generated: {datetime.datetime.now().isoformat()}
         for name, info in sorted(inferences.items()):
             report += f"| {name[:40]} | {info['raw_confidence']} | {info['propagated_confidence']:.2f} | {', '.join(info['derives_from'][:5])} |\n"
 
-        all_confs = [i["propagated_confidence"] for i in inferences.values()] + [f["confidence"] for f in facts.values()]
+        all_confs = [i["propagated_confidence"] for i in inferences.values()] + [
+            f["confidence"] for f in facts.values()
+        ]
         entropy = 0
         for c in all_confs:
             if 0 < c < 1:
-                entropy += -c * math.log2(c) - (1-c) * math.log2(1-c)
+                entropy += -c * math.log2(c) - (1 - c) * math.log2(1 - c)
 
         report += f"\n## 熵\n\n知识库总熵: {entropy:.4f} bits\n"
-        report += f"平均置信度: {sum(all_confs)/len(all_confs):.4f}\n"
+        report += f"平均置信度: {sum(all_confs) / len(all_confs):.4f}\n"
         report += f"推论数: {len(inferences)}\n事实数: {len(facts)}\n"
 
         wf(self.log_dir / "bayesian-report.md", report)

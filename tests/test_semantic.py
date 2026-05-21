@@ -1,5 +1,7 @@
 """SemanticMatcher 测试 — TF-IDF + 余弦相似度"""
+
 import pytest
+
 from engine.foundation.semantic import SemanticMatcher
 
 
@@ -67,7 +69,6 @@ class TestFit:
         m = SemanticMatcher(["芯片库存不足", "芯片产能利用率", "骑手社保覆盖率"])
         assert len(m.idf) > 0
         assert len(m.doc_vectors) == 3
-
 
 
 class TestEdgeCases:

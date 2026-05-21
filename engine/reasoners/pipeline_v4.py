@@ -6,6 +6,7 @@ Phase 2: 本体对齐 + 符号化 → ABox/TBox
 Phase 3: 形式推理(零LLM) → 确定/推测/不确定结论
 Phase 4: LLM解读 → 自然语言报告
 """
+
 from pathlib import Path
 
 
@@ -19,13 +20,20 @@ class FormalPipeline:
     def run(self, text: str) -> dict:
         """执行完整四阶段管线"""
         # Phase 1+2: 提取 + 符号化
-        try: from .formalize import Formalizer
-        except ImportError: from engine.formalize import Formalizer
+        try:
+            from engine.reasoners.formalize import Formalizer
+        except ImportError:
+            from engine.reasoners.formalize import Formalizer
         fz = Formalizer(enhancer=self.enhancer)
         knowledge = fz.extract_from_text(text)
-        self.results["phase1"] = {"facts": len(knowledge.facts), "entities": len(knowledge.entities), "inferences": len(knowledge.inferences)}
+        self.results["phase1"] = {
+            "facts": len(knowledge.facts),
+            "entities": len(knowledge.entities),
+            "inferences": len(knowledge.inferences),
+        }
 
         from engine.reasoners.reasoner_formal import FormalReasoner
+
         fr = FormalReasoner()
         conclusions = fr.reason(knowledge)
         self.results["phase3"] = fr.summary()
@@ -79,8 +87,7 @@ class FormalPipeline:
             try:
                 summary_text = "\n".join(c.conclusion for c in conclusions[:10])
                 llm_interpret = self.enhancer._call(
-                    f"将以下推理结论解读为用户友好的建议。每条建议一行。\n{summary_text}",
-                    "你是知识工程分析专家。", 0.3
+                    f"将以下推理结论解读为用户友好的建议。每条建议一行。\n{summary_text}", "你是知识工程分析专家。", 0.3
                 )
                 if llm_interpret:
                     lines.append("\n## LLM深度解读\n")

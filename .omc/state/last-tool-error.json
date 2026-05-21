@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\".venv/bin/python -c \\\"\\nimport yaml\\ndata = yaml.safe_load(open('engine/foundation/rules/analytics_rules.yaml'))\\nfor r in data[:2]:\\n    print('Rule:', r['id'])\\n    tmpl = r.get('conclus...",
-  "error": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 2, in <module>\n    import yaml\nModuleNotFoundError: No module named 'yaml'",
-  "timestamp": "2026-05-20T09:57:03.734Z",
-  "retry_count": 2
-}

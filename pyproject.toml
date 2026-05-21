@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ontoderive"
-version = "3.5.0"
+version = "3.6.0"
 description = "OntoDerive 渊衍框架 — 事实驱动的一体化知识工程与方案推导。含 ToolForge 工具匹配模块。"
 authors = [{name = "夏明星"}]
 license = {text = "MIT"}
@@ -34,11 +34,20 @@ ontoderive = "engine.cli:main"
 Homepage = "https://github.com/starlink-awaken/ontoderive"
 Repository = "https://github.com/starlink-awaken/ontoderive"
 
-[tool.setuptools]
-packages = ["engine", "engine.toolforge", "engine.ontolang", "engine.ecosystem"]
-py-modules = []
+[tool.setuptools.packages.find]
+include = ["engine*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["engine"]
 addopts = ["-v", "--tb=short"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "RUF100"]
+
+[tool.ruff.format]
+quote-style = "double"

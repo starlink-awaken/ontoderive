@@ -3,9 +3,9 @@
 ========================================
 支持导出: schema.org, PROV-O, Dublin Core, SKOS
 """
+
 import json
 from dataclasses import dataclass
-
 
 # ── 类型映射表 ──
 TYPE_MAPPINGS = {
@@ -95,6 +95,7 @@ RELATION_MAPPINGS = {
 @dataclass
 class RDFTriple:
     """RDF三元组"""
+
     subject: str
     predicate: str
     object: str
@@ -146,12 +147,14 @@ class OntologyMapper:
 
         # 事实 → schema:QuantitativeValue / prov:Entity
         for fid, fdata in knowledge.abox.get("facts", {}).items():
-            result["@graph"].append({
-                "@id": f"{uri}{fid}",
-                "@type": "schema:QuantitativeValue",
-                "schema:value": fdata.get("value", ""),
-                "schema:description": fdata.get("description", ""),
-            })
+            result["@graph"].append(
+                {
+                    "@id": f"{uri}{fid}",
+                    "@type": "schema:QuantitativeValue",
+                    "schema:value": fdata.get("value", ""),
+                    "schema:description": fdata.get("description", ""),
+                }
+            )
 
         # 推论 → schema:Claim (含prov:wasDerivedFrom)
         for inf in knowledge.inferences:
@@ -169,10 +172,10 @@ class OntologyMapper:
         """导出Turtle格式 (最小实现)"""
         uri = base_uri or self.DEFAULT_BASE_URI
         lines = [
-            "@prefix onto: <{}> .".format(uri),
-            '@prefix schema: <https://schema.org/> .',
-            '@prefix prov: <http://www.w3.org/ns/prov#> .',
-            '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n',
+            f"@prefix onto: <{uri}> .",
+            "@prefix schema: <https://schema.org/> .",
+            "@prefix prov: <http://www.w3.org/ns/prov#> .",
+            "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n",
         ]
         # 实体
         for eid, edata in knowledge.abox.get("entities", {}).items():
@@ -200,5 +203,4 @@ class OntologyMapper:
         """统一导出入口"""
         if fmt == "turtle":
             return self.to_turtle(knowledge, base_uri)
-        return json.dumps(self.to_jsonld(knowledge, base_uri),
-                          ensure_ascii=False, indent=2)
+        return json.dumps(self.to_jsonld(knowledge, base_uri), ensure_ascii=False, indent=2)

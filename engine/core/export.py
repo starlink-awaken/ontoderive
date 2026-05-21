@@ -4,8 +4,8 @@
 将OntoDerive推导结果导出为可浏览器查看的HTML报告或结构化JSON。
 内联CSS, 零外部依赖, 单文件自包含。
 """
+
 import json
-from pathlib import Path
 
 
 def to_html(summary: dict, project_name: str = "") -> str:
@@ -30,7 +30,7 @@ def to_html(summary: dict, project_name: str = "") -> str:
             <tr>
               <td class="src">{src}</td>
               <td class="trail">{trail}</td>
-              <td class="conc">{c.get('conclusion','')[:200]}</td>
+              <td class="conc">{c.get("conclusion", "")[:200]}</td>
               <td class="conf"><span style="color:{conf_color}">{conf:.0%}</span></td>
             </tr>""")
 
@@ -40,7 +40,7 @@ def to_html(summary: dict, project_name: str = "") -> str:
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>OntoDerive 分析报告{f' — {project_name}' if project_name else ''}</title>
+<title>OntoDerive 分析报告{f" — {project_name}" if project_name else ""}</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{font:14px/1.6 -apple-system,BlinkMacSystemFont,sans-serif;background:#f8fafc;color:#1e293b;padding:20px}}
@@ -59,13 +59,13 @@ td{{padding:8px 12px;border-top:1px solid #f1f5f9;font-size:13px}}
 </style>
 </head>
 <body>
-<h1>OntoDerive 分析报告{f' — {project_name}' if project_name else ''}</h1>
+<h1>OntoDerive 分析报告{f" — {project_name}" if project_name else ""}</h1>
 <div class="stats">
-  <div class="stat"><b>{summary.get('facts',0)}</b><s>事实</s></div>
-  <div class="stat"><b>{summary.get('entities',0)}</b><s>实体</s></div>
-  <div class="stat"><b>{summary.get('inferences',0)}</b><s>推论</s></div>
+  <div class="stat"><b>{summary.get("facts", 0)}</b><s>事实</s></div>
+  <div class="stat"><b>{summary.get("entities", 0)}</b><s>实体</s></div>
+  <div class="stat"><b>{summary.get("inferences", 0)}</b><s>推论</s></div>
   <div class="stat"><b>{len(cs)}</b><s>结论</s></div>
-  <div class="stat"><b>{conf_dist.get('mean',0):.2f}</b><s>均置信度</s></div>
+  <div class="stat"><b>{conf_dist.get("mean", 0):.2f}</b><s>均置信度</s></div>
 </div>
 <h2>推导结论 ({len(cs)}条)</h2>
 <table><thead><tr><th>来源</th><th>推导链</th><th>结论</th><th>置信度</th></tr></thead>
@@ -81,9 +81,11 @@ def to_json(summary: dict) -> str:
 
 def to_markdown(summary: dict, project_name: str = "") -> str:
     lines = [f"# OntoDerive 推导报告{f' — {project_name}' if project_name else ''}\n"]
-    lines.append(f"事实:{summary.get('facts',0)} | 实体:{summary.get('entities',0)} | 推论:{summary.get('inferences',0)}\n")
+    lines.append(
+        f"事实:{summary.get('facts', 0)} | 实体:{summary.get('entities', 0)} | 推论:{summary.get('inferences', 0)}\n"
+    )
     for c in summary.get("derived_conclusions", []):
         trail = c.get("derivation_trail", "?")
         conf = c.get("confidence", 0)
-        lines.append(f"- [{trail}] {c.get('conclusion','')[:150]} (置信度:{conf:.0%})")
+        lines.append(f"- [{trail}] {c.get('conclusion', '')[:150]} (置信度:{conf:.0%})")
     return "\n".join(lines)

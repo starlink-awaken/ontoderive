@@ -4,23 +4,25 @@ OntoDerive Insight — 统一洞察引擎
 所有模块通过InsightEngine调用LLM，而非各自直接调用llm.py。
 标准Insight数据结构，支持外部工具消费（Dashboard、API、Notebook）。
 """
+
 import json
 import re
 import time
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Any
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List
 
 
 @dataclass
 class Insight:
     """标准洞察数据结构 — 外部工具可消费的原子单位"""
-    type: str               # derivation | contradiction | quality | recommendation
-    content: str            # 洞察内容
-    confidence: float       # 0-1
+
+    type: str  # derivation | contradiction | quality | recommendation
+    content: str  # 洞察内容
+    confidence: float  # 0-1
     cites: List[str] = field(default_factory=list)  # [D-F1, INF-L2, ...]
-    method: str = "llm"     # llm | rule
-    model: str = ""         # 使用的模型名
+    method: str = "llm"  # llm | rule
+    model: str = ""  # 使用的模型名
     timestamp: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -34,6 +36,7 @@ class Insight:
 
 class InsightCache:
     """洞察缓存 — 项目内容不变时不重复调用LLM"""
+
     def __init__(self, cache_dir=None):
         self.cache_dir = Path(cache_dir) if cache_dir else Path("_derivation_logs")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -41,6 +44,7 @@ class InsightCache:
 
     def _key(self, project_root, category):
         import hashlib
+
         root = Path(project_root)
         hashes = []
         for d in ["facts", "inferences", "scheme"]:
@@ -64,10 +68,16 @@ class InsightCache:
     def set(self, project_root, category, insights):
         key = self._key(project_root, category)
         cache_file = self.cache_dir / f"insight-{key}.json"
-        cache_file.write_text(json.dumps({
-            "insights": [i.to_dict() for i in insights],
-            "cached_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        }, ensure_ascii=False, indent=2))
+        cache_file.write_text(
+            json.dumps(
+                {
+                    "insights": [i.to_dict() for i in insights],
+                    "cached_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
 
 
 class InsightEngine:
@@ -78,6 +88,7 @@ class InsightEngine:
         if enhancer is None:
             try:
                 from .llm import get_enhancer
+
                 self.enhancer = get_enhancer()
             except Exception:
                 self.enhancer = None
@@ -121,11 +132,14 @@ class InsightEngine:
             if not line.strip() or "洞察" not in line:
                 continue
             conf = 0.85 if "high" in line.lower() else (0.65 if "medium" in line.lower() else 0.45)
-            cites = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', line)
-            content = re.sub(r'\[置信度:\w+\]\s*', '', line).strip()[:200]
+            cites = re.findall(r"(D-F\d+|P-F\d+|INF-[\w\d]+)", line)
+            content = re.sub(r"\[置信度:\w+\]\s*", "", line).strip()[:200]
             insight = Insight(
-                type="derivation", content=content, confidence=conf,
-                cites=cites, method="llm",
+                type="derivation",
+                content=content,
+                confidence=conf,
+                cites=cites,
+                method="llm",
                 model=self.enhancer.model if self.enhancer else "",
                 timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
             )
@@ -152,13 +166,15 @@ class InsightEngine:
         try:
             return json.loads(result)
         except json.JSONDecodeError:
-            m = re.search(r'\{[\s\S]*\}', result)
+            m = re.search(r"\{[\s\S]*\}", result)
             if m:
                 try:
                     parsed = json.loads(m.group())
                     insight = Insight(
-                        type="quality", content=parsed.get("verdict", ""),
-                        confidence=0.80, method="llm",
+                        type="quality",
+                        content=parsed.get("verdict", ""),
+                        confidence=0.80,
+                        method="llm",
                         model=self.enhancer.model if self.enhancer else "",
                         timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
                         metadata=parsed,
@@ -202,7 +218,7 @@ class InsightEngine:
         if not self.available:
             return None
 
-        tools_text = "\n".join(f"{t['id']}: {t['name']} — {t.get('description','')[:60]}" for t in tools[:30])
+        tools_text = "\n".join(f"{t['id']}: {t['name']} — {t.get('description', '')[:60]}" for t in tools[:30])
         prompt = f"""从工具列表选出最适合目标的3个工具ID。
 
 目标: {goal} | 上下文: {context}
@@ -213,8 +229,11 @@ class InsightEngine:
         if result:
             ids = [x.strip() for x in result.split(",")[:3]]
             insight = Insight(
-                type="recommendation", content=f"推荐工具: {', '.join(ids)}",
-                confidence=0.80, cites=ids, method="llm",
+                type="recommendation",
+                content=f"推荐工具: {', '.join(ids)}",
+                confidence=0.80,
+                cites=ids,
+                method="llm",
                 model=self.enhancer.model if self.enhancer else "",
                 timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
             )
@@ -259,9 +278,11 @@ class InsightEngine:
         if not scores:
             return {"verdict": "eval_failed", "score": None}
         return {
-            "score": sorted(scores)[len(scores)//2],
-            "min": min(scores), "max": max(scores),
-            "consensus": len(set(verdicts)) == 1, "samples": n_samples,
+            "score": sorted(scores)[len(scores) // 2],
+            "min": min(scores),
+            "max": max(scores),
+            "consensus": len(set(verdicts)) == 1,
+            "samples": n_samples,
         }
 
     # ═══ LLM推理增强: Reflexion ═══
@@ -269,17 +290,19 @@ class InsightEngine:
     def reflect_and_refine(self, project_root, context, max_refinements=2):
         """自我反思修正: 生成→评估→发现问题→修正"""
         import re
+
         initial = self.judge_quality(project_root, context)
         if not initial.get("score"):
             return initial
         for i in range(max_refinements):
             reflection = self._call(
-                f"反思你的评审(评分{initial.get('score')}): {initial.get('verdict','')[:200]}。是否有遗漏？修正评分(1-10):",
-                "你是善于自我反思的评审专家。", 0.3
+                f"反思你的评审(评分{initial.get('score')}): {initial.get('verdict', '')[:200]}。是否有遗漏？修正评分(1-10):",
+                "你是善于自我反思的评审专家。",
+                0.3,
             )
             if not reflection:
                 break
-            m = re.search(r'(\d+)\s*分', reflection)
+            m = re.search(r"(\d+)\s*分", reflection)
             if m:
                 refined = int(m.group(1))
                 if 1 <= refined <= 10 and refined != initial["score"]:

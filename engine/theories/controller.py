@@ -7,15 +7,13 @@ D(微分): 滑动窗口平均变化率
 收敛检测: |D| < epsilon && I稳定
 可调增益系数: Kp/Ki/Kd
 """
+
 import datetime
 import json
 from collections import deque
 from pathlib import Path
 
-try:
-    from .utils import wf
-except ImportError:
-    from engine.foundation.utils import wf  # noqa
+from engine.foundation.utils import wf
 
 
 class PIDController:
@@ -111,7 +109,7 @@ class PIDController:
         """收敛判定: |D| < epsilon 且最近D值稳定"""
         if len(self._d_history) < self.window:
             return False
-        recent_d = list(self._d_history)[-self.window:]
+        recent_d = list(self._d_history)[-self.window :]
         avg_d = sum(abs(d) for d in recent_d) / len(recent_d)
         return avg_d < self.epsilon
 
@@ -152,15 +150,15 @@ generated: {datetime.datetime.now().isoformat()}
 
 | 分量 | 数值 | 增益 | 加权值 |
 |------|------|------|--------|
-| P(比例) | {pid['p_value']} | {self.kp} | {round(self.kp * pid['p_value'], 2)} |
-| I(积分) | {pid['i_value']} | {self.ki} | {round(self.ki * pid['i_value'], 2)} |
-| D(微分) | {pid['d_value']} | {self.kd} | {round(self.kd * pid['d_value'], 2)} |
-| **控制信号** | | | **{pid['control_signal']}** |
-| 稳定性 | {pid['stability']} | 收敛 | {pid['converged']} |
+| P(比例) | {pid["p_value"]} | {self.kp} | {round(self.kp * pid["p_value"], 2)} |
+| I(积分) | {pid["i_value"]} | {self.ki} | {round(self.ki * pid["i_value"], 2)} |
+| D(微分) | {pid["d_value"]} | {self.kd} | {round(self.kd * pid["d_value"], 2)} |
+| **控制信号** | | | **{pid["control_signal"]}** |
+| 稳定性 | {pid["stability"]} | 收敛 | {pid["converged"]} |
 
 ## 收敛判定
 - 条件: |D均值| < {self.epsilon} (窗口={self.window})
-- 状态: {'✅ 已收敛' if pid['converged'] else '⏳ 未收敛'}
+- 状态: {"✅ 已收敛" if pid["converged"] else "⏳ 未收敛"}
 
 ## 建议行动
 """
@@ -172,8 +170,8 @@ generated: {datetime.datetime.now().isoformat()}
 
 | 规约 | 建议阈值 | 依据({len(self.history)}次检查) |
 |------|---------|------|
-| C-05追溯率 | {pid['recommended_thresholds']['assertion_traceability']} | 自适应校准 |
-| C-06可证伪 | {pid['recommended_thresholds']['falsifiability']} | 自适应校准 |
+| C-05追溯率 | {pid["recommended_thresholds"]["assertion_traceability"]} | 自适应校准 |
+| C-06可证伪 | {pid["recommended_thresholds"]["falsifiability"]} | 自适应校准 |
 """
         wf(self.log_dir / "pid-report.md", report)
         print(f"[controller] ✅ PID报告 v2: {self.log_dir / 'pid-report.md'}")

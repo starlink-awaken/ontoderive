@@ -4,40 +4,46 @@ OntoDerive Pipeline — 推导管道
 串联 toolforge → load → derive → check → resolve → report 六个阶段。
 结果可序列化为 JSON，供 Minerva/Sophia 程序化调用。
 """
+
 from pathlib import Path
+
 try:
     from .config import Config
-    from .protocols import PipelineStage, AnalysisResult
+    from .protocols import AnalysisResult, PipelineStage
 except ImportError:
     from engine.foundation.config import Config  # noqa
-    from engine.foundation.protocols import PipelineStage, AnalysisResult  # noqa
+    from engine.foundation.protocols import PipelineStage, AnalysisResult
 
 
 class ToolForgeStage(PipelineStage):
     name = "toolforge"
+
     def run(self, ctx):
         try:
             from .toolforge import ToolForge
         except ImportError:
-            from toolforge import ToolForge  # noqa
+            from engine.toolforge import ToolForge
         tf = ToolForge()
         cfg = ctx.get("config", {})
         goal = ctx.get("goal", "")
         context = ctx.get("context", "")
         mode = cfg.get("toolforge_mode", "tfidf") if isinstance(cfg, dict) else "tfidf"
         return {
-            "matches": tf.select(goal, context, top_n=cfg.get("toolforge_top_n", 5) if isinstance(cfg, dict) else 5, mode=mode),
+            "matches": tf.select(
+                goal, context, top_n=cfg.get("toolforge_top_n", 5) if isinstance(cfg, dict) else 5, mode=mode
+            ),
             "guide": tf.to_inference_guide(goal, context, mode=mode),
         }
 
 
 class LoadStage(PipelineStage):
     name = "load"
+
     def run(self, ctx):
         try:
             from .derive import OntoDerive as _OD
         except ImportError:
-            from derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa
         od = _OD(ctx["project_root"])
         summary = od.derive()
         return {"derive_summary": summary}
@@ -45,6 +51,7 @@ class LoadStage(PipelineStage):
 
 class DeriveStage(PipelineStage):
     name = "derive"
+
     def run(self, ctx):
         # 复用LoadStage结果，避免重复扫描+Bayesian
         cached = ctx.get("_derive_result")
@@ -53,7 +60,7 @@ class DeriveStage(PipelineStage):
         try:
             from .derive import OntoDerive as _OD
         except ImportError:
-            from derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa
         od = _OD(ctx["project_root"])
         result = od.derive()
         ctx["_derive_result"] = result
@@ -62,40 +69,47 @@ class DeriveStage(PipelineStage):
 
 class CheckStage(PipelineStage):
     name = "check"
+
     def run(self, ctx):
         try:
             from .derive import OntoDerive as _OD
         except ImportError:
-            from derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa
         od = _OD(ctx["project_root"])
         return od.check()
 
 
 class ResolveStage(PipelineStage):
     name = "resolve"
+
     def run(self, ctx):
         try:
             from .derive import OntoDerive as _OD
         except ImportError:
-            from derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa
         od = _OD(ctx["project_root"])
         return {"fixed": od.resolve()}
 
 
 class ReportStage(PipelineStage):
     name = "report"
+
     def run(self, ctx):
         try:
             from .derive import OntoDerive as _OD
         except ImportError:
-            from derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa
         od = _OD(ctx["project_root"])
         return {"report": od.generate_report()}
 
 
 PIPELINE_STAGES = [
-    ToolForgeStage, LoadStage, DeriveStage,
-    CheckStage, ResolveStage, ReportStage,
+    ToolForgeStage,
+    LoadStage,
+    DeriveStage,
+    CheckStage,
+    ResolveStage,
+    ReportStage,
 ]
 
 

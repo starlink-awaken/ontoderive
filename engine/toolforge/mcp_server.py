@@ -4,13 +4,13 @@ ToolForge MCP Server — 委托给统一 ontoderive MCP server
 =========================================================
 仅保留兼容性入口，实际逻辑由 engine/mcp-server.py 统一处理。
 """
+
 import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from mcp_server import handle_request
-
 
 if __name__ == "__main__":
     sys.stderr.write("[toolforge-mcp] 委托至统一ontoderive MCP server v3\n")

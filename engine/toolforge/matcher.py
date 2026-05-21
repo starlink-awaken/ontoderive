@@ -4,9 +4,10 @@ ToolForge v2 — 思维工具匹配（原 MindForge，已并入 OntoDerive）
 支持 TF-IDF 语义匹配 + 关键词 fallback。
 输出: 匹配的方法论/策略/模式/原则/理论/技能 + 使用建议 + 匹配原因
 """
+
 import json
-import re
 import math
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -18,9 +19,9 @@ def _tokenize(text):
     tokens = []
     text_lower = text.lower()
     # 英文词
-    tokens.extend(re.findall(r'[a-zA-Z]+', text_lower))
+    tokens.extend(re.findall(r"[a-zA-Z]+", text_lower))
     # 中文：bigram (相邻2字) + unigram (单字)
-    cn_chars = re.findall(r'[一-鿿]', text_lower)
+    cn_chars = re.findall(r"[一-鿿]", text_lower)
     for i in range(len(cn_chars) - 1):
         tokens.append(cn_chars[i] + cn_chars[i + 1])
     tokens.extend(cn_chars)
@@ -55,7 +56,7 @@ def _compute_idf(docs, vocab):
 try:
     from ..protocols import ToolForgeInterface
 except ImportError:
-    from engine.foundation.protocols import ToolForgeInterface  # noqa
+    from engine.foundation.protocols import ToolForgeInterface
 
 
 class ToolForge(ToolForgeInterface):
@@ -157,23 +158,35 @@ class ToolForge(ToolForgeInterface):
                     scored[t["id"]] = {"tool": t, "score": bonus, "why": f"关键词匹配: {','.join(matched[:5])}"}
             combined = sorted(scored.values(), key=lambda x: x["score"], reverse=True)
         elif mode == "tfidf":
-            combined = [{"tool": t, "score": round(s, 2), "why": f"TF-IDF语义匹配 (cos={s:.2f})"} for t, s in tfidf_results]
+            combined = [
+                {"tool": t, "score": round(s, 2), "why": f"TF-IDF语义匹配 (cos={s:.2f})"} for t, s in tfidf_results
+            ]
         else:
             combined = [{"tool": t, "score": s, "why": f"关键词匹配: {','.join(m[:5])}"} for t, s, m in kw_results]
 
         results = {
-            "methodologies": [], "strategies": [], "patterns": [],
-            "principles": [], "theories": [], "skills": [],
+            "methodologies": [],
+            "strategies": [],
+            "patterns": [],
+            "principles": [],
+            "theories": [],
+            "skills": [],
         }
         for item in combined:
             t = item["tool"]
             category = t.get("category", "")
             if category in results and len(results[category]) < limit:
-                results[category].append({
-                    "id": t["id"], "name": t["name"], "score": item["score"],
-                    "matched": item["why"], "description": t.get("description", ""),
-                    "applies_to": t.get("applies_to", ""), "source": t.get("source", ""),
-                })
+                results[category].append(
+                    {
+                        "id": t["id"],
+                        "name": t["name"],
+                        "score": item["score"],
+                        "matched": item["why"],
+                        "description": t.get("description", ""),
+                        "applies_to": t.get("applies_to", ""),
+                        "source": t.get("source", ""),
+                    }
+                )
         return results
 
     def select(self, goal, context="", top_n=5, mode="keyword"):
@@ -250,6 +263,7 @@ class ToolForge(ToolForgeInterface):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="ToolForge v2 思维工具匹配引擎")
     parser.add_argument("goal", nargs="?", default="", help="目标描述")
     parser.add_argument("--goal", dest="goal2", help="目标描述（命名参数）")

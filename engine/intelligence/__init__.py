@@ -1,6 +1,6 @@
 """LLM智能层 — 推理增强 + 洞察 + 评估 + 提示词工程"""
-from engine.intelligence.llm import LLMEnhancer, get_enhancer
-from engine.intelligence.insight import InsightEngine, Insight, InsightCache
-from engine.intelligence.judge import OntoDeriveJudge, JudgeResult
-from engine.intelligence.prompts import PromptTemplate, get_template, DOMAIN_PRESETS, auto_detect_domain
-from engine.foundation.semantic import SemanticMatcher  # re-export, 主定义在foundation/
+
+from engine.intelligence.insight import Insight, InsightCache, InsightEngine  # noqa: F401
+from engine.intelligence.judge import JudgeResult, OntoDeriveJudge  # noqa: F401
+from engine.intelligence.llm import LLMEnhancer, get_enhancer  # noqa: F401
+from engine.intelligence.prompts import DOMAIN_PRESETS, PromptTemplate, auto_detect_domain, get_template  # noqa: F401
