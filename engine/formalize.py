@@ -120,6 +120,20 @@ class Formalizer:
                         name=name, entity_type=etype, role=role,
                     ))
 
+        # L1 NER: 命名实体识别增强 — 补正则到LLM之间的能力断层
+        try:
+            from engine.intelligence.ner import extract_entities
+            for name, etype in extract_entities(text, use_jieba=True):
+                if name not in seen_names and len(name) >= 3:
+                    seen_names.add(name)
+                    knowledge.entities.append(SymbolicEntity(
+                        id=f"{etype}-{name[:10]}",
+                        name=name, entity_type=etype,
+                        role="NER识别" if etype == "ORG" else "人员",
+                    ))
+        except ImportError:
+            pass
+
         return knowledge
 
     EXTRACT_PROMPT = """从文本提取结构化JSON。只输出JSON，不要解释。
