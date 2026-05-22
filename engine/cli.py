@@ -84,6 +84,14 @@ def main():
     p_mcp = sub.add_parser("mcp", help="启动MCP server (JSON-RPC 2.0, 17工具)")
     p_mcp.add_argument("--port", type=int, default=0, help="监听端口(0=stdio模式)")
 
+    # serve (v3.6)
+    p_serve = sub.add_parser("serve", help="启动开发服务: MCP + 文件监听 + LLM(可选)")
+    p_serve.add_argument("--project", default=".", help="项目路径")
+    p_serve.add_argument("--watch", action="store_true", default=True, help="启动文件监听(默认)")
+    p_serve.add_argument("--interval", type=int, default=5, help="监听间隔(秒)")
+    p_serve.add_argument("--auto", action="store_true", help="自动检测LLM并增强分析")
+    p_serve.add_argument("--no-mcp", action="store_true", help="不启动MCP server")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -268,6 +276,48 @@ def main():
     elif args.command == "mcp":
         from engine.mcp_server import main as mcp_main
         mcp_main()
+
+    elif args.command == "serve":
+        import threading
+
+        project = getattr(args, "project", ".")
+        auto_llm = getattr(args, "auto", False)
+        enable_watch = getattr(args, "watch", True)
+        enable_mcp = not getattr(args, "no_mcp", False)
+
+        print(f"{'=' * 50}")
+        print("  OntoDerive Serve — 开发服务")
+        print(f"  项目: {project}")
+        print(f"  工具: {17} MCP | LLM={'auto' if auto_llm else 'off'}")
+        print(f"{'=' * 50}")
+
+        threads = []
+
+        # MCP server thread (stdio, 供agentmesh消费)
+        if enable_mcp:
+            from engine.mcp_server import main as mcp_main
+            t = threading.Thread(target=mcp_main, daemon=True)
+            t.start()
+            threads.append(t)
+            print("  [mcp]    ✅ 已启动 (stdin/stdout)")
+
+        # 文件监听
+        if enable_watch:
+            from engine.watcher import FileWatcher
+            w = FileWatcher(project)
+            print(f"  [watch]  👀 监听中... (间隔{getattr(args, 'interval', 5)}秒)")
+            w.watch(interval=getattr(args, "interval", 5))
+
+        elif enable_mcp and not enable_watch:
+            # 只启动MCP时保持主线程存活
+            try:
+                while True:
+                    import time
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                pass
+
+        print("[serve] 🛑 服务已停止")
 
 
 if __name__ == "__main__":
