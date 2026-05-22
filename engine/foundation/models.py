@@ -10,8 +10,16 @@ from typing import List, Optional
 
 # ---- Type normalization (no external deps) ----
 VALID_TYPES = [
-    "domain", "data", "policy", "fact", "inference",
-    "relation", "state", "document", "constraint", "processor",
+    "domain",
+    "data",
+    "policy",
+    "fact",
+    "inference",
+    "relation",
+    "state",
+    "document",
+    "constraint",
+    "processor",
 ]
 VALID_TYPES_SET = set(VALID_TYPES)
 
@@ -35,7 +43,7 @@ class Fact:
     type: str = "data"  # data / policy
 
     def __post_init__(self):
-        if hasattr(self, 'type') and self.type:
+        if hasattr(self, "type") and self.type:
             self.type = _normalize_type(str(self.type))
 
 

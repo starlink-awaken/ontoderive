@@ -62,7 +62,18 @@ def test_normalize_type():
 
 
 def test_list_valid_types():
-    assert list_valid_types() == ["domain", "data", "policy", "fact", "inference", "relation", "state", "document", "constraint", "processor"]
+    assert list_valid_types() == [
+        "domain",
+        "data",
+        "policy",
+        "fact",
+        "inference",
+        "relation",
+        "state",
+        "document",
+        "constraint",
+        "processor",
+    ]
 
 
 def test_inference():

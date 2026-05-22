@@ -35,7 +35,9 @@ class LLMEnhancer:
 
             req = urllib.request.Request(
                 os.environ.get("ONTODERIVE_LLM_BASE_URL", "http://localhost:11434"),
-                data=json.dumps({"model": os.environ.get("ONTODERIVE_LLM_MODEL", "qwopus3.5:4b"), "input": "hi"}).encode(),
+                data=json.dumps(
+                    {"model": os.environ.get("ONTODERIVE_LLM_MODEL", "qwopus3.5:4b"), "input": "hi"}
+                ).encode(),
                 headers={"Content-Type": "application/json"},
             )
             with urllib.request.urlopen(req, timeout=5) as r:
@@ -45,7 +47,9 @@ class LLMEnhancer:
                 self.model = os.environ.get("ONTODERIVE_LLM_MODEL", "qwopus3.5:4b")
             return "local"
         except (json.JSONDecodeError, OSError, ValueError):
-            import sys; print("[llm] 本地API检测失败", file=sys.stderr)
+            import sys
+
+            print("[llm] 本地API检测失败", file=sys.stderr)
             pass
         try:
             import subprocess
@@ -110,7 +114,9 @@ class LLMEnhancer:
             )
             return resp.choices[0].message.content
         except Exception as e:
-            import sys; print(f"[llm] OpenAI调用失败: {e}", file=sys.stderr)
+            import sys
+
+            print(f"[llm] OpenAI调用失败: {e}", file=sys.stderr)
             return None
 
     def _call_local(self, prompt, system="", temperature=0.3):
@@ -133,7 +139,9 @@ class LLMEnhancer:
                     return item.get("content", "").strip()
             return None
         except (json.JSONDecodeError, OSError, ValueError) as e:
-            import sys; print(f"[llm] 本地API调用失败: {e}", file=sys.stderr)
+            import sys
+
+            print(f"[llm] 本地API调用失败: {e}", file=sys.stderr)
             return None
 
     def _call(self, prompt, system="", temperature=0.3):
@@ -147,7 +155,9 @@ class LLMEnhancer:
             elif self.backend == "local":
                 return self._call_local(prompt, system, temperature)
         except Exception as e:
-            import sys; print(f"[llm] 调用失败: {e}", file=sys.stderr)
+            import sys
+
+            print(f"[llm] 调用失败: {e}", file=sys.stderr)
             return None
         return None
 

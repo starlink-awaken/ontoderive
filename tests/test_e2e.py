@@ -81,5 +81,3 @@ def test_e2e_typesystem_pipeline():
     c07 = [r for r in results if r["protocol_id"] == "C-07"]
     assert len(c07) == 1
     assert c07[0]["passed"]
-
-

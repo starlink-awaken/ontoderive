@@ -1,4 +1,5 @@
 """Tests for NER — 中文命名实体识别"""
+
 from engine.intelligence.ner import _extract_entities_by_suffix, extract_entities
 
 

@@ -12,6 +12,7 @@ OntoDerive 分析引擎 v3.4
     python3 derive.py --check               # 规约检查
     python3 derive.py --rounds 5            # 多轮迭代
 """
+
 import datetime
 import re
 import sys
@@ -47,6 +48,7 @@ class OntoDerive(DeriveInterface):
         """加载声明式YAML规则 (v3.4)"""
         try:
             from engine.foundation.rule_loader import RuleLoader
+
             rl = RuleLoader()
             rules_dir = Path(__file__).parent.parent / "foundation" / "rules"
             if rules_dir.exists():
@@ -63,11 +65,13 @@ class OntoDerive(DeriveInterface):
         self._derive_entailment(summary)
         self._derive_hints(summary)
         self._derive_unified(summary)
-        print(f"[derive] 📊 事实={summary.get('facts',0)}, "
-              f"推论={summary.get('inferences',0)}, "
-              f"推导结论={len(summary.get('derived_conclusions',[]))}条, "
-              f"结构提示={len(summary.get("derivation_hints",[]))} "
-              + ("(LLM洞察需运行 analyze())" if not self._try_llm() else ""))
+        print(
+            f"[derive] 📊 事实={summary.get('facts', 0)}, "
+            f"推论={summary.get('inferences', 0)}, "
+            f"推导结论={len(summary.get('derived_conclusions', []))}条, "
+            f"结构提示={len(summary.get('derivation_hints', []))} "
+            + ("(LLM洞察需运行 analyze())" if not self._try_llm() else "")
+        )
         return summary
 
     def _derive_baseline(self):
@@ -76,24 +80,27 @@ class OntoDerive(DeriveInterface):
         self._facts = {"data": {}, "policy": {}}
         for f in all_md(self.facts_dir):
             text = rf(f)
-            for m in re.finditer(r'\| (D-F\d+)\s*\|([^|]+)\|([^|]+)\|', text):
+            for m in re.finditer(r"\| (D-F\d+)\s*\|([^|]+)\|([^|]+)\|", text):
                 self._facts["data"][m.group(1)] = {"desc": m.group(2).strip(), "value": m.group(3).strip()}
-            for m in re.finditer(r'\| (P-F\d+)\s*\|([^|]+)\|', text):
+            for m in re.finditer(r"\| (P-F\d+)\s*\|([^|]+)\|", text):
                 self._facts["policy"][m.group(1)] = {"desc": m.group(2).strip()}
 
         entities = {}
         for f in all_md(self.entities_dir):
-            for m in re.finditer(r'\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+|DOC-[\w-]+|STD-[\w-]+)\*\*', rf(f)):
+            for m in re.finditer(r"\*\*(ORG-[\w-]+|ROL-[\w-]+|PRJ-[\w-]+|DOC-[\w-]+|STD-[\w-]+)\*\*", rf(f)):
                 entities[m.group(1)] = True
 
         infer_count = 0
         for f in all_md(self.inferences_dir):
-            infer_count += len(re.findall(r'^##\s+INF-', rf(f), re.MULTILINE))
+            infer_count += len(re.findall(r"^##\s+INF-", rf(f), re.MULTILINE))
 
-        summary = {"derived_at": datetime.datetime.now().isoformat(),
-                   "facts": len(self._facts["data"]) + len(self._facts["policy"]),
-                   "entities": len(entities), "inferences": infer_count,
-                   "scheme_files": len(all_md(self.scheme_dir))}
+        summary = {
+            "derived_at": datetime.datetime.now().isoformat(),
+            "facts": len(self._facts["data"]) + len(self._facts["policy"]),
+            "entities": len(entities),
+            "inferences": infer_count,
+            "scheme_files": len(all_md(self.scheme_dir)),
+        }
         return summary
 
     def _derive_bayesian(self, summary):
@@ -101,22 +108,38 @@ class OntoDerive(DeriveInterface):
         # v2.1: 集成贝叶斯置信度分布+逻辑链深度
         try:
             from engine.theories.bayesian import BayesianLayer
+
             bl = BayesianLayer(self.root)
             _, bayes_infs = bl.propagate_all()
             confs = [i.get("propagated_confidence", i.get("base_confidence", 0.85)) for i in bayes_infs.values()]
             if confs:
-                summary["confidence_distribution"] = {"mean": round(sum(confs)/len(confs),4), "min": round(min(confs),4), "max": round(max(confs),4), "count": len(confs)}
+                summary["confidence_distribution"] = {
+                    "mean": round(sum(confs) / len(confs), 4),
+                    "min": round(min(confs), 4),
+                    "max": round(max(confs), 4),
+                    "count": len(confs),
+                }
         except Exception as e:
-            import sys; print(f"[derive] Bayesian skip: {e}", file=sys.stderr)
+            import sys
+
+            print(f"[derive] Bayesian skip: {e}", file=sys.stderr)
 
     def _derive_entailment(self, summary):
         """逻辑依赖图分析"""
         try:
             from engine.theories.logic import build_from_project
+
             g = build_from_project(self.root).stats()
-            summary["entailment_graph"] = {"nodes": g["nodes"], "edges": g["edges"], "max_depth": g["max_depth"], "cycles": g["cycles"]}
+            summary["entailment_graph"] = {
+                "nodes": g["nodes"],
+                "edges": g["edges"],
+                "max_depth": g["max_depth"],
+                "cycles": g["cycles"],
+            }
         except Exception as e:
-            import sys; print(f"[derive] Logic skip: {e}", file=sys.stderr)
+            import sys
+
+            print(f"[derive] Logic skip: {e}", file=sys.stderr)
 
     def _derive_hints(self, summary):
         """内容推导 + DAG矛盾检测"""
@@ -130,19 +153,21 @@ class OntoDerive(DeriveInterface):
                 derivation_hints.append(f"{f.name}: 建议添加理论支撑")
         for f in all_md(self.scheme_dir):
             text = rf(f)
-            if len(re.findall(r'D-F\d+|P-F\d+', text)) == 0:
+            if len(re.findall(r"D-F\d+|P-F\d+", text)) == 0:
                 derivation_hints.append(f"{f.name}: 未引用任何事实编号")
 
         # DAG分析：弱推论、矛盾检测
         try:
             from engine.theories.logic import build_from_project
+
             g = build_from_project(self.root)
             st = g.stats()
             if st["contradictions"]:
                 for c in st["contradictions"]:
                     derivation_hints.append(
                         f"⚠️ 矛盾: {c['inference_a']} vs {c['inference_b']} "
-                        f"(共享事实{c['shared_facts']}, 对立词{c['opposing_terms']})")
+                        f"(共享事实{c['shared_facts']}, 对立词{c['opposing_terms']})"
+                    )
             if st["max_depth"] < 2 and st["inferences"] >= 3:
                 derivation_hints.append(f"推导链深度仅{st['max_depth']}，推论间缺少递进关系")
             if st["has_cycles"]:
@@ -160,40 +185,45 @@ class OntoDerive(DeriveInterface):
         # v3.4: 统一推理引擎 (RuleReasoner + FormalReasoner + AnalyticsEngine)
         try:
             from engine.reasoners.unified_reasoner import UnifiedReasoner
+
             # 重建推论dict
             inferences_dict = {}
             for f in all_md(self.inferences_dir):
                 text = rf(f)
-                for block in re.split(r'^##\s+', text, flags=re.MULTILINE)[1:]:
-                    title = block.strip().split('\n')[0].strip()
-                    df_line = re.search(r'derives_from:\s*\[([^\]]+)\]', block)
-                    df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', df_line.group(1)) if df_line else []
+                for block in re.split(r"^##\s+", text, flags=re.MULTILINE)[1:]:
+                    title = block.strip().split("\n")[0].strip()
+                    df_line = re.search(r"derives_from:\s*\[([^\]]+)\]", block)
+                    df = re.findall(r"(D-F\d+|P-F\d+|INF-[\w\d]+)", df_line.group(1)) if df_line else []
                     inferences_dict[title] = {"derives_from": list(set(df)), "text": block[:300]}
             # 解析关系声明
             relations = []
             for sf in all_md(self.scheme_dir):
                 text = rf(sf)
                 for m in re.finditer(
-                    r'[-*]\s+((?:ORG|ROL|PRJ|RES|DOC|STD)-[\w一-鿿-]+)'
-                    r'\s+(\w+)\s+'
-                    r'((?:ORG|ROL|PRJ|RES|DOC|STD)-[\w一-鿿-]+)',
-                    text
+                    r"[-*]\s+((?:ORG|ROL|PRJ|RES|DOC|STD)-[\w一-鿿-]+)"
+                    r"\s+(\w+)\s+"
+                    r"((?:ORG|ROL|PRJ|RES|DOC|STD)-[\w一-鿿-]+)",
+                    text,
                 ):
-                    relations.append({
-                        "subject": m.group(1), "relation_type": m.group(2),
-                        "object": m.group(3),
-                    })
+                    relations.append(
+                        {
+                            "subject": m.group(1),
+                            "relation_type": m.group(2),
+                            "object": m.group(3),
+                        }
+                    )
             ur = UnifiedReasoner(loaded_rules=self._loaded_rules)
             uc_list = ur.reason(
-                self._facts["data"], inferences_dict, relations=relations if relations else None,
-                enhancer=self._try_llm()
+                self._facts["data"],
+                inferences_dict,
+                relations=relations if relations else None,
+                enhancer=self._try_llm(),
             )
             summary["derived_conclusions"] = [uc.to_dict() for uc in uc_list[:25]]
         except Exception:
             pass
 
         save_json(self.log_dir / "derive-summary.json", summary)
-
 
     def derive_formal(self, text=None):
         """
@@ -219,7 +249,9 @@ class OntoDerive(DeriveInterface):
         summary = self.derive()  # 结构分析
         if not self._try_llm():
             summary["llm_status"] = "unavailable"
-            summary["llm_message"] = "结构分析已完成。深度洞察推导需要接入LLM后端。配置方式: export ONTODERIVE_LLM_BACKEND=local"
+            summary["llm_message"] = (
+                "结构分析已完成。深度洞察推导需要接入LLM后端。配置方式: export ONTODERIVE_LLM_BACKEND=local"
+            )
             print("[analyze] ⚠️ LLM不可用 — 仅完成结构分析。洞察推导需要LLM。")
             print("[analyze]    配置: ONTODERIVE_LLM_BACKEND=local ONTODERIVE_LLM_MODEL=qwopus3.6-35b-a3b-v1")
             return summary
@@ -227,6 +259,7 @@ class OntoDerive(DeriveInterface):
         print("[analyze] 🤖 启动LLM洞察推导...")
         try:
             from engine.intelligence.insight import InsightEngine
+
             engine = InsightEngine(enhancer=self._try_llm())
             facts_summary = f"事实数={summary['facts']}, 推论数={summary['inferences']}"
             infs_text = "\n".join(rf(f) for f in all_md(self.inferences_dir))
@@ -246,6 +279,7 @@ class OntoDerive(DeriveInterface):
     def _try_llm(self):
         try:
             from engine.intelligence.llm import get_enhancer
+
             e = get_enhancer()
             return e if e.available else None
         except Exception:
@@ -257,11 +291,12 @@ class OntoDerive(DeriveInterface):
             from .check import run_check
         except ImportError:
             from engine.core.check import run_check
-        return run_check(self.root, self.facts_dir, self.entities_dir,
-                         self.inferences_dir, self.scheme_dir, self.log_dir)[0]
+        return run_check(
+            self.root, self.facts_dir, self.entities_dir, self.inferences_dir, self.scheme_dir, self.log_dir
+        )[0]
 
     def run_rounds(self, rounds=3):
-        for rnd in range(1, rounds+1):
+        for rnd in range(1, rounds + 1):
             print(f"\n Round {rnd}/{rounds}")
             self.derive()
             self.check()
@@ -279,9 +314,9 @@ generated: {datetime.datetime.now().isoformat()}
 ## 执行摘要
 | 指标 | 数值 |
 |------|------|
-| 事实数 | {summary.get('facts', 0)} |
-| 推偶数 | {summary.get('inferences', 0)} |
-| 规约通过 | {checks.get('passed', 0)}/{checks.get('total', 0)} |
+| 事实数 | {summary.get("facts", 0)} |
+| 推偶数 | {summary.get("inferences", 0)} |
+| 规约通过 | {checks.get("passed", 0)}/{checks.get("total", 0)} |
 """
         for d in checks.get("details", []):
             report += f"\n{'✅' if d.get('passed') else '🟠'} {d['protocol_id']}: {d['detail']}"
@@ -293,10 +328,11 @@ generated: {datetime.datetime.now().isoformat()}
         checks = load_json(self.log_dir / "check-result.json") or {}
         fixed = 0
         for d in checks.get("details", []):
-            if d.get("passed"): continue
+            if d.get("passed"):
+                continue
             for fix in d.get("fixes", []):
                 if "创建" in fix:
-                    m = re.search(r'创建\s+(facts|entities|inferences|scheme|protocols)', fix)
+                    m = re.search(r"创建\s+(facts|entities|inferences|scheme|protocols)", fix)
                     if m:
                         (self.root / m.group(1)).mkdir(parents=True, exist_ok=True)
                         fixed += 1
@@ -306,9 +342,14 @@ generated: {datetime.datetime.now().isoformat()}
 
 # CLI入口 (v2.2: 委托给cli.py)
 def main():
-    try: from .cli import main as _main
-    except ImportError: from cli import main as _main  # noqa
+    try:
+        from .cli import main as _main
+    except ImportError:
+        from cli import main as _main  # noqa
     _main()
 
+
 if __name__ == "__main__":
-    import sys; sys.exit(main())
+    import sys
+
+    sys.exit(main())

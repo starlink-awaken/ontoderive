@@ -1,4 +1,5 @@
 """Tests for InsightEngine"""
+
 from engine.intelligence.insight import Insight, InsightEngine
 
 

@@ -4,11 +4,11 @@
 
 import pytest
 from foundation.protocols import (
+    AnalysisResult,
     DeriveInterface,
-    ToolForgeInterface,
     PipelineObservable,
     PipelineStage,
-    AnalysisResult,
+    ToolForgeInterface,
 )
 
 
@@ -22,6 +22,7 @@ class TestDeriveInterface:
 
     def test_concrete_subclass(self):
         """实现所有抽象方法的子类可正常实例化"""
+
         class ConcreteDerive(DeriveInterface):
             def derive(self):
                 return {"status": "ok"}
@@ -39,6 +40,7 @@ class TestDeriveInterface:
 
     def test_analyze_delegates_to_derive_and_check(self):
         """analyze() 应组合 derive + check 的结果"""
+
         class Impl(DeriveInterface):
             def derive(self):
                 return {"conclusions": ["A"]}

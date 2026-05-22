@@ -2,7 +2,6 @@
 测试 intelligence/judge.py — OntoDeriveJudge 评估器
 """
 
-import pytest
 from intelligence.judge import JudgeResult, OntoDeriveJudge
 
 

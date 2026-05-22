@@ -73,9 +73,9 @@ def save_json(path, data):
 def scan_facts_from_md(text: str) -> dict:
     """从Markdown表格中扫描事实数据 (D-F / P-F)"""
     facts = {"data": {}, "policy": {}}
-    for m in re.finditer(r'\| (D-F\d+)\s*\|([^|]+)\|([^|]+)\|', text):
+    for m in re.finditer(r"\| (D-F\d+)\s*\|([^|]+)\|([^|]+)\|", text):
         facts["data"][m.group(1)] = {"desc": m.group(2).strip(), "value": m.group(3).strip()}
-    for m in re.finditer(r'\| (P-F\d+)\s*\|([^|]+)\|', text):
+    for m in re.finditer(r"\| (P-F\d+)\s*\|([^|]+)\|", text):
         facts["policy"][m.group(1)] = {"desc": m.group(2).strip()}
     return facts
 
@@ -83,10 +83,10 @@ def scan_facts_from_md(text: str) -> dict:
 def scan_inferences_from_md(text: str) -> dict:
     """从Markdown中扫描推论块 (INF-)"""
     inferences = {}
-    for block in re.split(r'^##\s+', text, flags=re.MULTILINE)[1:]:
-        title = block.strip().split('\n')[0].strip()
-        df_line = re.search(r'derives_from:\s*\[([^\]]+)\]', block)
-        df = re.findall(r'(D-F\d+|P-F\d+|INF-[\w\d]+)', df_line.group(1)) if df_line else []
+    for block in re.split(r"^##\s+", text, flags=re.MULTILINE)[1:]:
+        title = block.strip().split("\n")[0].strip()
+        df_line = re.search(r"derives_from:\s*\[([^\]]+)\]", block)
+        df = re.findall(r"(D-F\d+|P-F\d+|INF-[\w\d]+)", df_line.group(1)) if df_line else []
         inferences[title] = {"derives_from": list(set(df)), "text": block[:300]}
     return inferences
 

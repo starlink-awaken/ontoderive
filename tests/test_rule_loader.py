@@ -3,6 +3,7 @@
 """
 
 import json
+
 import pytest
 from foundation.rule_loader import RuleLoader
 

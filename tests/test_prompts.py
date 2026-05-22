@@ -3,17 +3,17 @@
 """
 
 import json
-import pytest
+
 from intelligence.prompts import (
-    PromptTemplate,
-    DERIVE_INSIGHTS,
-    JUDGE_QUALITY,
     CHECK_CONTRADICTION,
-    RECOMMEND_TOOLS,
+    DERIVE_INSIGHTS,
     DOMAIN_PRESETS,
+    JUDGE_QUALITY,
+    RECOMMEND_TOOLS,
+    PromptTemplate,
     auto_detect_domain,
-    get_template,
     export_all_templates,
+    get_template,
 )
 
 

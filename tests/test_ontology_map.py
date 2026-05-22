@@ -3,11 +3,12 @@
 """
 
 import json
+
 from foundation.ontology_map import (
+    RELATION_MAPPINGS,
+    TYPE_MAPPINGS,
     OntologyMapper,
     RDFTriple,
-    TYPE_MAPPINGS,
-    RELATION_MAPPINGS,
 )
 
 
