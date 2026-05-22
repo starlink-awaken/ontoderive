@@ -180,6 +180,167 @@ TOOL_DEFS = [
 ]
 
 
+# ── 工具处理器 ──
+
+
+def _handle_init(args, req_id):
+    name = args.get("name", "demo")
+    od = OntoDerive(name)
+    od.derive()
+    return respond(req_id, {"output": f"项目'{name}'已初始化，目录: facts/entities/inferences/scheme/"})
+
+
+def _handle_derive(args, req_id):
+    project = args.get("project", ".")
+    od = OntoDerive(project)
+    result = od.derive()
+    return respond(req_id, {"output": str(result)[:1000]})
+
+
+def _handle_check(args, req_id):
+    project = args.get("project", ".")
+    od = OntoDerive(project)
+    result = od.check()
+    return respond(req_id, {"output": str(result)[:1000]})
+
+
+def _handle_generate(args, req_id):
+    project = args.get("project", ".")
+    od = OntoDerive(project)
+    result = od.generate_report()
+    return respond(req_id, {"output": str(result)[:1000]})
+
+
+def _handle_rounds(args, req_id):
+    project = args.get("project", ".")
+    rounds = args.get("rounds", 3)
+    od = OntoDerive(project)
+    od.run_rounds(int(rounds))
+    return respond(req_id, {"output": f"{rounds}轮迭代完成，日志在 _derivation_logs/"})
+
+
+def _handle_analyze(args, req_id):
+    project = args.get("project", ".")
+    goal = args.get("goal", "")
+    context = args.get("context", "")
+    od = OntoDerive(project)
+    if goal:
+        matches = tf.select(goal, context, top_n=5)
+        guide = tf.to_inference_guide(goal, context)
+    else:
+        matches, guide = [], ""
+    derive_r = od.derive()
+    check_r = od.check()
+    return respond(
+        req_id,
+        {
+            "derive_summary": derive_r,
+            "checks_passed": sum(1 for r in check_r if r.get("passed")),
+            "checks_total": len(check_r),
+            "toolforge_matches": [{"id": m["id"], "name": m["name"], "score": m["score"]} for m in matches],
+            "guide": guide[:500],
+        },
+    )
+
+
+def _handle_config(args, req_id):
+    project = args.get("project", ".")
+    from engine.foundation.config import Config
+
+    cfg = Config(project).to_dict()
+    return respond(req_id, cfg)
+
+
+def _handle_delta(args, req_id):
+    project = args.get("project", ".")
+    from engine.theories.turing_k import KnowledgeTM
+
+    ktm = KnowledgeTM(project)
+    d = ktm.delta()
+    return respond(req_id, d)
+
+
+def _handle_analytics(args, req_id):
+    project = args.get("project", ".")
+    od = OntoDerive(project)
+    r = od.derive()
+    ae_conclusions = [c for c in r.get("derived_conclusions", []) if c.get("source") == "analytics"]
+    return respond(req_id, {"analytics_count": len(ae_conclusions), "conclusions": ae_conclusions[:10]})
+
+
+def _handle_relations(args, req_id):
+    project = args.get("project", ".")
+    od = OntoDerive(project)
+    r = od.derive()
+    rel_conclusions = [c for c in r.get("derived_conclusions", []) if c.get("type", "").startswith("relation_")]
+    return respond(req_id, {"relations_count": len(rel_conclusions), "conclusions": rel_conclusions[:10]})
+
+
+def _handle_export(args, req_id):
+    project = args.get("project", ".")
+    fmt = args.get("format", "html")
+    od = OntoDerive(project)
+    r = od.derive()
+    if fmt in ("html", "json"):
+        from engine.core.export import to_html, to_json
+
+        output = to_html(r, project) if fmt == "html" else to_json(r)
+    else:
+        from engine.foundation.ontology_map import OntologyMapper
+        from engine.reasoners.formalize import Formalizer
+
+        fz = Formalizer()
+        kb = fz.extract_from_text("\n".join(str(r.get(k, "")) for k in r), mode="rule_only")
+        om = OntologyMapper()
+        output = om.export(kb, fmt=fmt)
+    return respond(req_id, {"format": fmt, "output": output[:3000], "length": len(output)})
+
+
+def _handle_toolforge_match(args, req_id):
+    goal = args.get("goal", "")
+    context = args.get("context", "")
+    mode = args.get("mode", "keyword")
+    result = tf.match(goal, context, mode=mode)
+    return respond(req_id, result)
+
+
+def _handle_toolforge_select(args, req_id):
+    goal = args.get("goal", "")
+    context = args.get("context", "")
+    top_n = args.get("top_n", 5)
+    mode = args.get("mode", "keyword")
+    result = tf.select(goal, context, top_n=int(top_n), mode=mode)
+    return respond(req_id, result)
+
+
+def _handle_toolforge_guide(args, req_id):
+    goal = args.get("goal", "")
+    context = args.get("context", "")
+    mode = args.get("mode", "keyword")
+    guide = tf.to_inference_guide(goal, context, mode=mode)
+    return respond(req_id, {"guide": guide[:2000]})
+
+
+# ── 调度表 ──
+
+TOOL_HANDLERS = {
+    "ontoderive_init": _handle_init,
+    "ontoderive_derive": _handle_derive,
+    "ontoderive_check": _handle_check,
+    "ontoderive_generate": _handle_generate,
+    "ontoderive_rounds": _handle_rounds,
+    "ontoderive_analyze": _handle_analyze,
+    "ontoderive_config": _handle_config,
+    "ontoderive_delta": _handle_delta,
+    "ontoderive_analytics": _handle_analytics,
+    "ontoderive_relations": _handle_relations,
+    "ontoderive_export": _handle_export,
+    "toolforge_match": _handle_toolforge_match,
+    "toolforge_select": _handle_toolforge_select,
+    "toolforge_guide": _handle_toolforge_guide,
+}
+
+
 def handle_request(req):
     req_id = req.get("id")
     method = req.get("method", "")
@@ -201,123 +362,12 @@ def handle_request(req):
     if method == "tools/call":
         tool = params.get("name", "")
         args = params.get("arguments", {})
-        project = args.get("project", ".")
-        name = args.get("name", "demo")
 
         try:
-            if tool == "ontoderive_init":
-                od = OntoDerive(name)
-                od.derive()
-                return respond(req_id, {"output": f"项目'{name}'已初始化，目录: facts/entities/inferences/scheme/"})
-
-            elif tool in ("ontoderive_derive", "ontoderive_check", "ontoderive_generate"):
-                od = OntoDerive(project)
-                if tool == "ontoderive_derive":
-                    result = od.derive()
-                elif tool == "ontoderive_check":
-                    result = od.check()
-                else:
-                    result = od.generate_report()
-                return respond(req_id, {"output": str(result)[:1000]})
-
-            elif tool == "ontoderive_rounds":
-                od = OntoDerive(project)
-                rounds = args.get("rounds", 3)
-                od.run_rounds(int(rounds))
-                return respond(req_id, {"output": f"{rounds}轮迭代完成，日志在 _derivation_logs/"})
-
-            elif tool == "ontoderive_analyze":
-                od = OntoDerive(project)
-                goal = args.get("goal", "")
-                context = args.get("context", "")
-                if goal:
-                    matches = tf.select(goal, context, top_n=5)
-                    guide = tf.to_inference_guide(goal, context)
-                else:
-                    matches, guide = [], ""
-                derive_r = od.derive()
-                check_r = od.check()
-                return respond(
-                    req_id,
-                    {
-                        "derive_summary": derive_r,
-                        "checks_passed": sum(1 for r in check_r if r.get("passed")),
-                        "checks_total": len(check_r),
-                        "toolforge_matches": [{"id": m["id"], "name": m["name"], "score": m["score"]} for m in matches],
-                        "guide": guide[:500],
-                    },
-                )
-
-            elif tool == "ontoderive_config":
-                from engine.foundation.config import Config
-
-                cfg = Config(project).to_dict()
-                return respond(req_id, cfg)
-
-            elif tool == "ontoderive_delta":
-                from engine.theories.turing_k import KnowledgeTM
-
-                ktm = KnowledgeTM(project)
-                d = ktm.delta()
-                return respond(req_id, d)
-
-            # ── v3.5 新增工具 ──
-            elif tool == "ontoderive_analytics":
-                od = OntoDerive(project)
-                r = od.derive()
-                ae_conclusions = [c for c in r.get("derived_conclusions", []) if c.get("source") == "analytics"]
-                return respond(req_id, {"analytics_count": len(ae_conclusions), "conclusions": ae_conclusions[:10]})
-
-            elif tool == "ontoderive_relations":
-                od = OntoDerive(project)
-                r = od.derive()
-                rel_conclusions = [
-                    c for c in r.get("derived_conclusions", []) if c.get("type", "").startswith("relation_")
-                ]
-                return respond(req_id, {"relations_count": len(rel_conclusions), "conclusions": rel_conclusions[:10]})
-
-            elif tool == "ontoderive_export":
-                od = OntoDerive(project)
-                r = od.derive()
-                fmt = args.get("format", "html")
-                if fmt in ("html", "json"):
-                    from engine.core.export import to_html, to_json
-
-                    output = to_html(r, project) if fmt == "html" else to_json(r)
-                else:
-                    from engine.foundation.ontology_map import OntologyMapper
-                    from engine.reasoners.formalize import Formalizer
-
-                    fz = Formalizer()
-                    kb = fz.extract_from_text("\n".join(str(r.get(k, "")) for k in r), mode="rule_only")
-                    om = OntologyMapper()
-                    output = om.export(kb, fmt=fmt)
-                return respond(req_id, {"format": fmt, "output": output[:3000], "length": len(output)})
-
-            elif tool == "toolforge_match":
-                goal = args.get("goal", "")
-                context = args.get("context", "")
-                mode = args.get("mode", "keyword")
-                result = tf.match(goal, context, mode=mode)
-                return respond(req_id, result)
-
-            elif tool == "toolforge_select":
-                goal = args.get("goal", "")
-                context = args.get("context", "")
-                top_n = args.get("top_n", 5)
-                mode = args.get("mode", "keyword")
-                result = tf.select(goal, context, top_n=int(top_n), mode=mode)
-                return respond(req_id, result)
-
-            elif tool == "toolforge_guide":
-                goal = args.get("goal", "")
-                context = args.get("context", "")
-                mode = args.get("mode", "keyword")
-                guide = tf.to_inference_guide(goal, context, mode=mode)
-                return respond(req_id, {"guide": guide[:2000]})
-
+            handler = TOOL_HANDLERS.get(tool)
+            if handler:
+                return handler(args, req_id)
             return err(req_id, -32601, f"未知工具: {tool}")
-
         except Exception as e:
             return err(req_id, -32000, f"{tool}失败: {str(e)[:200]}")
 

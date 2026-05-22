@@ -52,3 +52,32 @@ def mock_inferences():
             "derives_from": ["D-F1", "D-F2"],
         },
     }
+
+
+class _MockEnhancer:
+    """模拟LLMEnhancer，返回固定结果，无需LLM连接"""
+    available = True
+    backend = "mock"
+    model = "mock-model"
+
+    def _call(self, prompt, system="", temperature=0.3):
+        """模拟LLM调用，返回固定响应"""
+        return "模拟分析结论：建议增加事实引用"
+
+    def enhance_derivation_hints(self, facts_summary, inferences_text, existing_hints):
+        return existing_hints + ["mock hint: 增加事实引用以提升追溯率"]
+
+    def detect_contradictions(self, inference_a, inference_b, shared_facts):
+        return False
+
+    def smart_match_tools(self, goal, context, tools_descriptions):
+        return [t["id"] for t in tools_descriptions[:3]] if tools_descriptions else []
+
+    def derive_insights(self, project_root, facts_summary, inferences_text):
+        return []
+
+
+@pytest.fixture
+def mock_enhancer():
+    """返回模拟的LLM增强器，用于测试LLM依赖路径"""
+    return _MockEnhancer()

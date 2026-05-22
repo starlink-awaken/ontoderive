@@ -30,3 +30,12 @@ class TestInsightEngine:
             inferences_text="测试推论",
         )
         assert insights == []
+
+    def test_derive_insights_with_mock_enhancer(self, tmp_project, mock_enhancer):
+        engine = InsightEngine(enhancer=mock_enhancer)
+        insights = engine.derive_insights(
+            project_root=tmp_project,
+            facts_summary="D-F1: 100",
+            inferences_text="INF-L1: 测试推论",
+        )
+        assert isinstance(insights, list)

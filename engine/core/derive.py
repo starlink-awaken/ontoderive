@@ -77,13 +77,13 @@ class OntoDerive(DeriveInterface):
     def _derive_baseline(self):
         """扫描事实/实体/推论基线"""
         print("[derive] 事实基座扫描...")
+        from engine.foundation.utils import scan_facts_from_md
+
         self._facts = {"data": {}, "policy": {}}
         for f in all_md(self.facts_dir):
-            text = rf(f)
-            for m in re.finditer(r"\| (D-F\d+)\s*\|([^|]+)\|([^|]+)\|", text):
-                self._facts["data"][m.group(1)] = {"desc": m.group(2).strip(), "value": m.group(3).strip()}
-            for m in re.finditer(r"\| (P-F\d+)\s*\|([^|]+)\|", text):
-                self._facts["policy"][m.group(1)] = {"desc": m.group(2).strip()}
+            result = scan_facts_from_md(rf(f))
+            self._facts["data"].update(result["data"])
+            self._facts["policy"].update(result["policy"])
 
         entities = {}
         for f in all_md(self.entities_dir):

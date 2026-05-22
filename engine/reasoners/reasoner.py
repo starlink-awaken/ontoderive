@@ -6,8 +6,11 @@ OntoDerive 规则推导引擎 — 8种推理规则 + 13种结构检查
 基于三段论模式+状态机的确定性推导。
 不解析自然语言，不替代LLM。但对结构化数据有效。
 
-推理规则(8种): R1数值比较, R7假言, R8传递, R9包含, R10影响, R13选言, R14假言链, R16一致性
-结构检查(13种): R2共享前提, R3缺失引用, R4证据缺口, R5阈值, R6链完整, R11冗余, R12覆盖, R15时态, R17结构洞, R18约束, R19案例, R20增量, R21时态序列
+推理规则(8种): R1数值比较, R7假言, R8传递, R9包含, R10影响, R13选言,
+R14假言链, R16一致性
+结构检查(13种): R2共享前提, R3缺失引用, R4证据缺口, R5阈值, R6链完整,
+R11冗余, R12覆盖, R15时态, R17结构洞, R18约束, R19案例, R20增量,
+R21时态序列
 
 能力边界:
 ✅ 数值比较推导 (D-F1 > D-F2 → 推论A)
@@ -301,7 +304,10 @@ class RuleReasoner:
                             results.append(
                                 {
                                     "type": "disjunctive_syllogism",
-                                    "conclusion": f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), 需明确优先级",
+                                    "conclusion": (
+                                        f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), "
+                                        "需明确优先级"
+                                    ),
                                     "derived_from": list(shared),
                                     "confidence": 0.70,
                                     "method": "rule_engine",
@@ -522,7 +528,10 @@ class RuleReasoner:
                     results.append(
                         {
                             "type": "relation_domain",
-                            "conclusion": f"域约束: {r_type}的domain应为{exp_dom}, 但subject'{rel.get('subject')}'前缀为'{subj_prefix}'",
+                            "conclusion": (
+                                f"域约束: {r_type}的domain应为{exp_dom}, "
+                                f"但subject'{rel.get('subject')}'前缀为'{subj_prefix}'"
+                            ),
                             "derived_from": [rel.get("subject", "")],
                             "confidence": 0.70,
                             "method": "rule_engine",
@@ -532,7 +541,10 @@ class RuleReasoner:
                     results.append(
                         {
                             "type": "relation_range",
-                            "conclusion": f"域约束: {r_type}的range应为{exp_rng}, 但object'{rel.get('object')}'前缀为'{obj_prefix}'",
+                            "conclusion": (
+                                f"域约束: {r_type}的range应为{exp_rng}, "
+                                f"但object'{rel.get('object')}'前缀为'{obj_prefix}'"
+                            ),
                             "derived_from": [rel.get("object", "")],
                             "confidence": 0.70,
                             "method": "rule_engine",
@@ -566,7 +578,10 @@ class RuleReasoner:
                 results.append(
                     {
                         "type": "constraint_violation",
-                        "conclusion": f"断言追溯率{rate:.0%}低于50%阈值(C-05), 建议为{total_assertions - traced}个断言标注事实引用",
+                        "conclusion": (
+                            f"断言追溯率{rate:.0%}低于50%阈值(C-05), "
+                            f"建议为{total_assertions - traced}个断言标注事实引用"
+                        ),
                         "derived_from": [],
                         "confidence": 0.90,
                         "method": "rule_engine",
@@ -625,7 +640,10 @@ class RuleReasoner:
                 results.append(
                     {
                         "type": "transitive_dependency",
-                        "conclusion": f"推论'{title[:30]}'间接依赖{len(indirect_deps)}个前提: {list(indirect_deps)[:5]}",
+                        "conclusion": (
+                            f"推论'{title[:30]}'间接依赖{len(indirect_deps)}个前提: "
+                            f"{list(indirect_deps)[:5]}"
+                        ),
                         "derived_from": list(indirect_deps),
                         "confidence": 0.75,
                         "method": "rule_engine",
@@ -862,7 +880,10 @@ class RuleReasoner:
                     results.append(
                         {
                             "type": "numeric_comparison",
-                            "conclusion": f"{a['label']}({a['value']})是{b['label']}({b['value']})的{a['value'] / b['value']:.1f}倍",
+                            "conclusion": (
+                                f"{a['label']}({a['value']})是{b['label']}({b['value']})的"
+                                f"{a['value'] / b['value']:.1f}倍"
+                            ),
                             "derived_from": [ids[i], ids[j]],
                             "confidence": 0.95,
                             "method": "rule_engine",
@@ -883,7 +904,10 @@ class RuleReasoner:
                     results.append(
                         {
                             "type": "shared_premise",
-                            "conclusion": f"推论'{a_id[:30]}'和'{b_id[:30]}'共享{len(shared)}个前提({list(shared)[:3]})",
+                            "conclusion": (
+                                f"推论'{a_id[:30]}'和'{b_id[:30]}'共享{len(shared)}个前提"
+                                f"({list(shared)[:3]})"
+                            ),
                             "derived_from": list(shared),
                             "confidence": 0.75,
                             "method": "rule_engine",
@@ -1022,7 +1046,10 @@ class RuleReasoner:
                 results.append(
                     {
                         "type": "case_match",
-                        "conclusion": f"案例'{case.get('name', '未命名')}'与当前项目相似度{similarity:.0%}, 参考结果: {case.get('outcome', '')[:80]}",
+                        "conclusion": (
+                            f"案例'{case.get('name', '未命名')}'与当前项目相似度{similarity:.0%}, "
+                            f"参考结果: {case.get('outcome', '')[:80]}"
+                        ),
                         "derived_from": [],
                         "confidence": round(similarity, 2),
                         "method": "rule_engine",
