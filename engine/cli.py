@@ -33,11 +33,18 @@ def main():
     # derive
     p_derive = sub.add_parser("derive", help="正向推导")
     p_derive.add_argument("--project", default=".", help="项目路径")
+    p_derive.add_argument("--auto", action="store_true", help="自动检测LLM并增强推导")
     p_derive.add_argument("--with-tools", action="store_true", help="前置 ToolForge 匹配")
     p_derive.add_argument("--goal", help="目标描述")
     p_derive.add_argument("--tool-context", default="", help="ToolForge 上下文关键词")
     p_derive.add_argument("--pipeline-input", help="(pipeline mode) 输入文件")
     p_derive.add_argument("--pipeline-output", help="(pipeline mode) 输出文件")
+
+    # analyze (v3.6)
+    p_analyze = sub.add_parser("analyze", help="全量分析: 推导+LLM洞察(自动检测)")
+    p_analyze.add_argument("--project", default=".", help="项目路径")
+    p_analyze.add_argument("--auto", action="store_true", help="自动检测LLM(默认行为)")
+    p_analyze.add_argument("--force", action="store_true", help="强制重新分析(跳过缓存)")
 
     # check
     p_check = sub.add_parser("check", help="规约检查")
@@ -102,7 +109,7 @@ def main():
         )
         print(f"✅ 项目 '{args.name}' 已初始化")
 
-    elif args.command in ("derive", "check", "rounds", "generate"):
+    elif args.command in ("derive", "check", "rounds", "generate", "analyze"):
         from engine.core.derive import OntoDerive
 
         od = OntoDerive(args.project)
@@ -128,14 +135,28 @@ def main():
                     print(f"      {t['id']} {t['name']} (匹配度:{t['score']})")
 
         if args.command == "derive":
-            if hasattr(args, "pipeline_output") and args.pipeline_output:
+            if getattr(args, "auto", False):
+                print("[derive] --auto: 自动检测LLM并执行全量分析...")
+                od.analyze()
+            elif hasattr(args, "pipeline_output") and args.pipeline_output:
                 import json
 
                 result = {"derived": True, "count": 0, "items": []}
                 Path(args.pipeline_output).write_text(json.dumps(result, indent=2))
                 print(f"Output → {args.pipeline_output}")
                 return
-            od.derive()
+            else:
+                od.derive()
+        elif args.command == "analyze":
+            print("[analyze] 全量分析: 结构推导 + LLM洞察(自动检测LLM)...")
+            from engine.intelligence.llm import get_enhancer
+
+            enhancer = get_enhancer(getattr(args, "force", False))
+            if enhancer.available:
+                print(f"[analyze] ✅ LLM后端: {enhancer.backend}, 模型: {enhancer.model}")
+            else:
+                print("[analyze] ⚠️ LLM不可用, 仅执行结构分析")
+            od.analyze()
         elif args.command == "check":
             od.check()
         elif args.command == "rounds":

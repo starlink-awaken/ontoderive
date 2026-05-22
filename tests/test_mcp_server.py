@@ -12,10 +12,13 @@ from mcp_server import TOOL_DEFS, handle_request
 def test_tools_list():
     resp = json.loads(handle_request({"id": 1, "method": "tools/list"}))
     tools = resp["result"]["tools"]
-    assert len(tools) == 14
+    assert len(tools) == 17
     names = [t["name"] for t in tools]
     assert "ontoderive_init" in names
     assert "ontoderive_derive" in names
+    assert "ontoderive_write_fact" in names
+    assert "ontoderive_write_inference" in names
+    assert "ontoderive_write_scheme" in names
     assert "ontoderive_check" in names
     assert "toolforge_match" in names
     assert "toolforge_select" in names

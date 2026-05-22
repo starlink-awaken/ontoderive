@@ -2,7 +2,7 @@
 """
 OntoDerive Unified MCP Server v3.5
 ====================================
-统一入口：14工具 (推导5 + 匹配3 + 分析3 + 导出2 + 配置1)
+统一入口：17工具 (推导5 + 匹配3 + 分析3 + 导出2 + 配置1 + 写入3)
 协议：JSON-RPC 2.0 over stdio
 """
 
@@ -177,6 +177,54 @@ TOOL_DEFS = [
             "required": ["goal"],
         },
     },
+    # ── 写入工具 (v3.6 NEW) ──
+    {
+        "name": "ontoderive_write_fact",
+        "description": "写入/更新事实记录到 facts/data.md",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project": {"type": "string", "description": "项目路径"},
+                "fid": {"type": "string", "description": "事实编号(D-Fx或P-Fx)"},
+                "description": {"type": "string", "description": "事实描述"},
+                "value": {"type": "string", "description": "事实值"},
+                "source": {"type": "string", "description": "来源", "default": "MCP"},
+            },
+            "required": ["project", "fid", "description", "value"],
+        },
+    },
+    {
+        "name": "ontoderive_write_inference",
+        "description": "写入/更新推论到 inferences/ 文件",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project": {"type": "string", "description": "项目路径"},
+                "inf_id": {"type": "string", "description": "推论编号(INF-Lx)"},
+                "title": {"type": "string", "description": "推论标题"},
+                "content": {"type": "string", "description": "推论内容"},
+                "derives_from": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "引用的事实/推论编号列表",
+                },
+            },
+            "required": ["project", "inf_id", "title", "content"],
+        },
+    },
+    {
+        "name": "ontoderive_write_scheme",
+        "description": "写入/更新方案到 scheme/ 文件",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project": {"type": "string", "description": "项目路径"},
+                "title": {"type": "string", "description": "方案标题"},
+                "content": {"type": "string", "description": "方案内容(markdown)"},
+            },
+            "required": ["project", "title", "content"],
+        },
+    },
 ]
 
 
@@ -321,6 +369,75 @@ def _handle_toolforge_guide(args, req_id):
     return respond(req_id, {"guide": guide[:2000]})
 
 
+# ── 写入工具处理器 (v3.6 NEW) ──
+
+
+def _handle_write_fact(args, req_id):
+    project = Path(args.get("project", "."))
+    fid = args.get("fid", "")
+    desc = args.get("description", "")
+    value = args.get("value", "")
+    source = args.get("source", "MCP")
+    facts_dir = project / "facts"
+    facts_dir.mkdir(parents=True, exist_ok=True)
+
+    prefix = "D" if fid.startswith("D-F") else "P"
+    file_path = facts_dir / f"{prefix}.md"
+    if not file_path.exists():
+        file_path.write_text(
+            "| 编号 | 数据 | 数值 | 来源 |\n|------|------|------|------|\n"
+        )
+    old = file_path.read_text()
+    if fid in old:
+        # 替换已有行
+        lines = old.split("\n")
+        for i, line in enumerate(lines):
+            if line.startswith(f"| {fid} "):
+                lines[i] = f"| {fid} | {desc} | {value} | {source} |"
+                break
+        file_path.write_text("\n".join(lines))
+    else:
+        file_path.write_text(old.rstrip() + f"\n| {fid} | {desc} | {value} | {source} |\n")
+    return respond(req_id, {"output": f"事实{fid}已写入 {file_path.name}"})
+
+
+def _handle_write_inference(args, req_id):
+    project = Path(args.get("project", "."))
+    inf_id = args.get("inf_id", "")
+    title = args.get("title", "")
+    content = args.get("content", "")
+    derives_from = args.get("derives_from", [])
+
+    inf_dir = project / "inferences"
+    inf_dir.mkdir(parents=True, exist_ok=True)
+    file_path = inf_dir / "analysis.md"
+
+    df_line = f"derives_from: [{', '.join(derives_from)}]" if derives_from else ""
+    block = f"\n## {inf_id}：{title}\n\n{content}\n\n{df_line}\n"
+    if not file_path.exists():
+        file_path.write_text(f"# 推论分析\n\n{block.strip()}\n")
+    else:
+        file_path.write_text(file_path.read_text().rstrip() + "\n" + block)
+    return respond(req_id, {"output": f"推论{inf_id}已写入 {file_path.name}"})
+
+
+def _handle_write_scheme(args, req_id):
+    project = Path(args.get("project", "."))
+    title = args.get("title", "")
+    content = args.get("content", "")
+
+    scheme_dir = project / "scheme"
+    scheme_dir.mkdir(parents=True, exist_ok=True)
+    file_path = scheme_dir / "report.md"
+
+    block = f"\n## {title}\n\n{content}\n"
+    if not file_path.exists():
+        file_path.write_text(f"# 方案分析\n\n{block.strip()}\n")
+    else:
+        file_path.write_text(file_path.read_text().rstrip() + "\n" + block)
+    return respond(req_id, {"output": f"方案'{title}'已写入 {file_path.name}"})
+
+
 # ── 调度表 ──
 
 TOOL_HANDLERS = {
@@ -338,6 +455,9 @@ TOOL_HANDLERS = {
     "toolforge_match": _handle_toolforge_match,
     "toolforge_select": _handle_toolforge_select,
     "toolforge_guide": _handle_toolforge_guide,
+    "ontoderive_write_fact": _handle_write_fact,
+    "ontoderive_write_inference": _handle_write_inference,
+    "ontoderive_write_scheme": _handle_write_scheme,
 }
 
 

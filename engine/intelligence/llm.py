@@ -10,7 +10,14 @@ import os
 
 
 class LLMEnhancer:
-    """LLM增强器 — 失败时静默降级为规则引擎"""
+    """LLM增强器 — 失败时静默降级为规则引擎
+
+    自动检测顺序:
+    1. ollama CLI → 模型列表 | 要求: ollama 已安装
+    2. 本地API → OpenAI兼容端点 | 要求: ONTODERIVE_LLM_URL 或 localhost:11434
+    3. OPENAI_API_KEY → openai 后端
+    4. ANTHROPIC_API_KEY → anthropic 后端
+    """
 
     def __init__(self, backend="auto", model=None, base_url=None):
         if backend == "auto":
@@ -23,33 +30,7 @@ class LLMEnhancer:
     def _detect_backend(self, backend):
         if backend != "auto":
             return backend
-        if os.environ.get("OPENAI_API_KEY"):
-            return "openai"
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            return "anthropic"
-        # 检测本地API (localhost:1234)
-        try:
-            import json
-            import urllib.request
-
-            req = urllib.request.Request(
-                os.environ.get("ONTODERIVE_LLM_BASE_URL", "http://localhost:11434"),
-                data=json.dumps(
-                    {"model": os.environ.get("ONTODERIVE_LLM_MODEL", "qwopus3.5:4b"), "input": "hi"}
-                ).encode(),
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=5) as r:
-                json.loads(r.read())
-            self.base_url = os.environ.get("ONTODERIVE_LLM_BASE_URL", "http://localhost:11434")
-            if not self.model:
-                self.model = os.environ.get("ONTODERIVE_LLM_MODEL", "qwopus3.5:4b")
-            return "local"
-        except (json.JSONDecodeError, OSError, ValueError):
-            import sys
-
-            print("[llm] 本地API检测失败", file=sys.stderr)
-            pass
+        # 1) ollama CLI (最常见)
         try:
             import subprocess
 
@@ -58,6 +39,23 @@ class LLMEnhancer:
                 return "ollama"
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
+        # 2) 本地OpenAI兼容API
+        try:
+            import urllib.request
+
+            url = os.environ.get("ONTODERIVE_LLM_URL", "http://localhost:11434")
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=3):
+                self.base_url = url
+                return "local"
+        except OSError:
+            pass
+        # 3) openai API key
+        if os.environ.get("OPENAI_API_KEY"):
+            return "openai"
+        # 4) anthropic API key
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            return "anthropic"
         return "none"
 
     def _probe(self):
