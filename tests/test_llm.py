@@ -1,46 +1,207 @@
-"""LLM增强层测试 — 降级方案验证"""
+"""LLM增强层测试 — 后端检测 + 增强入口 + 错误处理"""
+import os
+from unittest.mock import MagicMock, patch
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "engine"))
-
-from engine.intelligence.llm import LLMEnhancer, get_enhancer
+from engine.intelligence.llm import LLMEnhancer
 
 
-def test_enhancer_init():
-    e = LLMEnhancer(backend="none")
-    assert e.backend == "none"
-    assert not e.available
+class TestLLMEnhancerInit:
+    def test_none_backend(self):
+        e = LLMEnhancer(backend="none")
+        assert e.backend == "none"
+        assert not e.available
+
+    def test_unknown_backend(self):
+        """未知backend不抛异常"""
+        e = LLMEnhancer(backend="nonexistent")
+        assert e.backend == "nonexistent"
+
+    def test_openai_backend_without_key(self):
+        """指定openai但无API key时不可用"""
+        with patch.dict(os.environ, {}, clear=True):
+            e = LLMEnhancer(backend="openai")
+            assert e.backend == "openai"
+            assert not e.available
+
+    def test_anthropic_backend_without_key(self):
+        with patch.dict(os.environ, {}, clear=True):
+            e = LLMEnhancer(backend="anthropic")
+            assert e.backend == "anthropic"
+            assert not e.available
 
 
-def test_enhancer_none_backend():
-    e = LLMEnhancer(backend="none")
-    # 降级：无LLM时返回原提示
-    hints = e.enhance_derivation_hints("测试", "推论内容", ["提示1"])
-    assert hints == ["提示1"]
+class TestLLMEnhancerDetect:
+    def test_detect_openai_with_key(self):
+        """有OPENAI_API_KEY时自检到openai"""
+        with patch.dict(os.environ, {"ONTODERIVE_LLM_BACKEND": "auto", "OPENAI_API_KEY": "sk-test"}):
+            with patch("subprocess.run", side_effect=FileNotFoundError):
+                with patch("urllib.request.urlopen", side_effect=OSError):
+                    e = LLMEnhancer(backend="auto")
+                    assert e.backend == "openai"
+
+    def test_detect_anthropic_with_key(self):
+        with patch.dict(os.environ, {"ONTODERIVE_LLM_BACKEND": "auto", "ANTHROPIC_API_KEY": "sk-ant-test"}):
+            with patch("subprocess.run", side_effect=FileNotFoundError):
+                with patch("urllib.request.urlopen", side_effect=OSError):
+                    e = LLMEnhancer(backend="auto")
+                    assert e.backend == "anthropic"
+
+    def test_detect_none_when_no_backend(self):
+        """无任何LLM可用时返回none"""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch("subprocess.run", side_effect=FileNotFoundError):
+                with patch("urllib.request.urlopen", side_effect=OSError):
+                    e = LLMEnhancer(backend="auto")
+                    assert e.backend == "none"
+                    assert not e.available
+
+    def test_detect_ollama_with_models(self):
+        """ollama list成功时检测到ollama"""
+        mock_run = MagicMock()
+        mock_run.returncode = 0
+        mock_run.stdout = "NAME\tID\tSIZE\nqwen3.5:4b\tabc\t3.5GB\n"
+        with patch.dict(os.environ, {"ONTODERIVE_LLM_BACKEND": "auto"}):
+            with patch("urllib.request.urlopen", side_effect=OSError):
+                with patch("subprocess.run", return_value=mock_run):
+                    e = LLMEnhancer(backend="auto")
+                    assert e.backend == "ollama"
 
 
-def test_enhancer_no_contradiction_without_llm():
-    e = LLMEnhancer(backend="none")
-    r = e.detect_contradictions("推论A", "推论B", ["D-F1"])
-    assert r is None
+class TestLLMEnhancerCall:
+    def test_call_unavailable_returns_none(self):
+        e = LLMEnhancer(backend="none")
+        result = e._call("prompt", "system", 0.3)
+        assert result is None
+
+    def test_ollama_call_timeout(self):
+        """ollama调用超时返回None"""
+        e = LLMEnhancer(backend="ollama", model="test-model")
+        e.available = True
+        with patch("subprocess.run", side_effect=TimeoutError):
+            result = e._call("prompt")
+            assert result is None
+
+    def test_local_call_timeout(self):
+        """本地API调用超时返回None"""
+        e = LLMEnhancer(backend="local", model="test-model", base_url="http://localhost:1234")
+        e.available = True
+        with patch("urllib.request.urlopen", side_effect=OSError):
+            result = e._call("prompt")
+            assert result is None
 
 
-def test_smart_match_without_llm():
-    e = LLMEnhancer(backend="none")
-    tools = [{"id": "M-001", "name": "SWOT", "description": "分析框架"}]
-    r = e.smart_match_tools("分析市场", "", tools)
-    assert r is None
+class TestLLMEnhancerEnhancements:
+    def test_enhance_derivation_no_llm(self):
+        e = LLMEnhancer(backend="none")
+        hints = e.enhance_derivation_hints("测试", "推论", ["hint1"])
+        assert hints == ["hint1"]
+
+    def test_detect_contradictions_no_llm(self):
+        e = LLMEnhancer(backend="none")
+        r = e.detect_contradictions("A", "B", ["D-F1"])
+        assert r is None
+
+    def test_smart_match_no_llm(self):
+        e = LLMEnhancer(backend="none")
+        tools = [{"id": "M-001", "name": "SWOT", "description": "框架"}]
+        r = e.smart_match_tools("分析", "", tools)
+        assert r is None
 
 
-def test_get_enhancer_cached():
-    e1 = get_enhancer()
-    e2 = get_enhancer()
-    assert e1 is e2  # 单例缓存
+class TestLLMEnhancerMockCall:
+    """使用mock enhancer模拟真实调用路径"""
+
+    def test_enhance_derivation_with_mock_call(self):
+        e = LLMEnhancer(backend="openai")
+        e.available = True
+        e.model = "gpt-4o-mini"
+        with patch.object(e, "_call", return_value="建议: 增加事实引用"):
+            hints = e.enhance_derivation_hints("事实", "推论", ["hint1"])
+            assert len(hints) > 1
+            assert any("事实引用" in h for h in hints)
+
+    def test_detect_contradictions_with_mock_yes(self):
+        e = LLMEnhancer(backend="openai")
+        e.available = True
+        with patch.object(e, "_call", return_value="YES"):
+            assert e.detect_contradictions("A", "B", ["D-F1"]) is True
+
+    def test_detect_contradictions_with_mock_no(self):
+        e = LLMEnhancer(backend="openai")
+        e.available = True
+        with patch.object(e, "_call", return_value="NO"):
+            assert e.detect_contradictions("A", "B", ["D-F1"]) is False
+
+    def test_smart_match_with_mock(self):
+        e = LLMEnhancer(backend="openai")
+        e.available = True
+        tools = [{"id": "M-001", "name": "SWOT", "description": "框架"}]
+        with patch.object(e, "_call", return_value="M-001, S-002, T-003"):
+            ids = e.smart_match_tools("分析", "", tools)
+            assert ids == ["M-001", "S-002", "T-003"]
+
+    def test_call_dispatch_openai(self):
+        """_call正确分发到openai后端"""
+        e = LLMEnhancer(backend="openai")
+        e.available = True
+        with patch.object(e, "_call_openai", return_value="response") as mock:
+            result = e._call("prompt", "system", 0.3)
+            assert result == "response"
+            mock.assert_called_once()
+
+    def test_call_dispatch_ollama(self):
+        e = LLMEnhancer(backend="ollama", model="qwen3.5:4b")
+        e.available = True
+        with patch.object(e, "_call_ollama", return_value="response") as mock:
+            result = e._call("prompt", "system", 0.3)
+            assert result == "response"
+            mock.assert_called_once()
+
+    def test_call_dispatch_local(self):
+        e = LLMEnhancer(backend="local", model="test")
+        e.available = True
+        with patch.object(e, "_call_local", return_value="response") as mock:
+            result = e._call("prompt", "system", 0.3)
+            assert result == "response"
+            mock.assert_called_once()
 
 
-def test_get_enhancer_force():
-    e1 = get_enhancer()
-    e2 = get_enhancer(force=True)
-    assert e1 is not e2  # 强制刷新
+class TestLLMEnhancerEdgeCases:
+    def test_model_selection_from_env(self):
+        """从环境变量读取模型"""
+        with patch.dict(os.environ, {"ONTODERIVE_LLM_MODEL": "gpt-4"}):
+            e = LLMEnhancer(backend="openai")
+            assert e.model == "gpt-4"
+
+    def test_base_url_from_env(self):
+        with patch.dict(os.environ, {"ONTODERIVE_LLM_URL": "http://my-proxy:8080"}):
+            e = LLMEnhancer(backend="local")
+            assert e.base_url == "http://my-proxy:8080"
+
+    def test_ollama_probe_model_not_found(self):
+        """ollama有但指定模型不存在时不可用"""
+        mock_run = MagicMock()
+        mock_run.returncode = 0
+        mock_run.stdout = "NAME\tID\tSIZE\nother-model\tabc\t3.5GB\n"
+        with patch("subprocess.run", return_value=mock_run):
+            e = LLMEnhancer(backend="auto", model="qwen3.5:4b")
+            # detect should return ollama, probe should fail because model not in list
+            assert not e.available
+
+    def test_probe_exception_returns_false(self):
+        """探测异常时available为False"""
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            e = LLMEnhancer(backend="ollama", model="test")
+            assert not e.available
+
+    def test_get_enhancer_returns_singleton(self):
+        from engine.intelligence.llm import get_enhancer
+        e1 = get_enhancer()
+        e2 = get_enhancer()
+        assert e1 is e2
+
+    def test_get_enhancer_force(self):
+        from engine.intelligence.llm import get_enhancer
+        e1 = get_enhancer()
+        e2 = get_enhancer(force=True)
+        assert e1 is not e2
