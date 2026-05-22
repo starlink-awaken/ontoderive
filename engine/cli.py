@@ -80,6 +80,10 @@ def main():
     p_extract.add_argument("source", help="源文本或文件路径")
     p_extract.add_argument("--to", default="facts/data.md", help="输出路径")
 
+    # mcp (v3.6)
+    p_mcp = sub.add_parser("mcp", help="启动MCP server (JSON-RPC 2.0, 17工具)")
+    p_mcp.add_argument("--port", type=int, default=0, help="监听端口(0=stdio模式)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -260,6 +264,10 @@ def main():
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(md)
         print(f"[extract] ✅ {len(kb.facts)}事实/{len(kb.entities)}实体 → {output}")
+
+    elif args.command == "mcp":
+        from engine.mcp_server import main as mcp_main
+        mcp_main()
 
 
 if __name__ == "__main__":

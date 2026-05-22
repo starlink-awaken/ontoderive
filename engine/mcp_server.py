@@ -494,8 +494,10 @@ def handle_request(req):
     return err(req_id, -32601, f"未知方法: {method}")
 
 
-if __name__ == "__main__":
-    print("[ontoderive-unified-mcp v3] 启动: 11工具就绪", file=sys.stderr)
+def main():
+    """启动MCP server (stdio模式)"""
+    n_tools = len(TOOL_DEFS)
+    print(f"[ontoderive-unified-mcp v3] 启动: {n_tools}工具就绪", file=sys.stderr)
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -508,3 +510,7 @@ if __name__ == "__main__":
             continue
         except Exception as e:
             print(err(None, -32603, str(e)), flush=True)
+
+
+if __name__ == "__main__":
+    main()
