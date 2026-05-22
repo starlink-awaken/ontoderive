@@ -107,7 +107,12 @@ def main():
         parser.print_help()
         return
 
-    # 路由到对应功能
+    # 路由到对应功能（委托至 engine/core/commands/）
+    from engine.core.commands.derive_commands import cmd_analyze, cmd_check, cmd_derive, cmd_rounds
+    from engine.core.commands.extract import cmd_extract
+    from engine.core.commands.mcp_serve import cmd_mcp
+    from engine.core.commands.toolforge import cmd_toolforge
+
     if args.command == "init":
         from engine.foundation.templates import TEMPLATES
 
@@ -157,7 +162,7 @@ def main():
     elif args.command in ("derive", "check", "rounds", "generate", "analyze"):
         from engine.core.derive import OntoDerive
 
-        od = OntoDerive(args.project)
+        od = OntoDerive(getattr(args, "project", "."))
 
         # ToolForge 前置
         if getattr(args, "with_tools", False):
@@ -180,32 +185,20 @@ def main():
                     print(f"      {t['id']} {t['name']} (匹配度:{t['score']})")
 
         if args.command == "derive":
-            if getattr(args, "auto", False):
-                print("[derive] --auto: 自动检测LLM并执行全量分析...")
-                od.analyze()
-            elif hasattr(args, "pipeline_output") and args.pipeline_output:
-                import json
-
-                result = {"derived": True, "count": 0, "items": []}
-                Path(args.pipeline_output).write_text(json.dumps(result, indent=2))
-                print(f"Output → {args.pipeline_output}")
-                return
-            else:
-                od.derive()
+            cmd_derive(
+                project=getattr(args, "project", "."),
+                auto=getattr(args, "auto", False),
+                with_tools=getattr(args, "with_tools", False),
+                goal=getattr(args, "goal", ""),
+                tool_context=getattr(args, "tool_context", ""),
+                pipeline_output=getattr(args, "pipeline_output", None),
+            )
         elif args.command == "analyze":
-            print("[analyze] 全量分析: 结构推导 + LLM洞察(自动检测LLM)...")
-            from engine.intelligence.llm import get_enhancer
-
-            enhancer = get_enhancer(getattr(args, "force", False))
-            if enhancer.available:
-                print(f"[analyze] ✅ LLM后端: {enhancer.backend}, 模型: {enhancer.model}")
-            else:
-                print("[analyze] ⚠️ LLM不可用, 仅执行结构分析")
-            od.analyze()
+            cmd_analyze(project=getattr(args, "project", "."), force=getattr(args, "force", False))
         elif args.command == "check":
-            od.check()
+            cmd_check(project=getattr(args, "project", "."))
         elif args.command == "rounds":
-            od.run_rounds(args.n)
+            cmd_rounds(project=getattr(args, "project", "."), n=getattr(args, "n", 3))
         elif args.command == "generate":
             fmt = getattr(args, "export", None)
             if fmt:
@@ -238,23 +231,8 @@ def main():
                 od.generate_report()
 
     elif args.command == "toolforge":
-        from engine.toolforge import ToolForge
-
-        tf = ToolForge()
-        if args.inference_guide:
-            print(tf.to_inference_guide(args.goal, args.context))
-        elif args.json:
-            import json
-
-            print(
-                json.dumps(
-                    tf.select(args.goal, args.context, 5),
-                    ensure_ascii=False,
-                    indent=2,
-                )
-            )
-        else:
-            tf.report(args.goal, args.context)
+        cmd_toolforge(args.goal, getattr(args, "context", ""),
+                   getattr(args, "inference_guide", False), getattr(args, "json", False))
 
     elif args.command == "formal":
         from engine.core.derive import OntoDerive
@@ -272,19 +250,12 @@ def main():
         w.watch(interval=args.interval, auto_run=True)
 
     elif args.command == "extract":
-        from engine.reasoners.formalize import Formalizer
-
-        fz = Formalizer()
-        kb = fz.extract_from_text(args.source)
-        md = fz.to_markdown(kb)
-        output = Path(args.project) / args.to if args.project != "." else Path(args.to)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(md)
-        print(f"[extract] ✅ {len(kb.facts)}事实/{len(kb.entities)}实体 → {output}")
+        cmd_extract(source=args.source,
+                   to_path=getattr(args, "to", "facts/data.md"),
+                   project=getattr(args, "project", "."))
 
     elif args.command == "mcp":
-        from engine.mcp_server import main as mcp_main
-        mcp_main()
+        cmd_mcp(port=getattr(args, "port", 0))
 
 
     elif args.command == "got":
