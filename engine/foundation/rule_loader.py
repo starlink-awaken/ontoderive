@@ -19,7 +19,6 @@
 
 import json
 from pathlib import Path
-from typing import List
 
 
 class RuleLoader:
@@ -27,16 +26,16 @@ class RuleLoader:
 
     def __init__(self, rules_dir: str = None):
         self.rules_dir = Path(rules_dir) if rules_dir else None
-        self.rules: List[dict] = []
+        self.rules: list[dict] = []
 
-    def load_json(self, path: str) -> List[dict]:
+    def load_json(self, path: str) -> list[dict]:
         """从JSON文件加载规则"""
         data = json.loads(Path(path).read_text())
         loaded = data if isinstance(data, list) else [data]
         self.rules.extend(self._validate(loaded))
         return loaded
 
-    def load_yaml(self, path: str) -> List[dict]:
+    def load_yaml(self, path: str) -> list[dict]:
         """从YAML文件加载规则"""
         try:
             import yaml
@@ -48,7 +47,7 @@ class RuleLoader:
         self.rules.extend(self._validate(loaded))
         return loaded
 
-    def _load_yaml_simple(self, path: str) -> List[dict]:
+    def _load_yaml_simple(self, path: str) -> list[dict]:
         """简易YAML解析器 — 零依赖fallback"""
         text = Path(path).read_text()
         rules = []
@@ -78,7 +77,7 @@ class RuleLoader:
         self.rules.extend(self._validate(rules))
         return rules
 
-    def _validate(self, rules: List[dict]) -> List[dict]:
+    def _validate(self, rules: list[dict]) -> list[dict]:
         """验证规则基本结构"""
         required = {"id", "name", "type"}
         valid = []
@@ -90,11 +89,11 @@ class RuleLoader:
                 valid.append(r)
         return valid
 
-    def get_by_type(self, rule_type: str) -> List[dict]:
+    def get_by_type(self, rule_type: str) -> list[dict]:
         """按类型获取规则"""
         return [r for r in self.rules if r.get("type") == rule_type]
 
-    def get_by_category(self, category: str) -> List[dict]:
+    def get_by_category(self, category: str) -> list[dict]:
         return [r for r in self.rules if r.get("category") == category]
 
     @staticmethod

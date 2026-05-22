@@ -25,7 +25,6 @@ R21时态序列
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List
 
 from engine.foundation.rule_loader import RuleLoader
 
@@ -35,7 +34,7 @@ class DerivationRule:
     """一条推导规则 = 三段论模式"""
 
     name: str
-    premises: List[str]  # 前提模式(正则)
+    premises: list[str]  # 前提模式(正则)
     conclusion_template: str  # 结论模板
     confidence: float = 0.85
     category: str = "deduction"  # deduction | induction | abduction
@@ -102,7 +101,7 @@ class RuleReasoner:
     }
 
     def __init__(self, loaded_rules: list = None):
-        self.rules: List[DerivationRule] = self._default_rules()
+        self.rules: list[DerivationRule] = self._default_rules()
         self._loaded_rules = loaded_rules or []
         self.state = "idle"
 
@@ -188,7 +187,7 @@ class RuleReasoner:
             ),
         ]
 
-    def derive(self, facts: Dict[str, dict], inferences: Dict[str, dict], relations: List[dict] = None) -> List[dict]:
+    def derive(self, facts: dict[str, dict], inferences: dict[str, dict], relations: list[dict] = None) -> list[dict]:
         """
         基于规则库做确定性推导。
         facts: {id: {desc, value, ...}}   inferences: {title: {text, derives_from, ...}}

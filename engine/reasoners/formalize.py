@@ -7,7 +7,6 @@ LLM从自然语言提取结构化知识 → 本体对齐 → OntoLang符号化
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 
 @dataclass
@@ -34,7 +33,7 @@ class SymbolicEntity:
 class SymbolicInference:
     id: str
     title: str
-    derives_from: List[str] = field(default_factory=list)
+    derives_from: list[str] = field(default_factory=list)
     conclusion: str = ""
     confidence: str = "inference"
     meta_type: str = "INFERENCE"
@@ -42,11 +41,11 @@ class SymbolicInference:
 
 @dataclass
 class FormalKnowledge:
-    facts: List[SymbolicFact] = field(default_factory=list)
-    entities: List[SymbolicEntity] = field(default_factory=list)
-    inferences: List[SymbolicInference] = field(default_factory=list)
-    abox: Dict = field(default_factory=dict)  # 断言箱: 具体实例
-    tbox: Dict = field(default_factory=dict)  # 术语箱: 类型层级
+    facts: list[SymbolicFact] = field(default_factory=list)
+    entities: list[SymbolicEntity] = field(default_factory=list)
+    inferences: list[SymbolicInference] = field(default_factory=list)
+    abox: dict = field(default_factory=dict)  # 断言箱: 具体实例
+    tbox: dict = field(default_factory=dict)  # 术语箱: 类型层级
 
 
 class Formalizer:

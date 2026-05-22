@@ -6,7 +6,6 @@ UnifiedReasoner — 统一推理引擎 v3.4
 """
 
 from dataclasses import asdict, dataclass, field
-from typing import Dict, List
 
 from .reasoner import RuleReasoner
 from .reasoner_formal import FormalReasoner
@@ -17,7 +16,7 @@ class UnifiedConclusion:
     conclusion: str
     certainty: str  # certain/probable/uncertain/structural/analytical
     method: str
-    derives_from: List[str] = field(default_factory=list)
+    derives_from: list[str] = field(default_factory=list)
     confidence: float = 0.80
     source: str = ""  # rule_engine / formal / analytics / llm
     derivation_trail: str = ""
@@ -37,8 +36,8 @@ class UnifiedReasoner:
         self._last_results = []
 
     def reason(
-        self, facts: Dict, inferences: Dict, knowledge=None, relations: List[dict] = None, enhancer=None
-    ) -> List[UnifiedConclusion]:
+        self, facts: dict, inferences: dict, knowledge=None, relations: list[dict] = None, enhancer=None
+    ) -> list[UnifiedConclusion]:
         results = []
 
         # 1. 确定性推理
@@ -153,7 +152,7 @@ class UnifiedReasoner:
         self._last_results = results
         return results
 
-    def summary(self) -> Dict:
+    def summary(self) -> dict:
         total = len(self._last_results)
         by_source = {}
         for r in self._last_results:

@@ -10,7 +10,7 @@ import re
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 @dataclass
@@ -20,11 +20,11 @@ class Insight:
     type: str  # derivation | contradiction | quality | recommendation
     content: str  # 洞察内容
     confidence: float  # 0-1
-    cites: List[str] = field(default_factory=list)  # [D-F1, INF-L2, ...]
+    cites: list[str] = field(default_factory=list)  # [D-F1, INF-L2, ...]
     method: str = "llm"  # llm | rule
     model: str = ""  # 使用的模型名
     timestamp: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self):
         return asdict(self)
@@ -93,7 +93,7 @@ class InsightEngine:
             except Exception:
                 self.enhancer = None
         self.cache = InsightCache(cache_dir)
-        self._history: List[Insight] = []  # 本次会话的所有洞察
+        self._history: list[Insight] = []  # 本次会话的所有洞察
 
     @property
     def available(self):

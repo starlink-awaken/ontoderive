@@ -7,7 +7,6 @@ FormalReasoner — 形式推理引擎 (Phase 3, 零LLM)
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 
 @dataclass
@@ -15,7 +14,7 @@ class FormalConclusion:
     conclusion: str
     certainty: str  # certain | probable | uncertain
     method: str  # subsumption | transitivity | constraint | classification
-    derives_from: List[str] = field(default_factory=list)
+    derives_from: list[str] = field(default_factory=list)
     confidence: float = 0.90
 
 
@@ -30,9 +29,9 @@ class FormalReasoner:
     }
 
     def __init__(self):
-        self.conclusions: List[FormalConclusion] = []
+        self.conclusions: list[FormalConclusion] = []
 
-    def reason(self, knowledge) -> List[FormalConclusion]:
+    def reason(self, knowledge) -> list[FormalConclusion]:
         """主推理入口"""
         self.conclusions = []
         facts = knowledge.abox.get("facts", {})
@@ -153,7 +152,7 @@ class FormalReasoner:
                 )
         return results
 
-    def summary(self) -> Dict:
+    def summary(self) -> dict:
         """推理总结"""
         certain = [c for c in self.conclusions if c.certainty == "certain"]
         probable = [c for c in self.conclusions if c.certainty == "probable"]

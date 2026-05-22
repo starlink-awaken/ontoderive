@@ -13,20 +13,19 @@
 import math
 import re
 from collections import Counter
-from typing import List, Tuple
 
 
 class SemanticMatcher:
     """TF-IDF + 余弦相似度 语义匹配器"""
 
-    def __init__(self, corpus: List[str] = None):
+    def __init__(self, corpus: list[str] = None):
         self.corpus = corpus or []
         self.idf = {}  # {term: idf_score}
         self.doc_vectors = []  # [{term: tfidf}, ...]
         if self.corpus:
             self.fit(self.corpus)
 
-    def fit(self, documents: List[str]):
+    def fit(self, documents: list[str]):
         """在语料上训练IDF"""
         self.corpus = documents
         n_docs = len(documents)
@@ -51,7 +50,7 @@ class SemanticMatcher:
                 vec[term] = (count / total) * self.idf.get(term, 1.0)
             self.doc_vectors.append(vec)
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """中文bigram + 英文/数字token化"""
         tokens = []
         # 提取英文词+数字
@@ -85,7 +84,7 @@ class SemanticMatcher:
             return 0.0
         return dot / (norm_a * norm_b)
 
-    def match(self, query: str, candidates: List[str], threshold: float = 0.15) -> List[Tuple[str, float]]:
+    def match(self, query: str, candidates: list[str], threshold: float = 0.15) -> list[tuple[str, float]]:
         """查询与候选集的相似度排序"""
         q_vec = self._vectorize(query)
         results = []
@@ -96,7 +95,7 @@ class SemanticMatcher:
                 results.append((cand, sim))
         return sorted(results, key=lambda x: -x[1])
 
-    def best_match(self, query: str, candidates: List[str], threshold: float = 0.15) -> Tuple[str, float]:
+    def best_match(self, query: str, candidates: list[str], threshold: float = 0.15) -> tuple[str, float]:
         """最佳匹配"""
         matches = self.match(query, candidates, threshold)
         return matches[0] if matches else ("", 0.0)

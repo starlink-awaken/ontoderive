@@ -8,7 +8,6 @@ OntoDerive 类型系统 — MOF十元类型校验
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 # ── 十元类型定义 ──
 META_TYPES = {
@@ -68,8 +67,8 @@ class TypeCheckResult:
     node_id: str
     declared_type: str = ""
     expected_type: str = ""
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     file: str = ""
     line: int = 0
 
@@ -80,7 +79,7 @@ class TypeCheckResult:
 
 class TypeValidator:
     def __init__(self):
-        self.results: List[TypeCheckResult] = []
+        self.results: list[TypeCheckResult] = []
 
     def check_id(self, node_id: str, declared_meta_type: str = "", file: str = "", line: int = 0) -> TypeCheckResult:
         """检查单个ID的类型一致性"""
@@ -105,7 +104,7 @@ class TypeValidator:
         self.results.append(result)
         return result
 
-    def _infer_type(self, node_id: str) -> Optional[str]:
+    def _infer_type(self, node_id: str) -> str | None:
         for prefix, meta_name in sorted(PREFIX_TO_META.items(), key=lambda x: -len(x[0])):
             if node_id.startswith(prefix):
                 return meta_name
@@ -125,7 +124,7 @@ class TypeValidator:
 
         result.warnings.append(f"'{node_id}': 子类型前缀'{main_prefix}'不在 {meta_type}的已知子类型{subtypes}中")
 
-    def check_batch(self, items: List[dict]) -> List[TypeCheckResult]:
+    def check_batch(self, items: list[dict]) -> list[TypeCheckResult]:
         """批量检查"""
         results = []
         for item in items:

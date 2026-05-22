@@ -1,6 +1,5 @@
 """OntoLang 词法+语法解析器 — 手写递归下降"""
 import re
-from typing import List
 
 from .ast import (
     AST,
@@ -94,7 +93,7 @@ class Parser:
         self.tokens = []
         self.idx = 0
         self.filename = filename
-        self.errors: List[ParseError] = []
+        self.errors: list[ParseError] = []
 
     def peek(self):
         return self.tokens[self.idx] if self.idx < len(self.tokens) else Token("EOF", "", 0, 0)

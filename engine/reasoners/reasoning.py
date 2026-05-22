@@ -13,7 +13,6 @@ OntoDerive 推理编排 — 选择器 + 范式化
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass
@@ -38,7 +37,7 @@ class ContentCanonicalizer:
     def __init__(self):
         self._numeric_cache = {}
 
-    def canonicalize_facts(self, raw_facts: Dict[str, dict]) -> Dict[str, dict]:
+    def canonicalize_facts(self, raw_facts: dict[str, dict]) -> dict[str, dict]:
         """
         范式化事实:
         - 提取数值到 structured_value 字段
@@ -73,7 +72,7 @@ class ContentCanonicalizer:
             canonical[fid] = entry
         return canonical
 
-    def canonicalize_inferences(self, raw_inferences: Dict[str, dict]) -> Dict[str, dict]:
+    def canonicalize_inferences(self, raw_inferences: dict[str, dict]) -> dict[str, dict]:
         """
         范式化推论:
         - 标准化 derives_from 为统一格式
@@ -127,7 +126,7 @@ class ReasoningSelector:
         "chain_integrity": {"has_inf_chains"},
     }
 
-    def profile(self, facts: Dict[str, dict], inferences: Dict[str, dict]) -> DataProfile:
+    def profile(self, facts: dict[str, dict], inferences: dict[str, dict]) -> DataProfile:
         """分析数据特征, 生成画像"""
         profile = DataProfile()
         profile.fact_count = len(facts)
@@ -197,7 +196,7 @@ class ReasoningSelector:
                 depths[title] = dfs(title)
         return max(depths.values()) if depths else 0
 
-    def select_rules(self, profile: DataProfile) -> List[str]:
+    def select_rules(self, profile: DataProfile) -> list[str]:
         """基于数据特征选择合适的推理规则"""
         features = set()
         if profile.has_numeric:

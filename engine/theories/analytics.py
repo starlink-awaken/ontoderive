@@ -10,8 +10,8 @@
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from engine.foundation.semantic import SemanticMatcher
 
@@ -155,6 +155,24 @@ class AnalyticsEngine:
                 detect=self._detect_power_map,
                 analyze=self._analyze_power_map,
                 semantic_depth=0,
+            ),
+            # ═══ A13: 组织惯性分析 ═══ (v3.6)
+            AnalyticalPattern(
+                name="organizational_inertia",
+                description="检测组织规模/历史/资源锁定形成的变革阻力",
+                category="organizational",
+                detect=self._detect_organizational_inertia,
+                analyze=self._analyze_organizational_inertia,
+                semantic_depth=0,
+            ),
+            # ═══ A14: 技术颠覆风险 ═══ (v3.6)
+            AnalyticalPattern(
+                name="tech_disruption",
+                description="识别新技术对现有格局的技术替代威胁",
+                category="strategic",
+                detect=self._detect_tech_disruption,
+                analyze=self._analyze_tech_disruption,
+                semantic_depth=1,
             ),
         ]
 
@@ -520,6 +538,16 @@ class AnalyticsEngine:
         "CR5",
     )
 
+    # A13: 组织惯性关键词
+    _INERTIA_KW = ("转型", "惯性", "路径依赖", "沉没成本", "变革", "组织僵化", "体系庞大")
+    _HISTORY_KW = ("成立于", "运营", "年限", "历史", "悠久")
+    _RESOURCE_KW = ("投入", "资产", "投资", "预算", "员工数")
+
+    # A14: 技术颠覆关键词
+    _TECH_NEW_KW = ("AI", "数字化", "智能化", "云", "区块链", "量子", "自动化", "新技术")
+    _TECH_OLD_KW = ("传统", "成熟", "稳定", "已有", "现有", "现成")
+    _DISRUPTION_KW = ("颠覆", "替代", "冲击", "淘汰")
+
     def _detect_market_structure(self, facts, entities, relations):
         """检测: ≥3实体 或 存在市场份额关键词"""
         n_entities = len(entities) if isinstance(entities, dict) else len(entities)
@@ -778,6 +806,113 @@ class AnalyticsEngine:
                 f"最大影响力={top[0][0]}({top[0][1]}连接), "
                 f"潜在单点={'是' if top[0][1] >= len(centrality) / 2 else '否'}",
                 "derives_from": [k for k, _ in top],
+                "confidence": 0.70,
+            }
+        )
+        return results
+
+    # ═══ A13: 组织惯性分析 (v3.6) ═══
+
+    def _detect_organizational_inertia(self, facts, entities, relations):
+        """检测: 规模大/历史悠久/投入多 + 转型慢/变化难/惯性/路径依赖"""
+        if len(entities or {}) >= 3 or len(relations or []) >= 4:
+            return True
+        for _, info in _iter_facts(facts):
+            if any(k in info.get("desc", "") for k in self._INERTIA_KW):
+                return True
+        return False
+
+    def _analyze_organizational_inertia(self, facts, entities, relations, enhancer):
+        results = []
+        if not entities:
+            return results
+
+        entity_count = len(entities or {})
+        relation_count = len(relations or [])
+        complexity = relation_count / max(entity_count, 1)
+
+        history_signals = 0
+        resource_lock = 0
+        for _, info in _iter_facts(facts):
+            desc = info.get("desc", "")
+            if any(k in desc for k in self._HISTORY_KW):
+                history_signals += 1
+            if any(k in desc for k in self._RESOURCE_KW):
+                resource_lock += 1
+
+        inertia_index = complexity * (1 + history_signals) * (1 + resource_lock)
+        level = "高" if inertia_index >= 6 else ("中" if inertia_index >= 3 else "低")
+
+        top_entities = sorted(
+            [eid for eid in (entities or {})],
+            key=lambda e: sum(1 for r in (relations or []) if r.get("subject") == e or r.get("object") == e),
+            reverse=True,
+        )[:3]
+
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": f"组织惯性: 指数={inertia_index:.1f}({level}), "
+                f"{entity_count}实体/{relation_count}关系, "
+                f"复杂度={complexity:.1f}, "
+                f"历史信号={history_signals}, 资源锁定={resource_lock}",
+                "derives_from": top_entities,
+                "confidence": 0.65,
+            }
+        )
+        return results
+
+    # ═══ A14: 技术颠覆风险 (v3.6) ═══
+
+    def _detect_tech_disruption(self, facts, entities, relations):
+        """检测: 新技术信号 + 传统技术描述"""
+        has_new = False
+        has_old = False
+        for _, info in _iter_facts(facts):
+            desc = info.get("desc", "")
+            if any(k in desc for k in self._DISRUPTION_KW):
+                return True
+            if any(k in desc for k in self._TECH_NEW_KW):
+                has_new = True
+            if any(k in desc for k in self._TECH_OLD_KW):
+                has_old = True
+        return has_new or has_old
+
+    def _analyze_tech_disruption(self, facts, entities, relations, enhancer):
+        results = []
+
+        new_signals = 0
+        old_lock = 0
+        new_entities = []
+        old_entities = []
+        for fid, info in _iter_facts(facts):
+            desc = info.get("desc", "")
+            new_signals += sum(1 for k in self._TECH_NEW_KW if k in desc)
+            old_lock += sum(1 for k in self._TECH_OLD_KW if k in desc)
+            if any(k in desc for k in self._TECH_NEW_KW):
+                new_entities.append(fid)
+            if any(k in desc for k in self._TECH_OLD_KW):
+                old_entities.append(fid)
+
+        disruption_pressure = new_signals / max(old_lock, 1)
+        threat_level = "高" if disruption_pressure >= 2 else ("中" if disruption_pressure >= 1 else "低")
+
+        conclusion = (
+            f"技术颠覆风险: 压力={disruption_pressure:.1f}({threat_level}), "
+            f"新技术信号={new_signals}, 现有锁定={old_lock}, "
+        )
+        if threat_level == "高":
+            conclusion += "警告: 新技术威胁显著, 建议制定转型路线图"
+        elif threat_level == "中":
+            conclusion += "关注: 新技术正在积累, 建议跟踪监测"
+        else:
+            conclusion += "正常: 现有技术仍占主导"
+
+        results.append(
+            {
+                "type": "analytics",
+                "conclusion": conclusion,
+                "derives_from": new_entities[:3] + old_entities[:3],
                 "confidence": 0.70,
             }
         )

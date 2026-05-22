@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
 
 
 class NodeType(Enum):
@@ -28,7 +27,7 @@ class EntityDef:
     id: str
     entity_type: str
     properties: dict = field(default_factory=dict)
-    pos: Optional[SourcePos] = None
+    pos: SourcePos | None = None
 
 
 @dataclass
@@ -36,17 +35,17 @@ class FactDef:
     id: str
     fact_type: str
     properties: dict = field(default_factory=dict)
-    pos: Optional[SourcePos] = None
+    pos: SourcePos | None = None
 
 
 @dataclass
 class InferenceDef:
     id: str
     inference_type: str
-    derives_from: List[str] = field(default_factory=list)
+    derives_from: list[str] = field(default_factory=list)
     conclusion: str = ""
     properties: dict = field(default_factory=dict)
-    pos: Optional[SourcePos] = None
+    pos: SourcePos | None = None
 
 
 @dataclass
@@ -55,7 +54,7 @@ class ProtocolDef:
     constraint_type: str
     constraint: str = ""
     properties: dict = field(default_factory=dict)
-    pos: Optional[SourcePos] = None
+    pos: SourcePos | None = None
 
 
 @dataclass
@@ -63,16 +62,16 @@ class RelationDef:
     subject: str
     relation_type: str
     object: str
-    pos: Optional[SourcePos] = None
+    pos: SourcePos | None = None
 
 
 @dataclass
 class AST:
-    entities: List[EntityDef] = field(default_factory=list)
-    facts: List[FactDef] = field(default_factory=list)
-    inferences: List[InferenceDef] = field(default_factory=list)
-    protocols: List[ProtocolDef] = field(default_factory=list)
-    relations: List[RelationDef] = field(default_factory=list)
+    entities: list[EntityDef] = field(default_factory=list)
+    facts: list[FactDef] = field(default_factory=list)
+    inferences: list[InferenceDef] = field(default_factory=list)
+    protocols: list[ProtocolDef] = field(default_factory=list)
+    relations: list[RelationDef] = field(default_factory=list)
 
 
 @dataclass
@@ -86,5 +85,5 @@ class ParseError:
 class SemanticError:
     msg: str
     node_id: str = ""
-    pos: Optional[SourcePos] = None
+    pos: SourcePos | None = None
     hint: str = ""

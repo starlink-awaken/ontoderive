@@ -1,6 +1,5 @@
 """OntoLang 语义分析器"""
 import re
-from typing import List
 
 from .ast import AST, SemanticError
 
@@ -9,7 +8,7 @@ class SemanticAnalyzer:
     VALID_ENTITY_PREFIXES = {"ORG", "ROL", "PRJ", "POL", "DAT"}
     VALID_FACT_PATTERN = re.compile(r'^(D-F|P-F)\d+')
 
-    def analyze(self, ast: AST) -> List[SemanticError]:
+    def analyze(self, ast: AST) -> list[SemanticError]:
         errors = []
         ids_seen = set()
 

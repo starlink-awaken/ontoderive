@@ -7,7 +7,6 @@ OntoDerive LLM增强层 — 零依赖降级 + 本地模型增强
 
 import json
 import os
-from typing import Optional
 
 
 class LLMEnhancer:
@@ -220,7 +219,7 @@ class LLMEnhancer:
 
 
 # 模块级单例
-_enhancer: Optional[LLMEnhancer] = None
+_enhancer: LLMEnhancer | None = None
 
 
 def get_enhancer(force=False):
