@@ -1,0 +1,748 @@
+"""推理规则函数 — 从RuleReasoner提取的模块级函数"""
+
+import re
+
+# =============================================
+# 模块级常量（原 RuleReasoner 类级别常量）
+# =============================================
+
+UNIT_GROUPS = {
+    "人数": ["人", "团队", "员工", "用户", "工程师", "博士", "经理", "专家", "导师", "工人"],
+    "金额": ["万", "亿", "元", "预算", "营收", "收入", "成本", "金额", "投资", "赔偿", "市值"],
+    "百分比": ["%", "率", "覆盖", "转化", "NPS", "满意度", "渗透", "份额", "占比", "集中度", "卸载率", "流失率"],
+    "数量": ["次", "项", "个", "所", "家", "篇", "起", "件", "台", "单", "辆"],
+    "时间": ["年份", "历时", "周期", "耗时", "成立于"],
+    "面积": ["平方米", "亩", "公顷", "平方公里", "面积"],
+}
+
+VALUE_UNIT_MAP = {
+    "%": "百分比",
+    "万元": "金额",
+    "亿元": "金额",
+    "美元": "金额",
+    "人": "人数",
+    "家": "数量",
+    "次": "数量",
+    "件": "数量",
+    "台": "数量",
+    "月": "时间",
+    "天": "时间",
+    "小时": "时间",
+    "平方米": "面积",
+    "亩": "面积",
+    "公顷": "面积",
+    "万辆": "数量",
+    "万单": "数量",
+    "万台": "数量",
+}
+
+_STOP_CHARS = set("的是在与和及年第个月日一二三四五六七八九十前后")
+
+_INVERSE_RELATIONS = {
+    "employs": "employed_by",
+    "part_of": "contains",
+    "contains": "part_of",
+    "cooperates_with": "cooperates_with",
+    "competes_with": "competes_with",
+    "depends_on": "depended_on_by",
+    "authored_by": "authors",
+    "precedes": "follows",
+    "belongs_to": "contains",
+    "influences": "influenced_by",
+}
+
+ONTOLOGY_HIERARCHY = {
+    "DOMAIN": ["ORG", "ROL", "PRJ", "RES"],
+    "FACT": ["DAT", "POL"],
+    "INFERENCE": ["CONTRADICTION", "BUSINESS", "ARCHITECTURE"],
+    "STATE": ["T", "F", "H"],
+    "DOCUMENT": ["COL", "DOC", "CH", "SEC", "STD"],
+}
+
+_ID_PREFIX_MAP = {
+    "ORG-": "DOMAIN",
+    "ROL-": "DOMAIN",
+    "PRJ-": "DOMAIN",
+    "RES-": "DOMAIN",
+    "D-F": "FACT",
+    "P-F": "FACT",
+    "INF-": "INFERENCE",
+    "INF-V2-": "INFERENCE",
+    "DOC-": "DOCUMENT",
+    "CH-": "DOCUMENT",
+    "SEC-": "DOCUMENT",
+    "DCH-": "DOCUMENT",
+    "STD-": "DOCUMENT",
+    "CON-": "CONSTRAINT",
+    "IP": "CONSTRAINT",
+    "T": "STATE",
+    "F": "STATE",
+    "H": "STATE",
+}
+
+_PREFIX_TO_PARENT = {}
+for _parent, _subs in ONTOLOGY_HIERARCHY.items():
+    for _sub in _subs:
+        _PREFIX_TO_PARENT[_sub] = _parent
+
+
+# =============================================
+# 辅助函数
+# =============================================
+
+def detect_domain(engine, value, label):
+    """从值和标签中检测语义域, 优先用值的显式单位"""
+for suffix, domain in VALUE_UNIT_MAP.items():
+    if suffix in vs:
+        return domain
+for domain, keywords in UNIT_GROUPS.items():
+    if any(kw in label for kw in keywords):
+        return domain
+
+def char_overlap(engine, label_a, label_b):
+    """检测两个标签的共同CJK字符数 >= 阈值"""
+chars_b = {c for c in label_b if "一" <= c <= "鿿" and c not in _STOP_CHARS}
+
+def comparable(engine, label_a, label_b, val_a=None, val_b=None):
+    """判断两个事实是否可比较 — 域匹配+字符重叠"""
+    dom_a = detect_domain(val_a, label_a)
+    dom_b = detect_domain(val_b, label_b)
+    if dom_a and dom_b:
+        if dom_a != dom_b:
+            return False
+        return char_overlap(label_a, label_b)
+    if dom_a or dom_b:
+        return False
+for group, keywords in UNIT_GROUPS.items():
+    a_in = any(kw in label_a for kw in keywords)
+    b_in = any(kw in label_b for kw in keywords)
+    if a_in and b_in:
+        return char_overlap(label_a, label_b)
+
+def find_chain(engine, node, inferences, visited):
+    return [node]
+visited.add(node)
+longest = [node]
+for parent in inferences[node].get("derives_from", []):
+    if parent.startswith("INF"):
+        parent_chain = find_chain(parent, inferences, visited.copy())
+        if len(parent_chain) + 1 > len(longest):
+            longest = [node] + parent_chain
+
+def extract_prefix(engine, id_str):
+    """从ID中提取完整前缀模式 (如 D-F1->D-F, ORG-xxx->ORG-)"""
+for prefix in sorted(_ID_PREFIX_MAP.keys(), key=lambda x: -len(x)):
+    if id_str.startswith(prefix):
+        return prefix
+# 回退: 首个分隔符前的部分
+
+def guess_parent(engine, prefix, type_map):
+    """根据前缀模式猜测最可能的父类型"""
+# 直接匹配: 如果前缀以已知前缀开头, 返回对应类型
+for kp, parent in sorted(known.items(), key=lambda x: -len(x[0])):
+    if prefix.startswith(kp) or kp.startswith(prefix):
+        return parent
+# 单字母/短前缀: 基于字符重叠找最相似的已知前缀
+best, best_score = "DOMAIN", 0
+for kp in known:
+    score = len(set(prefix) & set(kp))
+    if score > best_score:
+        best_score = score
+        best = known[kp]
+
+def closest_known(engine, prefix):
+    """找到最相似的已知ID前缀"""
+for kp in _ID_PREFIX_MAP:
+    score = len(set(prefix) & set(kp))
+    if score > best_score:
+        best_score = score
+        best = kp
+
+def calc_depth(engine, node, inferences, depths, visited):
+    depths[node] = 0
+    return 0
+visited.add(node)
+max_parent = 0
+for parent in inferences[node].get("derives_from", []):
+    if parent.startswith("INF"):
+        max_parent = max(max_parent, calc_depth(parent, inferences, depths, visited))
+depths[node] = max_parent + 1
+
+# =============================================
+# 推理规则函数 (R1-R19)
+# =============================================
+
+def disjunctive_syllogism(engine, inferences):
+    """A或B的推论结构: 如果两个推论引用相同事实但结论方向不同,
+    检测是否存在排中结构"""
+for i in range(len(inf_list)):
+    for j in range(i + 1, len(inf_list)):
+        a_id, a_info = inf_list[i]
+        b_id, b_info = inf_list[j]
+        shared = set(a_info.get("derives_from", [])) & set(b_info.get("derives_from", []))
+        if len(shared) >= 2:
+            a_text = a_info.get("text", "")
+            b_text = b_info.get("text", "")
+            # 检测排中结构: "应A" vs "应B" 且 A和B可能是互斥选项
+            dichotomy_pairs = [
+                ("研发", "营销"),
+                ("增加", "控制"),
+                ("优先", "推迟"),
+                ("内部", "外部"),
+                ("自建", "采购"),
+            ]
+            for w1, w2 in dichotomy_pairs:
+                if (w1 in a_text and w2 in b_text) or (w2 in a_text and w1 in b_text):
+                    results.append(
+                        {
+                            "type": "disjunctive_syllogism",
+                            "conclusion": (
+                                f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), "
+                                "需明确优先级"
+                            ),
+                            "derived_from": list(shared),
+                            "confidence": 0.70,
+                            "method": "rule_engine",
+                        }
+                    )
+                    break
+
+def hypothetical_syllogism(engine, inferences):
+    """IF A THEN B, IF B THEN C -> IF A THEN C
+    检测跨层推导链并计算衰减系数"""
+for title, info in inferences.items():
+    chain = find_chain(title, inferences, set())
+    if len(chain) >= 3:
+        decay = 0.9 ** (len(chain) - 1)
+        results.append(
+            {
+                "type": "hypothetical_syllogism",
+                "conclusion": f"推导链:{'→'.join(chain[:5])}, 衰减系数={decay:.2f}({len(chain)}层)",
+                "derived_from": chain,
+                "confidence": 0.80,
+                "method": "rule_engine",
+            }
+        )
+
+def change_detection(engine, facts):
+    """检测事实中的时间戳字段, 如果存在则分析变化趋势"""
+dated = []
+for fid, info in facts.items():
+    text = f"{info.get('desc', '')} {info.get('value', '')}"
+    # 检测年份/季度
+    years = re.findall(r"(20\d{2})", text)
+    if years:
+        dated.append((fid, info, years))
+if len(dated) >= 2:
+    dated.sort(key=lambda x: x[2][0])
+    results.append(
+        {
+            "type": "temporal_sequence",
+            "conclusion": f"检测到{len(dated)}个带时间戳的事实, 时间跨度{dated[0][2][0]}-{dated[-1][2][0]}",
+            "derived_from": [d[0] for d in dated],
+            "confidence": 0.85,
+            "method": "rule_engine",
+        }
+    )
+
+def consistency_analysis(engine, inferences, facts):
+    """检测体系内部的一致性: 置信度/KQI/覆盖率是否自洽"""
+n_inf = len(inferences)
+n_facts = len(facts)
+
+# 计算平均置信度
+confs = []
+for info in inferences.values():
+    m = re.search(r"confidence:\s*(\w+)", info.get("text", ""))
+    if m:
+        conf_map = {"high": 0.92, "inference": 0.85, "medium": 0.70}
+        confs.append(conf_map.get(m.group(1), 0.85))
+if confs:
+    sum(confs) / len(confs)
+    high_conf_count = sum(1 for c in confs if c >= 0.85)
+    # 如果所有推论都标high但推导链深度只有1 → 不一致
+    if high_conf_count == len(confs) and n_inf >= 3:
+        results.append(
+            {
+                "type": "consistency_warning",
+                "conclusion": f"所有{len(confs)}个推论置信度过高(均≥0.85)但推导链深度不足, 可能存在过度自信",
+                "derived_from": [],
+                "confidence": 0.70,
+                "method": "rule_engine",
+            }
+        )
+
+# 事实数:推偶数比例
+if n_facts > 0 and n_inf > 0:
+    ratio = n_inf / n_facts
+    if ratio > 3:
+        results.append(
+            {
+                "type": "consistency_warning",
+                "conclusion": f"推偶数/事实数={ratio:.1f}, 可能过度推导(建议<3)",
+                "derived_from": [],
+                "confidence": 0.60,
+                "method": "rule_engine",
+            }
+        )
+
+def structural_holes(engine, inferences):
+    """检测网络中的结构洞"""
+if not inferences:
+    return results
+# 构建引用图
+graph = {}
+for title, info in inferences.items():
+    deps = [d for d in info.get("derives_from", []) if d in inferences or d.startswith(("D-F", "P-F"))]
+    for dep in deps:
+        graph.setdefault(title, set()).add(dep)
+        graph.setdefault(dep, set()).add(title)
+
+# 计算每个节点的betweenness简化版
+for node in inferences:
+    neighbors = len(graph.get(node, set()))
+    if neighbors >= 3:
+        results.append(
+            {
+                "type": "structural_hole",
+                "conclusion": f"节点'{node[:30]}'连接{neighbors}个其他节点, 是潜在结构洞/瓶颈",
+                "derived_from": list(graph.get(node, set()))[:5],
+                "confidence": 0.65,
+                "method": "rule_engine",
+            }
+        )
+
+def relation_reasoning(engine, relations):
+    """关系推理 — 传递性+逆关系+域约束检测"""
+if not relations:
+    return results
+
+# 构建关系图
+rel_graph = {}  # {subject: [(relation_type, object), ...]}
+for rel in relations:
+    s, r, o = rel.get("subject", ""), rel.get("relation_type", ""), rel.get("object", "")
+    if s and o:
+        rel_graph.setdefault(s, []).append((r, o))
+
+# 1. 传递性推理: s→r→o, o→r→p → s→r→p (仅对传递关系)
+transitive_rels = {"part_of", "contains", "depends_on", "precedes", "belongs_to"}
+seen_pairs = set()  # 防循环: 记录已生成的(s, p)对
+for s, edges in rel_graph.items():
+    for r, o in edges:
+        if r in transitive_rels and o in rel_graph:
+            for r2, p in rel_graph[o]:
+                if r2 == r and s != p and (s, p) not in seen_pairs:
+                    seen_pairs.add((s, p))
+                    results.append(
+                        {
+                            "type": "relation_transitive",
+                            "conclusion": f"关系传递: {s}→{r}→{o}→{r2}→{p} ∴ {s} {r} {p}",
+                            "derived_from": [s, o, p],
+                            "confidence": 0.80,
+                            "method": "rule_engine",
+                        }
+                    )
+
+# 2. 逆关系检测
+for rel in relations:
+    r_type = rel.get("relation_type", "")
+    inverse = _INVERSE_RELATIONS.get(r_type)
+    if inverse:
+        results.append(
+            {
+                "type": "relation_inverse",
+                "conclusion": f"逆关系: {rel.get('subject')}→{r_type}→{rel.get('object')} ⇒ "
+                f"{rel.get('object')}→{inverse}→{rel.get('subject')}",
+                "derived_from": [rel.get("subject", ""), rel.get("object", "")],
+                "confidence": 0.90,
+                "method": "rule_engine",
+            }
+        )
+
+# 3. 域约束检测: employs的domain应为ORG, range应为ROL
+domain_rules = {
+    "employs": ({"ORG"}, {"ROL"}),
+    "authored_by": ({"DOC", "INF"}, {"ORG", "ROL"}),
+}
+for rel in relations:
+    r_type = rel.get("relation_type", "")
+    if r_type in domain_rules:
+        exp_dom, exp_rng = domain_rules[r_type]
+        subj_prefix = rel.get("subject", "").split("-")[0] if "-" in rel.get("subject", "") else ""
+        obj_prefix = rel.get("object", "").split("-")[0] if "-" in rel.get("object", "") else ""
+        if subj_prefix and subj_prefix not in exp_dom:
+            results.append(
+                {
+                    "type": "relation_domain",
+                    "conclusion": (
+                        f"域约束: {r_type}的domain应为{exp_dom}, "
+                        f"但subject'{rel.get('subject')}'前缀为'{subj_prefix}'"
+                    ),
+                    "derived_from": [rel.get("subject", "")],
+                    "confidence": 0.70,
+                    "method": "rule_engine",
+                }
+            )
+        if obj_prefix and obj_prefix not in exp_rng:
+            results.append(
+                {
+                    "type": "relation_range",
+                    "conclusion": (
+                        f"域约束: {r_type}的range应为{exp_rng}, "
+                        f"但object'{rel.get('object')}'前缀为'{obj_prefix}'"
+                    ),
+                    "derived_from": [rel.get("object", "")],
+                    "confidence": 0.70,
+                    "method": "rule_engine",
+                }
+            )
+
+
+def constraint_propagation(engine, inferences, facts):
+    """基于规约阈值传播约束"""
+# 统计断言数
+total_assertions = 0
+for info in inferences.values():
+    text = info.get("text", "")
+    assertions = re.findall(r"[^。\n]*?(?:应该|必须|需要)[^。]*?[。]", text)
+    total_assertions += len([a for a in assertions if len(a) >= 15])
+
+if total_assertions > 0:
+    # 检查是否有引用
+    traced = 0
+    for info in inferences.values():
+        text = info.get("text", "")
+        for a in re.findall(r"[^。\n]*?(?:应该|必须|需要)[^。]*?[。]", text):
+            if re.search(r"D-F\d+|P-F\d+", a):
+                traced += 1
+    rate = traced / total_assertions if total_assertions > 0 else 1
+    if rate < 0.5:
+        results.append(
+            {
+                "type": "constraint_violation",
+                "conclusion": (
+                    f"断言追溯率{rate:.0%}低于50%阈值(C-05), "
+                    f"建议为{total_assertions - traced}个断言标注事实引用"
+                ),
+                "derived_from": [],
+                "confidence": 0.90,
+                "method": "rule_engine",
+            }
+        )
+
+def modus_ponens_check(engine, inferences, facts):
+    """如果A成立且A->B, 则B成立。检测蕴含链的假设满足度"""
+for title, info in inferences.items():
+    premises = info.get("derives_from", [])
+    satisfied = [p for p in premises if p in facts or p in inferences]
+    if len(satisfied) < len(premises):
+        missing = [p for p in premises if p not in satisfied]
+        results.append(
+            {
+                "type": "modus_ponens_fail",
+                "conclusion": f"推论'{title[:30]}'的前提{missing}不成立, 推论有效性存疑",
+                "derived_from": premises,
+                "confidence": 0.85,
+                "method": "rule_engine",
+            }
+        )
+    elif len(satisfied) >= len(premises) >= 2:
+        results.append(
+            {
+                "type": "modus_ponens_valid",
+                "conclusion": f"推论'{title[:30]}'的{len(premises)}个前提全部成立, 推论有效",
+                "derived_from": premises,
+                "confidence": 0.90,
+                "method": "rule_engine",
+            }
+        )
+
+def transitive_closure(engine, inferences, facts):
+    """A->B->C, 则A间接影响C。计算传递闭包"""
+for title, info in inferences.items():
+    indirect_deps = set()
+    direct = set(info.get("derives_from", []))
+    queue = list(direct)
+    while queue:
+        dep = queue.pop(0)
+        if dep in inferences:
+            for grandparent in inferences[dep].get("derives_from", []):
+                if grandparent not in direct and grandparent not in indirect_deps:
+                    indirect_deps.add(grandparent)
+                    queue.append(grandparent)
+    if indirect_deps:
+        results.append(
+            {
+                "type": "transitive_dependency",
+                "conclusion": (
+                    f"推论'{title[:30]}'间接依赖{len(indirect_deps)}个前提: "
+                    f"{list(indirect_deps)[:5]}"
+                ),
+                "derived_from": list(indirect_deps),
+                "confidence": 0.75,
+                "method": "rule_engine",
+            }
+        )
+
+def subsumption_check(engine, inferences, facts):
+    """增强包含推理 — 分类建议+新类型检测+误分类检测"""
+all_ids = list(inferences.keys()) + list(facts.keys())
+type_map = {}
+for id_str in all_ids:
+    prefix = extract_prefix(id_str)
+    type_map[id_str] = prefix
+
+# 统计: 正确的标准 = 前缀在_ID_PREFIX_MAP中
+known_prefixes = set(_ID_PREFIX_MAP.keys())
+unknown_prefixes = {}
+correct = 0
+
+for id_str, prefix in type_map.items():
+    if prefix in known_prefixes:
+        correct += 1
+    else:
+        unknown_prefixes[prefix] = unknown_prefixes.get(prefix, 0) + 1
+
+n_total = len(type_map)
+if n_total == 0:
+    return results
+
+# 输出1: 归类统计
+results.append(
+    {
+        "type": "subsumption",
+        "conclusion": f"本体归类: {correct}/{n_total}个ID正确({correct * 100 // n_total}%)",
+        "derived_from": [],
+        "confidence": 0.85,
+        "method": "rule_engine",
+    }
+)
+
+# 输出2: 未知前缀 → 新类型建议
+for prefix, count in sorted(unknown_prefixes.items(), key=lambda x: -x[1]):
+    if count >= 2:  # 至少出现2次才建议
+        # 猜测最可能的父类型
+        guess = guess_parent(prefix, type_map)
+        results.append(
+            {
+                "type": "subsumption",
+                "conclusion": f"新类型建议: '{prefix}'出现{count}次, 建议归入{guess}类型",
+                "derived_from": [k for k, v in type_map.items() if v == prefix],
+                "confidence": 0.55,
+                "method": "rule_engine",
+            }
+        )
+    elif count == 1:
+        # 孤立未知前缀 → 可能是拼写错误
+        example_id = next(k for k, v in type_map.items() if v == prefix)
+        closest = closest_known(prefix)
+        results.append(
+            {
+                "type": "subsumption",
+                "conclusion": f"孤立前缀: '{prefix}'(仅{example_id})可能是'{closest}'的拼写错误",
+                "derived_from": [example_id],
+                "confidence": 0.40,
+                "method": "rule_engine",
+            }
+        )
+
+
+def influence_analysis(engine, inferences, facts):
+    """计算每个事实/推论的"影响力" = 被多少推论直接/间接引用"""
+influence = {}
+for title, info in inferences.items():
+    for dep in info.get("derives_from", []):
+        influence[dep] = influence.get(dep, 0) + 1
+if influence:
+    top = sorted(influence.items(), key=lambda x: -x[1])[:3]
+    top_str = "; ".join(f"{k}(被{count}个推论引用)" for k, count in top)
+    results.append(
+        {
+            "type": "influence_analysis",
+            "conclusion": f"最具影响力的前提: {top_str}",
+            "derived_from": [k for k, _ in top],
+            "confidence": 0.80,
+            "method": "rule_engine",
+        }
+    )
+
+def redundancy_check(engine, inferences):
+    """检测推论间的冗余 — 共享3+前提且文本相似"""
+inf_list = list(inferences.items())
+for i in range(len(inf_list)):
+    for j in range(i + 1, len(inf_list)):
+        a_id, a_info = inf_list[i]
+        b_id, b_info = inf_list[j]
+        shared = set(a_info.get("derives_from", [])) & set(b_info.get("derives_from", []))
+        if len(shared) >= 3:
+            results.append(
+                {
+                    "type": "redundancy_warning",
+                    "conclusion": f"'{a_id[:25]}'和'{b_id[:25]}'共享{len(shared)}个前提, 可能冗余",
+                    "derived_from": list(shared),
+                    "confidence": 0.65,
+                    "method": "rule_engine",
+                }
+            )
+
+def coverage_analysis(engine, inferences, facts):
+    """分析事实被推论引用的覆盖率"""
+if not facts:
+    return results
+cited = set()
+for info in inferences.values():
+    cited.update(info.get("derives_from", []))
+fact_ids = set(facts.keys())
+cited_facts = fact_ids & cited
+uncited = fact_ids - cited
+rate = len(cited_facts) / len(fact_ids) * 100 if fact_ids else 100
+results.append(
+    {
+        "type": "coverage",
+        "conclusion": f"事实覆盖率{rate:.0f}%({len(cited_facts)}/{len(fact_ids)}), 未引用: {list(uncited)[:5]}",
+        "derived_from": list(uncited),
+        "confidence": 0.95,
+        "method": "rule_engine",
+    }
+)
+
+def numeric_derive(engine, facts):
+    """R1: 数值比较推导 — 三段论最直接的体现"""
+numeric = {}
+for fid, info in facts.items():
+    m = re.search(r"(\d+\.?\d*)", str(info.get("value", "")))
+    if m:
+        numeric[fid] = {"label": info.get("desc", fid)[:30], "value": float(m.group(1))}
+
+# 两两比较 (仅比较单位相似的事实)
+ids = list(numeric.keys())
+for i in range(len(ids)):
+    for j in range(i + 1, len(ids)):
+        a, b = numeric[ids[i]], numeric[ids[j]]
+        # 跳过跨维度比较 (人数vs金额vs百分比)
+        if not comparable(a["label"], b["label"], a["value"], b["value"]):
+            continue
+        if b["value"] > 0 and a["value"] > b["value"] * 1.5:  # 显著差异
+            results.append(
+                {
+                    "type": "numeric_comparison",
+                    "conclusion": (
+                        f"{a['label']}({a['value']})是{b['label']}({b['value']})的"
+                        f"{a['value'] / b['value']:.1f}倍"
+                    ),
+                    "derived_from": [ids[i], ids[j]],
+                    "confidence": 0.95,
+                    "method": "rule_engine",
+                }
+            )
+
+def shared_premise_check(engine, inferences):
+    """R2: 共享前提检测"""
+inf_list = list(inferences.items())
+for i in range(len(inf_list)):
+    for j in range(i + 1, len(inf_list)):
+        a_id, a_info = inf_list[i]
+        b_id, b_info = inf_list[j]
+        shared = set(a_info.get("derives_from", [])) & set(b_info.get("derives_from", []))
+        if len(shared) >= 2:
+            results.append(
+                {
+                    "type": "shared_premise",
+                    "conclusion": (
+                        f"推论'{a_id[:30]}'和'{b_id[:30]}'共享{len(shared)}个前提"
+                        f"({list(shared)[:3]})"
+                    ),
+                    "derived_from": list(shared),
+                    "confidence": 0.75,
+                    "method": "rule_engine",
+                }
+            )
+
+def missing_ref_check(engine, inferences, all_ids):
+    """R3: 缺失引用 — 三段论的前提断裂"""
+for title, info in inferences.items():
+    for ref in info.get("derives_from", []):
+        if ref not in all_ids:
+            results.append(
+                {
+                    "type": "missing_reference",
+                    "conclusion": f"推论'{title[:30]}'引用了未定义的'{ref}'",
+                    "derived_from": [ref],
+                    "confidence": 0.99,
+                    "method": "rule_engine",
+                }
+            )
+
+def evidence_gap_check(engine, inferences):
+    """R4: 证据缺口 — 前提不足以支持推论"""
+for title, info in inferences.items():
+    n = len(info.get("derives_from", []))
+    if 0 < n < 2:
+        results.append(
+            {
+                "type": "evidence_gap",
+                "conclusion": f"推论'{title[:30]}'仅{n}个前提，建议增加到2+",
+                "derived_from": info.get("derives_from", []),
+                "confidence": 0.80,
+                "method": "rule_engine",
+            }
+        )
+
+def threshold_check(engine, facts, thresholds=None):
+    """R5: 阈值触发 — 预设基准检查"""
+    thresholds = {
+        "转化率": 10.0,
+        "成功率": 80.0,
+        "覆盖率": 60.0,
+        "满意度": 70.0,
+        "测试覆盖率": 60.0,
+    }
+results = []
+for fid, info in facts.items():
+    desc = info.get("desc", "")
+    for metric, threshold in thresholds.items():
+        if metric in desc:
+            m = re.search(r"(\d+\.?\d*)", str(info.get("value", "")))
+            if m:
+                val = float(m.group(1))
+                if val < threshold:
+                    results.append(
+                        {
+                            "type": "threshold_alert",
+                            "conclusion": f"{desc}({val})低于基准{threshold}",
+                            "derived_from": [fid],
+                            "confidence": 0.90,
+                            "method": "rule_engine",
+                        }
+                    )
+
+def chain_integrity_check(engine, inferences):
+    """R6: 推导链完整性 — INF->INF链是否完整"""
+inf_ids = set(inferences.keys())
+for title, info in inferences.items():
+    for ref in info.get("derives_from", []):
+        if ref.startswith("INF") and ref not in inf_ids:
+            results.append(
+                {
+                    "type": "chain_break",
+                    "conclusion": f"推导链断裂: '{title[:30]}'引用了未定义的'{ref}'",
+                    "derived_from": [ref],
+                    "confidence": 0.99,
+                    "method": "rule_engine",
+                }
+            )
+# 检测推导深度
+depths = {}
+for title in inferences:
+    calc_depth(title, inferences, depths, set())
+max_depth = max(depths.values()) if depths else 0
+if max_depth <= 1 and len(inferences) >= 3:
+    results.append(
+        {
+            "type": "shallow_chain",
+            "conclusion": f"推导链深度仅{max_depth}，{len(inferences)}个推论间缺少递进关系",
+            "derived_from": [],
+            "confidence": 0.70,
+            "method": "rule_engine",
+        }
+    )
