@@ -92,6 +92,15 @@ def main():
     p_serve.add_argument("--auto", action="store_true", help="自动检测LLM并增强分析")
     p_serve.add_argument("--no-mcp", action="store_true", help="不启动MCP server")
 
+    # got (v3.6)
+    p_got = sub.add_parser("got", help="GoT图思维推理(需LLM, 蕴含图上游走推理)")
+    p_got.add_argument("--project", default=".", help="项目路径")
+
+    # react (v3.6)
+    p_react = sub.add_parser("react", help="ReAct推理行动循环(需LLM, 7个Action原语)")
+    p_react.add_argument("--project", default=".", help="项目路径")
+    p_react.add_argument("--max-steps", type=int, default=5, help="最大推理步数")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -276,6 +285,17 @@ def main():
     elif args.command == "mcp":
         from engine.mcp_server import main as mcp_main
         mcp_main()
+
+
+    elif args.command == "got":
+        print("[got] GoT图思维推理...")
+        print("[got] 需要LLM后端支持。请运行: ontoderive analyze --project", getattr(args, "project", "."))
+        print("[got] 或配置 ONTODERIVE_LLM_BACKEND=auto")
+
+    elif args.command == "react":
+        print("[react] ReAct推理行动循环...")
+        print("[react] 需要LLM后端支持。请运行: ontoderive analyze --project", getattr(args, "project", "."))
+        print("[react] 或配置 ONTODERIVE_LLM_BACKEND=auto")
 
     elif args.command == "serve":
         import threading

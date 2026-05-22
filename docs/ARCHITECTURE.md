@@ -1,6 +1,6 @@
-# OntoDerive v3.6.0 — 功能架构详解
+# OntoDerive v3.6.4 — 功能架构详解
 
-> 知识工程分析平台。326+ 测试, 0 ruff 错误, 5层架构, 57模块。
+> 知识工程分析平台。665+ 测试, 0 ruff 错误, 5层架构, 57模块。
 > 三模式：结构分析(无LLM) | 规则推理(无LLM) | 形式推理(需LLM Phase1)
 
 ---
@@ -26,7 +26,7 @@
 │  derive() → check() → 13规约 + 贝叶斯置信度 + KQI    │
 ├──────────────────────────────────────────────────────┤
 │  模式2: 规则推理 (零LLM)                              │
-│  RuleReasoner(21模式) + FormalReasoner(4模式)        │
+│  RuleReasoner(21规则+YAML23) + FormalReasoner(4模式)        │
 │  → UnifiedReasoner 统一输出 (certain/probable/...)   │
 ├──────────────────────────────────────────────────────┤
 │  模式3: 形式推理 (需LLM Phase1)                       │
@@ -42,7 +42,7 @@
 ```
 engine/
 ├── core/           核心引擎    derive/check/check_theory/pipeline
-├── reasoners/      推理引擎    RuleReasoner(21模式)+FormalReasoner(4)
+├── reasoners/      推理引擎    RuleReasoner(21规则+YAML23)+FormalReasoner(4)
 │                               +UnifiedReasoner(统一输出)
 ├── theories/       六论模块    bayesian/metrics/controller/logic/
 │                               turing_k/ontolang
@@ -50,11 +50,10 @@ engine/
 ├── foundation/     基础设施    typesystem/models/constants/utils/
 │                               config/protocols
 ├── toolforge/      工具匹配    TF-IDF+keyword+hybrid (73工具)
-├── ecosystem/      生态适配    Minerva/Sophia/Agora/eCOS
-├── formalize.py    符号化引擎  LLM提取+规则降级+ABox/TBox构建
-├── reasoner_formal.py 形式推理 包含/传递/约束/归类
-├── pipeline_v4.py  四阶段管线  文本→推理报告
-└── mcp_server.py   MCP入口    11工具
+├── watcher.py      文件监听    自动重推导
+├── extractor.py    文本提取    从自然语言提取事实
+├── cli.py          CLI入口     12子命令
+└── mcp_server.py   MCP入口    17工具
 ```
 
 ---
