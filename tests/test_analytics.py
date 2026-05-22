@@ -4,6 +4,36 @@
 from engine.theories.analytics import (
     AnalyticalPattern,
     AnalyticsEngine,
+    analyze_agency,
+    analyze_capacity,
+    analyze_causal_chain,
+    analyze_game_equilibrium,
+    analyze_incentive,
+    analyze_info_ecology,
+    analyze_market_structure,
+    analyze_organizational_inertia,
+    analyze_power_map,
+    analyze_remediation,
+    analyze_scenario_planning,
+    analyze_strategic_options,
+    analyze_supply_chain,
+    analyze_tech_disruption,
+    detect_agency_issue,
+    detect_capacity_constraint,
+    detect_causal_chain,
+    detect_game_equilibrium,
+    detect_incentive_issue,
+    detect_info_ecology,
+    detect_market_structure,
+    detect_organizational_inertia,
+    detect_power_map,
+    detect_remediation_needed,
+    detect_scenario_planning,
+    detect_strategic_options,
+    detect_supply_risk,
+    detect_tech_disruption,
+)
+from engine.theories.analytics_patterns import (
     _extract_num,
     _find_entity_for_fact,
     _iter_facts,
@@ -128,17 +158,17 @@ class TestA1CapacityElasticity:
     def test_detect_high_utilization(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "94%"}}
-        assert ae._detect_capacity_constraint(facts, {}, [])
+        assert detect_capacity_constraint(ae, facts, {}, [])
 
     def test_detect_excess_capacity(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "56%"}}
-        assert ae._detect_capacity_constraint(facts, {}, [])
+        assert detect_capacity_constraint(ae, facts, {}, [])
 
     def test_no_detect_normal_utilization(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "75%"}}
-        assert not ae._detect_capacity_constraint(facts, {}, [])
+        assert not detect_capacity_constraint(ae, facts, {}, [])
 
     def test_detect_low_inventory(self):
         ae = AnalyticsEngine()
@@ -146,42 +176,42 @@ class TestA1CapacityElasticity:
             "D-F1": {"desc": "库存天数", "value": "12天"},
             "D-F2": {"desc": "安全库存基准", "value": "30天"},
         }
-        assert ae._detect_capacity_constraint(facts, {}, [])
+        assert detect_capacity_constraint(ae, facts, {}, [])
 
     def test_detect_via_description_field(self):
         """使用 description 而非 desc 字段时应同样检测"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"description": "产能利用率", "value": "93%"}}
-        assert ae._detect_capacity_constraint(facts, {}, [])
+        assert detect_capacity_constraint(ae, facts, {}, [])
 
     def test_not_detect_when_num_zero(self):
         """利用率 0 不被视为异常"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "0"}}
-        assert not ae._detect_capacity_constraint(facts, {}, [])
+        assert not detect_capacity_constraint(ae, facts, {}, [])
 
     def test_detect_exact_90_percent(self):
         """利用率 90% 不算紧张(>90 才触发)"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "90%"}}
-        assert not ae._detect_capacity_constraint(facts, {}, [])
+        assert not detect_capacity_constraint(ae, facts, {}, [])
 
     def test_detect_exact_60_percent(self):
         """利用率 60% 不算过剩(<60 才触发)"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "60%"}}
-        assert not ae._detect_capacity_constraint(facts, {}, [])
+        assert not detect_capacity_constraint(ae, facts, {}, [])
 
     def test_analyze_high_utilization(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "94%"}}
-        results = ae._analyze_capacity(facts, {}, [], None)
+        results = analyze_capacity(ae, facts, {}, [], None)
         assert any("供给弹性" in r["conclusion"] for r in results)
 
     def test_analyze_excess_capacity(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "56%"}}
-        results = ae._analyze_capacity(facts, {}, [], None)
+        results = analyze_capacity(ae, facts, {}, [], None)
         assert any("产能过剩" in r["conclusion"] for r in results)
 
     def test_analyze_inventory_gap(self):
@@ -190,19 +220,19 @@ class TestA1CapacityElasticity:
             "D-F1": {"desc": "库存天数", "value": "12天"},
             "D-F2": {"desc": "安全库存基准", "value": "30天"},
         }
-        results = ae._analyze_capacity(facts, {}, [], None)
+        results = analyze_capacity(ae, facts, {}, [], None)
         assert any("库存缺口" in r["conclusion"] for r in results)
 
     def test_analyze_empty_facts(self):
         ae = AnalyticsEngine()
-        results = ae._analyze_capacity({}, {}, [], None)
+        results = analyze_capacity(ae, {}, {}, [], None)
         assert results == []
 
     def test_analyze_elasticity_formula(self):
         """验证弹性公式: (100-num)/num"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "94%"}}
-        results = ae._analyze_capacity(facts, {}, [], None)
+        results = analyze_capacity(ae, facts, {}, [], None)
         # num=94, elasticity = (100-94)/94 = 0.0638...
         assert any("0.06" in r["conclusion"] for r in results)
 
@@ -210,7 +240,7 @@ class TestA1CapacityElasticity:
         """利用率100%触发供给紧张(num>90且num<=100)"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "100%"}}
-        results = ae._analyze_capacity(facts, {}, [], None)
+        results = analyze_capacity(ae, facts, {}, [], None)
         assert len(results) == 1
         assert any("供给弹性≈0.00" in r["conclusion"] for r in results)
 
@@ -218,7 +248,7 @@ class TestA1CapacityElasticity:
         """value 为 0 的 fact 应跳过"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "产能利用率", "value": "0"}}
-        results = ae._analyze_capacity(facts, {}, [], None)
+        results = analyze_capacity(ae, facts, {}, [], None)
         assert len(results) == 0
 
 
@@ -234,7 +264,7 @@ class TestA2SupplyChainAmplification:
         relations = [
             {"subject": "工厂A", "relation_type": "depends_on", "object": "供应商B"},
         ]
-        assert ae._detect_supply_risk(facts, {}, relations)
+        assert detect_supply_risk(ae, facts, {}, relations)
 
     def test_detect_delivery_issue_in_description(self):
         """使用 description 字段也应检测到"""
@@ -243,13 +273,13 @@ class TestA2SupplyChainAmplification:
         relations = [
             {"subject": "工厂A", "relation_type": "depends_on", "object": "供应商B"},
         ]
-        assert ae._detect_supply_risk(facts, {}, relations)
+        assert detect_supply_risk(ae, facts, {}, relations)
 
     def test_no_detect_without_chain(self):
         """无 depends_on 链时不触发"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "交付率", "value": "65%"}}
-        assert not ae._detect_supply_risk(facts, {}, [])
+        assert not detect_supply_risk(ae, facts, {}, [])
 
     def test_no_detect_without_issue(self):
         """交付率 >=80 时不触发"""
@@ -258,14 +288,14 @@ class TestA2SupplyChainAmplification:
         relations = [
             {"subject": "工厂A", "relation_type": "depends_on", "object": "供应商B"},
         ]
-        assert not ae._detect_supply_risk(facts, {}, relations)
+        assert not detect_supply_risk(ae, facts, {}, relations)
 
     def test_no_detect_empty_facts(self):
         ae = AnalyticsEngine()
         relations = [
             {"subject": "工厂A", "relation_type": "depends_on", "object": "供应商B"},
         ]
-        assert not ae._detect_supply_risk({}, {}, relations)
+        assert not detect_supply_risk(ae, {}, {}, relations)
 
     def test_analyze_supply_chain(self):
         ae = AnalyticsEngine()
@@ -277,7 +307,7 @@ class TestA2SupplyChainAmplification:
             {"subject": "工厂A", "relation_type": "depends_on", "object": "供应商B"},
         ]
         entities = {"E-1": {"name": "工厂A"}}
-        results = ae._analyze_supply_chain(facts, entities, relations, None)
+        results = analyze_supply_chain(ae, facts, entities, relations, None)
         for r in results:
             assert "conclusion" in r
             assert "type" in r
@@ -287,28 +317,28 @@ class TestA2SupplyChainAmplification:
         """无交付相关事实时返回空列表"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "营收", "value": "100亿"}}
-        results = ae._analyze_supply_chain(facts, {}, [], None)
+        results = analyze_supply_chain(ae, facts, {}, [], None)
         assert results == []
 
     def test_analyze_delivery_80_or_above_skipped(self):
         """交付 >=80 不产生分析结果"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "交付率", "value": "80%"}}
-        results = ae._analyze_supply_chain(facts, {}, [], None)
+        results = analyze_supply_chain(ae, facts, {}, [], None)
         assert results == []
 
     def test_analyze_delivery_zero_skipped(self):
         """交付 <=0 不产生分析结果"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "交付率", "value": "0"}}
-        results = ae._analyze_supply_chain(facts, {}, [], None)
+        results = analyze_supply_chain(ae, facts, {}, [], None)
         assert results == []
 
     def test_analyze_empty_relations(self):
         """无 relations 时不应报错"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "交付率", "value": "65%"}}
-        results = ae._analyze_supply_chain(facts, {}, None, None)
+        results = analyze_supply_chain(ae, facts, {}, None, None)
         assert results == []
 
 
@@ -324,14 +354,14 @@ class TestA3AgencyDetection:
             {"subject": "ORG-平台", "relation_type": "employs", "object": "ROL-骑手"},
             {"subject": "ROL-骑手", "relation_type": "cooperates_with", "object": "ROL-消费者"},
         ]
-        assert ae._detect_agency_issue({}, {}, relations)
+        assert detect_agency_issue(ae, {}, {}, relations)
 
     def test_no_agency_without_employ(self):
         ae = AnalyticsEngine()
         relations = [
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-B"},
         ]
-        assert not ae._detect_agency_issue({}, {}, relations)
+        assert not detect_agency_issue(ae, {}, {}, relations)
 
     def test_no_agency_when_employee_works_for_employer(self):
         """员工关系指向雇主时不视为代理问题"""
@@ -340,7 +370,7 @@ class TestA3AgencyDetection:
             {"subject": "ORG-平台", "relation_type": "employs", "object": "ROL-骑手"},
             {"subject": "ROL-骑手", "relation_type": "cooperates_with", "object": "ORG-平台"},
         ]
-        assert not ae._detect_agency_issue({}, {}, relations)
+        assert not detect_agency_issue(ae, {}, {}, relations)
 
     def test_detect_employs_with_depends_on(self):
         ae = AnalyticsEngine()
@@ -348,7 +378,7 @@ class TestA3AgencyDetection:
             {"subject": "ORG-A", "relation_type": "employs", "object": "ROL-B"},
             {"subject": "ROL-B", "relation_type": "depends_on", "object": "ORG-C"},
         ]
-        assert ae._detect_agency_issue({}, {}, relations)
+        assert detect_agency_issue(ae, {}, {}, relations)
 
     def test_detect_employs_with_influences(self):
         ae = AnalyticsEngine()
@@ -356,12 +386,12 @@ class TestA3AgencyDetection:
             {"subject": "ORG-A", "relation_type": "employs", "object": "ROL-B"},
             {"subject": "ROL-B", "relation_type": "influences", "object": "ORG-C"},
         ]
-        assert ae._detect_agency_issue({}, {}, relations)
+        assert detect_agency_issue(ae, {}, {}, relations)
 
     def test_empty_employ_pairs_no_agency(self):
         ae = AnalyticsEngine()
         relations = []
-        assert not ae._detect_agency_issue({}, {}, relations)
+        assert not detect_agency_issue(ae, {}, {}, relations)
 
     def test_analyze_agency_finds_issues(self):
         ae = AnalyticsEngine()
@@ -369,7 +399,7 @@ class TestA3AgencyDetection:
             {"subject": "ORG-平台", "relation_type": "employs", "object": "ROL-骑手"},
             {"subject": "ROL-骑手", "relation_type": "cooperates_with", "object": "ROL-消费者"},
         ]
-        results = ae._analyze_agency({}, {}, relations, None)
+        results = analyze_agency(ae, {}, {}, relations, None)
         assert len(results) >= 1
         assert any("代理问题" in r["conclusion"] for r in results)
 
@@ -379,7 +409,7 @@ class TestA3AgencyDetection:
         relations = [
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-B"},
         ]
-        results = ae._analyze_agency({}, {}, relations, None)
+        results = analyze_agency(ae, {}, {}, relations, None)
         assert results == []
 
     def test_analyze_agency_with_enhancer(self, mock_enhancer):
@@ -389,7 +419,7 @@ class TestA3AgencyDetection:
             {"subject": "ORG-平台", "relation_type": "employs", "object": "ROL-骑手"},
             {"subject": "ROL-骑手", "relation_type": "cooperates_with", "object": "ROL-消费者"},
         ]
-        results = ae._analyze_agency({}, {}, relations, mock_enhancer)
+        results = analyze_agency(ae, {}, {}, relations, mock_enhancer)
         assert len(results) >= 1
         assert any("LLM分析" in r["conclusion"] for r in results)
 
@@ -406,7 +436,7 @@ class TestA4IncentiveMisalignment:
             {"subject": "ORG-A", "relation_type": "depends_on", "object": "RES-资金"},
             {"subject": "ORG-B", "relation_type": "depends_on", "object": "RES-资金"},
         ]
-        assert ae._detect_incentive_issue({}, {}, relations)
+        assert detect_incentive_issue(ae, {}, {}, relations)
 
     def test_no_detect_no_shared_resource(self):
         ae = AnalyticsEngine()
@@ -414,11 +444,11 @@ class TestA4IncentiveMisalignment:
             {"subject": "ORG-A", "relation_type": "depends_on", "object": "RES-A"},
             {"subject": "ORG-B", "relation_type": "depends_on", "object": "RES-B"},
         ]
-        assert not ae._detect_incentive_issue({}, {}, relations)
+        assert not detect_incentive_issue(ae, {}, {}, relations)
 
     def test_no_detect_empty_relations(self):
         ae = AnalyticsEngine()
-        assert not ae._detect_incentive_issue({}, {}, [])
+        assert not detect_incentive_issue(ae, {}, {}, [])
 
     def test_detect_three_way_shared(self):
         """三个主体共享同一资源"""
@@ -428,7 +458,7 @@ class TestA4IncentiveMisalignment:
             {"subject": "ORG-B", "relation_type": "competes_with", "object": "RES-市场"},
             {"subject": "ORG-C", "relation_type": "competes_with", "object": "RES-市场"},
         ]
-        assert ae._detect_incentive_issue({}, {}, relations)
+        assert detect_incentive_issue(ae, {}, {}, relations)
 
     def test_analyze_incentive_misalignment(self):
         """检测激励冲突: 语义差异大的事实共享目标"""
@@ -441,12 +471,12 @@ class TestA4IncentiveMisalignment:
             {"subject": "企业A", "relation_type": "depends_on", "object": "RES-资金"},
             {"subject": "企业B", "relation_type": "depends_on", "object": "RES-资金"},
         ]
-        results = ae._analyze_incentive(facts, {}, relations, None)
+        results = analyze_incentive(ae, facts, {}, relations, None)
         assert isinstance(results, list)
 
     def test_analyze_empty_facts(self):
         ae = AnalyticsEngine()
-        results = ae._analyze_incentive({}, {}, [], None)
+        results = analyze_incentive(ae, {}, {}, [], None)
         assert results == []
 
     def test_analyze_no_shared_resource(self):
@@ -459,7 +489,7 @@ class TestA4IncentiveMisalignment:
             {"subject": "企业A", "relation_type": "depends_on", "object": "RES-A"},
             {"subject": "企业B", "relation_type": "depends_on", "object": "RES-B"},
         ]
-        results = ae._analyze_incentive(facts, {}, relations, None)
+        results = analyze_incentive(ae, facts, {}, relations, None)
         assert results == []
 
 
@@ -472,27 +502,27 @@ class TestA5Remediation:
     def test_detect_with_audit_keyword(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "审计发现问题数", "value": "47个"}}
-        assert ae._detect_remediation_needed(facts, {}, [])
+        assert detect_remediation_needed(ae, facts, {}, [])
 
     def test_detect_with_rectification_keyword(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "整改完成率", "value": "60%"}}
-        assert ae._detect_remediation_needed(facts, {}, [])
+        assert detect_remediation_needed(ae, facts, {}, [])
 
     def test_detect_with_risk_keyword(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "高风险供应商", "value": "3家"}}
-        assert ae._detect_remediation_needed(facts, {}, [])
+        assert detect_remediation_needed(ae, facts, {}, [])
 
     def test_detect_with_gap_keyword(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "能力差距", "value": "5项"}}
-        assert ae._detect_remediation_needed(facts, {}, [])
+        assert detect_remediation_needed(ae, facts, {}, [])
 
     def test_no_detect_no_problem(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "营收", "value": "8.6亿元"}}
-        assert not ae._detect_remediation_needed(facts, {}, [])
+        assert not detect_remediation_needed(ae, facts, {}, [])
 
     def test_feasibility_unfeasible(self):
         ae = AnalyticsEngine()
@@ -501,7 +531,7 @@ class TestA5Remediation:
             "D-F2": {"desc": "合规团队人数", "value": "4"},
             "D-F3": {"desc": "距申报月数", "value": "5个月"},
         }
-        results = ae._analyze_remediation(facts, {}, [], None)
+        results = analyze_remediation(ae, facts, {}, [], None)
         assert any("不可行" in r.get("conclusion", "") for r in results)
 
     def test_feasibility_viable(self):
@@ -511,7 +541,7 @@ class TestA5Remediation:
             "D-F2": {"desc": "合规团队人数", "value": "4"},
             "D-F3": {"desc": "距申报月数", "value": "5个月"},
         }
-        results = ae._analyze_remediation(facts, {}, [], None)
+        results = analyze_remediation(ae, facts, {}, [], None)
         assert any("可行" in r.get("conclusion", "") for r in results)
 
     def test_high_risk_generates_short_term_plan(self):
@@ -521,7 +551,7 @@ class TestA5Remediation:
             "D-F1": {"desc": "高风险问题", "value": "3"},
             "D-F2": {"desc": "整改率", "value": "40%"},
         }
-        results = ae._analyze_remediation(facts, {}, [], None)
+        results = analyze_remediation(ae, facts, {}, [], None)
         assert any("短期(0-3月)" in r.get("conclusion", "") for r in results)
 
     def test_no_high_risk_no_short_term(self):
@@ -531,21 +561,21 @@ class TestA5Remediation:
             "D-F2": {"desc": "合规团队人数", "value": "4"},
             "D-F3": {"desc": "距申报月数", "value": "5个月"},
         }
-        results = ae._analyze_remediation(facts, {}, [], None)
+        results = analyze_remediation(ae, facts, {}, [], None)
         assert not any("短期(0-3月)" in r.get("conclusion", "") for r in results)
 
     def test_no_problem_facts_returns_empty(self):
         """无问题相关事实时返回空列表"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "营收", "value": "100亿"}}
-        results = ae._analyze_remediation(facts, {}, [], None)
+        results = analyze_remediation(ae, facts, {}, [], None)
         assert results == []
 
     def test_default_team_and_months(self):
         """默认 4人/6月, 缺省团队/距申报信息时使用默认值"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "审计问题数", "value": "100"}}
-        results = ae._analyze_remediation(facts, {}, [], None)
+        results = analyze_remediation(ae, facts, {}, [], None)
         assert any("不可行" in r.get("conclusion", "") for r in results)
 
     def test_compliance_fact_for_team(self):
@@ -556,7 +586,7 @@ class TestA5Remediation:
             "D-F2": {"desc": "合规人员", "value": "10"},
             "D-F3": {"desc": "距申报月数", "value": "6个月"},
         }
-        results = ae._analyze_remediation(facts, {}, [], None)
+        results = analyze_remediation(ae, facts, {}, [], None)
         assert any("可行" in r.get("conclusion", "") for r in results)
 
     def test_remediation_with_enhancer(self, mock_enhancer):
@@ -566,14 +596,14 @@ class TestA5Remediation:
             "D-F1": {"desc": "审计问题数", "value": "15"},
             "D-F2": {"desc": "合规团队", "value": "3"},
         }
-        results = ae._analyze_remediation(facts, {}, [], mock_enhancer)
+        results = analyze_remediation(ae, facts, {}, [], mock_enhancer)
         assert any("分阶段方案" in r.get("conclusion", "") for r in results)
 
     def test_detect_remediation_via_description(self):
         """description 字段也应触发检测"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"description": "整改问题", "value": "10"}}
-        assert ae._detect_remediation_needed(facts, {}, [])
+        assert detect_remediation_needed(ae, facts, {}, [])
 
 
 # ===========================================
@@ -585,33 +615,33 @@ class TestA6MarketStructure:
     def test_detect_three_or_more_entities(self):
         ae = AnalyticsEngine()
         entities = {"E-A": {}, "E-B": {}, "E-C": {}}
-        assert ae._detect_market_structure({}, entities, [])
+        assert detect_market_structure(ae, {}, entities, [])
 
     def test_detect_two_entities_no_market_kw(self):
         """2个实体且无市场关键词时不触发"""
         ae = AnalyticsEngine()
-        assert not ae._detect_market_structure({}, {}, [])
+        assert not detect_market_structure(ae, {}, {}, [])
 
     def test_detect_market_keyword_in_facts(self):
         """即使实体数少但有份额关键词也应触发"""
         ae = AnalyticsEngine()
         entities = {"E-A": {}}
         facts = {"D-F1": {"desc": "市场份额", "value": "30%"}}
-        assert ae._detect_market_structure(facts, entities, [])
+        assert detect_market_structure(ae, facts, entities, [])
 
     def test_detect_various_kw(self):
         """测试多个市场关键词"""
         ae = AnalyticsEngine()
         for kw in ("份额", "集中度", "CR", "寡头", "垄断", "竞争格局", "HHI"):
             facts = {"D-F1": {"desc": f"测试{kw}数据", "value": "50"}}
-            assert ae._detect_market_structure(facts, {}, [])
+            assert detect_market_structure(ae, facts, {}, [])
 
     def test_analyze_monopoly(self):
         """HHI > 2500 -> 垄断"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "市场份额", "value": "60"}}
         entities = {"E-A": {}, "E-B": {}}
-        results = ae._analyze_market_structure(facts, entities, [], None)
+        results = analyze_market_structure(ae, facts, entities, [], None)
         assert any("垄断" in r["conclusion"] for r in results)
 
     def test_analyze_oligopoly(self):
@@ -625,7 +655,7 @@ class TestA6MarketStructure:
             "D-F5": {"desc": "市场份额", "value": "10"},
         }
         entities = {"E-A": {}, "E-B": {}, "E-C": {}, "E-D": {}, "E-E": {}}
-        results = ae._analyze_market_structure(facts, entities, [], None)
+        results = analyze_market_structure(ae, facts, entities, [], None)
         assert any("寡头" in r["conclusion"] for r in results)
 
     def test_analyze_dispersed(self):
@@ -633,7 +663,7 @@ class TestA6MarketStructure:
         ae = AnalyticsEngine()
         facts = {f"D-F{i}": {"desc": "份额", "value": "4"} for i in range(1, 13)}
         entities = {f"E-{chr(65+i)}": {} for i in range(12)}
-        results = ae._analyze_market_structure(facts, entities, [], None)
+        results = analyze_market_structure(ae, facts, entities, [], None)
         assert any("分散" in r["conclusion"] for r in results)
 
     def test_no_market_keywords_no_results(self):
@@ -641,7 +671,7 @@ class TestA6MarketStructure:
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "一般数据", "value": "50"}}
         entities = {"E-A": {}, "E-B": {}, "E-C": {}}
-        results = ae._analyze_market_structure(facts, entities, [], None)
+        results = analyze_market_structure(ae, facts, entities, [], None)
         assert results == []
 
     def test_cr3_with_less_than_3_shares(self):
@@ -649,7 +679,7 @@ class TestA6MarketStructure:
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "份额", "value": "50"}}
         entities = {"E-A": {}, "E-B": {}}
-        results = ae._analyze_market_structure(facts, entities, [], None)
+        results = analyze_market_structure(ae, facts, entities, [], None)
         assert any("CR3=100%" in r["conclusion"] for r in results)
 
 
@@ -664,7 +694,7 @@ class TestA7GameEquilibrium:
         relations = [
             {"subject": "ORG-A", "relation_type": "competes_with", "object": "ORG-B"},
         ]
-        assert ae._detect_game_equilibrium({}, {}, relations)
+        assert detect_game_equilibrium(ae, {}, {}, relations)
 
     def test_detect_cooperation(self):
         ae = AnalyticsEngine()
@@ -672,11 +702,11 @@ class TestA7GameEquilibrium:
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-B"},
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-C"},
         ]
-        assert ae._detect_game_equilibrium({}, {}, relations)
+        assert detect_game_equilibrium(ae, {}, {}, relations)
 
     def test_no_detect_empty_relations(self):
         ae = AnalyticsEngine()
-        assert not ae._detect_game_equilibrium({}, {}, [])
+        assert not detect_game_equilibrium(ae, {}, {}, [])
 
     def test_no_detect_single_cooperation(self):
         """单条合作关系不视为博弈场景"""
@@ -684,7 +714,7 @@ class TestA7GameEquilibrium:
         relations = [
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-B"},
         ]
-        assert not ae._detect_game_equilibrium({}, {}, relations)
+        assert not detect_game_equilibrium(ae, {}, {}, relations)
 
     def test_analyze_prisoner_dilemma(self):
         """竞争+合作共存 -> 囚徒困境风险"""
@@ -693,7 +723,7 @@ class TestA7GameEquilibrium:
             {"subject": "ORG-A", "relation_type": "competes_with", "object": "ORG-B"},
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-B"},
         ]
-        results = ae._analyze_game_equilibrium({}, {}, relations, None)
+        results = analyze_game_equilibrium(ae, {}, {}, relations, None)
         assert any("囚徒困境" in r["conclusion"] for r in results)
 
     def test_analyze_zero_sum(self):
@@ -703,13 +733,13 @@ class TestA7GameEquilibrium:
             {"subject": "ORG-A", "relation_type": "competes_with", "object": "ORG-B"},
             {"subject": "ORG-B", "relation_type": "competes_with", "object": "ORG-C"},
         ]
-        results = ae._analyze_game_equilibrium({}, {}, relations, None)
+        results = analyze_game_equilibrium(ae, {}, {}, relations, None)
         assert any("零和博弈" in r["conclusion"] for r in results)
 
     def test_analyze_empty_relations(self):
         """无关系时返回空"""
         ae = AnalyticsEngine()
-        results = ae._analyze_game_equilibrium({}, {}, [], None)
+        results = analyze_game_equilibrium(ae, {}, {}, [], None)
         assert results == []
 
     def test_analyze_only_cooperation(self):
@@ -719,7 +749,7 @@ class TestA7GameEquilibrium:
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-B"},
             {"subject": "ORG-A", "relation_type": "cooperates_with", "object": "ORG-C"},
         ]
-        results = ae._analyze_game_equilibrium({}, {}, relations, None)
+        results = analyze_game_equilibrium(ae, {}, {}, relations, None)
         assert results == []
 
 
@@ -733,27 +763,27 @@ class TestA8StrategicOptions:
         """委托 _detect_remediation_needed 检测"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "审计问题", "value": "5"}}
-        assert ae._detect_strategic_options(facts, {}, [])
+        assert detect_strategic_options(ae, facts, {}, [])
 
     def test_detect_with_constraint(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "预算约束", "value": "100万"}}
-        assert ae._detect_strategic_options(facts, {}, [])
+        assert detect_strategic_options(ae, facts, {}, [])
 
     def test_detect_constraint_via_limit(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "限制条件", "value": "100万"}}
-        assert ae._detect_strategic_options(facts, {}, [])
+        assert detect_strategic_options(ae, facts, {}, [])
 
     def test_detect_constraint_via_cap(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "预算约束上限", "value": "500万"}}
-        assert ae._detect_strategic_options(facts, {}, [])
+        assert detect_strategic_options(ae, facts, {}, [])
 
     def test_no_detect_no_problem_no_constraint(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "营收", "value": "100亿"}}
-        assert not ae._detect_strategic_options(facts, {}, [])
+        assert not detect_strategic_options(ae, facts, {}, [])
 
     def test_analyze_with_goals_and_constraints(self):
         ae = AnalyticsEngine()
@@ -762,7 +792,7 @@ class TestA8StrategicOptions:
             "D-F2": {"desc": "预算上限", "value": "50亿"},
             "D-F3": {"desc": "团队规模", "value": "30人"},
         }
-        results = ae._analyze_strategic_options(facts, {}, [], None)
+        results = analyze_strategic_options(ae, facts, {}, [], None)
         assert len(results) >= 1
         assert any("策略空间" in r["conclusion"] for r in results)
 
@@ -770,7 +800,7 @@ class TestA8StrategicOptions:
         """仅有目标时返回结果, 无目标无约束才为空"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "普通数据", "value": "100"}}
-        results = ae._analyze_strategic_options(facts, {}, [], None)
+        results = analyze_strategic_options(ae, facts, {}, [], None)
         assert results == []
 
     def test_analyze_pareto_frontier(self):
@@ -781,7 +811,7 @@ class TestA8StrategicOptions:
             "D-F2": {"desc": "市场份额目标", "value": "25%"},
             "D-F3": {"desc": "预算约束", "value": "5亿"},
         }
-        results = ae._analyze_strategic_options(facts, {}, [], None)
+        results = analyze_strategic_options(ae, facts, {}, [], None)
         assert any("帕累托" in r["conclusion"] for r in results)
 
     def test_analyze_game_tree_depth(self):
@@ -791,7 +821,7 @@ class TestA8StrategicOptions:
             "D-F1": {"desc": "利润目标", "value": "10%"},
             "D-F2": {"desc": "增长目标", "value": "20%"},
         }
-        results = ae._analyze_strategic_options(facts, {}, [], None)
+        results = analyze_strategic_options(ae, facts, {}, [], None)
         assert any("博弈树" in r["conclusion"] for r in results)
 
     def test_analyze_no_constraints(self):
@@ -800,7 +830,7 @@ class TestA8StrategicOptions:
         facts = {
             "D-F1": {"desc": "利润目标", "value": "10%"},
         }
-        results = ae._analyze_strategic_options(facts, {}, [], None)
+        results = analyze_strategic_options(ae, facts, {}, [], None)
         assert len(results) >= 1
 
 
@@ -813,17 +843,17 @@ class TestA9InfoEcology:
     def test_detect_with_disinfo_keyword(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "虚假信息占比", "value": "15%"}}
-        assert ae._detect_info_ecology(facts, {}, [])
+        assert detect_info_ecology(ae, facts, {}, [])
 
     def test_detect_with_trust_keyword(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "公众信任度", "value": "60%"}}
-        assert ae._detect_info_ecology(facts, {}, [])
+        assert detect_info_ecology(ae, facts, {}, [])
 
     def test_no_detect(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "营收", "value": "100亿"}}
-        assert not ae._detect_info_ecology(facts, {}, [])
+        assert not detect_info_ecology(ae, facts, {}, [])
 
     def test_analyze_healthy_ecology(self):
         """健康生态: 低虚假+高信任+高共识"""
@@ -833,7 +863,7 @@ class TestA9InfoEcology:
             "D-F2": {"desc": "公众信任度", "value": "70"},
             "D-F3": {"desc": "专家共识度", "value": "80"},
         }
-        results = ae._analyze_info_ecology(facts, {}, [], None)
+        results = analyze_info_ecology(ae, facts, {}, [], None)
         assert any("健康" in r["conclusion"] for r in results)
 
     def test_analyze_collapsed_ecology(self):
@@ -844,7 +874,7 @@ class TestA9InfoEcology:
             "D-F2": {"desc": "公众信任度", "value": "15"},
             "D-F3": {"desc": "专家共识度", "value": "10"},
         }
-        results = ae._analyze_info_ecology(facts, {}, [], None)
+        results = analyze_info_ecology(ae, facts, {}, [], None)
         assert any("崩溃" in r["conclusion"] for r in results)
 
     def test_analyze_crisis(self):
@@ -855,7 +885,7 @@ class TestA9InfoEcology:
             "D-F2": {"desc": "信任度", "value": "40"},
             "D-F3": {"desc": "共识度", "value": "30"},
         }
-        results = ae._analyze_info_ecology(facts, {}, [], None)
+        results = analyze_info_ecology(ae, facts, {}, [], None)
         assert any("危机" in r["conclusion"] for r in results)
 
     def test_analyze_vulnerable(self):
@@ -866,14 +896,14 @@ class TestA9InfoEcology:
             "D-F2": {"desc": "信任度", "value": "60"},
             "D-F3": {"desc": "共识度", "value": "50"},
         }
-        results = ae._analyze_info_ecology(facts, {}, [], None)
+        results = analyze_info_ecology(ae, facts, {}, [], None)
         assert any("脆弱" in r["conclusion"] for r in results)
 
     def test_analyze_no_relevant_data(self):
         """无相关数据时返回空"""
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "营收", "value": "100"}}
-        results = ae._analyze_info_ecology(facts, {}, [], None)
+        results = analyze_info_ecology(ae, facts, {}, [], None)
         assert results == []
 
     def test_analyze_partial_facts(self):
@@ -883,7 +913,7 @@ class TestA9InfoEcology:
             "D-F1": {"desc": "虚假信息占比", "value": "10"},
             "D-F2": {"desc": "共识度", "value": "60"},
         }
-        results = ae._analyze_info_ecology(facts, {}, [], None)
+        results = analyze_info_ecology(ae, facts, {}, [], None)
         assert len(results) >= 1
 
 
@@ -897,11 +927,11 @@ class TestA10CausalChain:
         """只要有任意关系就触发"""
         ae = AnalyticsEngine()
         relations = [{"subject": "A", "relation_type": "depends_on", "object": "B"}]
-        assert ae._detect_causal_chain({}, {}, relations)
+        assert detect_causal_chain(ae, {}, {}, relations)
 
     def test_no_detect_empty(self):
         ae = AnalyticsEngine()
-        assert not ae._detect_causal_chain({}, {}, [])
+        assert not detect_causal_chain(ae, {}, {}, [])
 
     def test_analyze_simple_chain(self):
         """A->B->C 因果链"""
@@ -910,7 +940,7 @@ class TestA10CausalChain:
             {"subject": "A", "relation_type": "depends_on", "object": "B"},
             {"subject": "B", "relation_type": "depends_on", "object": "C"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert len(results) >= 1
         assert any("A→B→C" in r["conclusion"] for r in results)
 
@@ -920,7 +950,7 @@ class TestA10CausalChain:
             {"subject": "X", "relation_type": "causes", "object": "Y"},
             {"subject": "Y", "relation_type": "causes", "object": "Z"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert len(results) >= 1
 
     def test_analyze_with_influences_type(self):
@@ -929,7 +959,7 @@ class TestA10CausalChain:
             {"subject": "X", "relation_type": "influences", "object": "Y"},
             {"subject": "Y", "relation_type": "influences", "object": "Z"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert len(results) >= 1
 
     def test_analyze_skip_other_relation_types(self):
@@ -939,7 +969,7 @@ class TestA10CausalChain:
             {"subject": "A", "relation_type": "competes_with", "object": "B"},
             {"subject": "B", "relation_type": "cooperates_with", "object": "C"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert results == []
 
     def test_no_chain_too_short(self):
@@ -948,7 +978,7 @@ class TestA10CausalChain:
         relations = [
             {"subject": "A", "relation_type": "depends_on", "object": "B"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert results == []
 
     def test_analyze_multiple_branches(self):
@@ -960,7 +990,7 @@ class TestA10CausalChain:
             {"subject": "B", "relation_type": "depends_on", "object": "D"},
             {"subject": "C", "relation_type": "depends_on", "object": "D"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert len(results) >= 2
 
     def test_analyze_identifies_root_cause(self):
@@ -970,7 +1000,7 @@ class TestA10CausalChain:
             {"subject": "A", "relation_type": "depends_on", "object": "B"},
             {"subject": "B", "relation_type": "depends_on", "object": "C"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert any("根因=C" in r["conclusion"] for r in results)
 
     def test_analyze_avoids_cycles(self):
@@ -980,12 +1010,12 @@ class TestA10CausalChain:
             {"subject": "A", "relation_type": "depends_on", "object": "B"},
             {"subject": "B", "relation_type": "depends_on", "object": "A"},
         ]
-        results = ae._analyze_causal_chain({}, {}, relations, None)
+        results = analyze_causal_chain(ae, {}, {}, relations, None)
         assert results == []
 
     def test_analyze_empty_relations(self):
         ae = AnalyticsEngine()
-        results = ae._analyze_causal_chain({}, {}, [], None)
+        results = analyze_causal_chain(ae, {}, {}, [], None)
         assert results == []
 
 
@@ -998,22 +1028,22 @@ class TestA11ScenarioPlanning:
     def test_detect_with_uncertainty(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "市场不确定性", "value": "高"}}
-        assert ae._detect_scenario_planning(facts, {}, [])
+        assert detect_scenario_planning(ae, facts, {}, [])
 
     def test_detect_with_probability(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "概率评估", "value": "60%"}}
-        assert ae._detect_scenario_planning(facts, {}, [])
+        assert detect_scenario_planning(ae, facts, {}, [])
 
     def test_detect_with_scenario(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "情景分析", "value": "乐观"}}
-        assert ae._detect_scenario_planning(facts, {}, [])
+        assert detect_scenario_planning(ae, facts, {}, [])
 
     def test_no_detect(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "营收", "value": "100亿"}}
-        assert not ae._detect_scenario_planning(facts, {}, [])
+        assert not detect_scenario_planning(ae, facts, {}, [])
 
     def test_analyze_2x2_matrix(self):
         """2个不确定性 -> 2x2 矩阵"""
@@ -1022,7 +1052,7 @@ class TestA11ScenarioPlanning:
             "D-F1": {"desc": "市场不确定性", "value": "70"},
             "D-F2": {"desc": "政策风险", "value": "30"},
         }
-        results = ae._analyze_scenario_planning(facts, {}, [], None)
+        results = analyze_scenario_planning(ae, facts, {}, [], None)
         assert len(results) >= 1
         assert any("情景矩阵" in r["conclusion"] for r in results)
         assert any("2×2" in r["conclusion"] for r in results)
@@ -1033,7 +1063,7 @@ class TestA11ScenarioPlanning:
         facts = {
             "D-F1": {"desc": "市场不确定性", "value": "70"},
         }
-        results = ae._analyze_scenario_planning(facts, {}, [], None)
+        results = analyze_scenario_planning(ae, facts, {}, [], None)
         assert results == []
 
     def test_analyze_no_uncertainty_facts(self):
@@ -1041,7 +1071,7 @@ class TestA11ScenarioPlanning:
         facts = {
             "D-F1": {"desc": "营收", "value": "100"},
         }
-        results = ae._analyze_scenario_planning(facts, {}, [], None)
+        results = analyze_scenario_planning(ae, facts, {}, [], None)
         assert results == []
 
     def test_analyze_early_warning_signals(self):
@@ -1051,7 +1081,7 @@ class TestA11ScenarioPlanning:
             "D-F1": {"desc": "市场不确定性概率", "value": "70"},
             "D-F2": {"desc": "政策风险概率", "value": "30"},
         }
-        results = ae._analyze_scenario_planning(facts, {}, [], None)
+        results = analyze_scenario_planning(ae, facts, {}, [], None)
         assert any("早鸟指标" in r["conclusion"] for r in results)
 
 
@@ -1069,7 +1099,7 @@ class TestA12PowerMap:
             {"subject": "C", "relation_type": "depends_on", "object": "D"},
             {"subject": "D", "relation_type": "depends_on", "object": "E"},
         ]
-        assert ae._detect_power_map({}, {}, relations)
+        assert detect_power_map(ae, {}, {}, relations)
 
     def test_no_detect_less_than_4(self):
         ae = AnalyticsEngine()
@@ -1078,11 +1108,11 @@ class TestA12PowerMap:
             {"subject": "B", "relation_type": "depends_on", "object": "C"},
             {"subject": "C", "relation_type": "depends_on", "object": "D"},
         ]
-        assert not ae._detect_power_map({}, {}, relations)
+        assert not detect_power_map(ae, {}, {}, relations)
 
     def test_no_detect_empty(self):
         ae = AnalyticsEngine()
-        assert not ae._detect_power_map({}, {}, [])
+        assert not detect_power_map(ae, {}, {}, [])
 
     def test_analyze_centrality(self):
         """度中心性计算: A 有4个连接应排第一"""
@@ -1094,7 +1124,7 @@ class TestA12PowerMap:
             {"subject": "A", "relation_type": "depends_on", "object": "E"},
             {"subject": "B", "relation_type": "depends_on", "object": "C"},
         ]
-        results = ae._analyze_power_map({}, {}, relations, None)
+        results = analyze_power_map(ae, {}, {}, relations, None)
         assert len(results) >= 1
         assert any("A(度=4)" in r["conclusion"] for r in results)
 
@@ -1107,12 +1137,12 @@ class TestA12PowerMap:
             {"subject": "A", "relation_type": "depends_on", "object": "D"},
             {"subject": "B", "relation_type": "depends_on", "object": "C"},
         ]
-        results = ae._analyze_power_map({}, {}, relations, None)
+        results = analyze_power_map(ae, {}, {}, relations, None)
         assert any("潜在单点=" in r["conclusion"] for r in results)
 
     def test_analyze_empty_relations(self):
         ae = AnalyticsEngine()
-        results = ae._analyze_power_map({}, {}, [], None)
+        results = analyze_power_map(ae, {}, {}, [], None)
         assert results == []
 
     def test_analyze_mixed_incoming_outgoing(self):
@@ -1124,7 +1154,7 @@ class TestA12PowerMap:
             {"subject": "Y", "relation_type": "cooperates_with", "object": "Z"},
             {"subject": "Z", "relation_type": "cooperates_with", "object": "W"},
         ]
-        results = ae._analyze_power_map({}, {}, relations, None)
+        results = analyze_power_map(ae, {}, {}, relations, None)
         assert len(results) >= 1
         assert any("Z(度=3)" in r["conclusion"] for r in results)
 
@@ -1280,27 +1310,27 @@ class TestA13OrganizationalInertia:
     def test_detect_many_entities(self):
         ae = AnalyticsEngine()
         entities = {"E-1": {}, "E-2": {}, "E-3": {}}
-        assert ae._detect_organizational_inertia({}, entities, [])
+        assert detect_organizational_inertia(ae, {}, entities, [])
 
     def test_detect_many_relations(self):
         ae = AnalyticsEngine()
         relations = [{"subject": "A", "object": "B"}] * 4
-        assert ae._detect_organizational_inertia({}, {}, relations)
+        assert detect_organizational_inertia(ae, {}, {}, relations)
 
     def test_detect_inertia_keywords(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "组织惯性严重", "value": "高"}}
-        assert ae._detect_organizational_inertia(facts, {}, [])
+        assert detect_organizational_inertia(ae, facts, {}, [])
 
     def test_detect_no_match(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "效率提升", "value": "20%"}}
-        assert not ae._detect_organizational_inertia(facts, {}, [])
+        assert not detect_organizational_inertia(ae, facts, {}, [])
 
     def test_analyze_basic(self):
         ae = AnalyticsEngine()
         entities = {"E-1": {}, "E-2": {}}
-        results = ae._analyze_organizational_inertia({}, entities, [], None)
+        results = analyze_organizational_inertia(ae, {}, entities, [], None)
         assert len(results) >= 1
         assert any("组织惯性" in r["conclusion"] for r in results)
 
@@ -1315,13 +1345,13 @@ class TestA13OrganizationalInertia:
             "D-F1": {"desc": "成立于1990年", "value": "30年"},
             "D-F2": {"desc": "员工数5000", "value": "5000"},
         }
-        results = ae._analyze_organizational_inertia(facts, entities, relations, None)
+        results = analyze_organizational_inertia(ae, facts, entities, relations, None)
         assert len(results) >= 1
         assert any("惯性" in r["conclusion"] for r in results)
 
     def test_analyze_empty_entities(self):
         ae = AnalyticsEngine()
-        results = ae._analyze_organizational_inertia({}, {}, [], None)
+        results = analyze_organizational_inertia(ae, {}, {}, [], None)
         assert results == []
 
 
@@ -1329,12 +1359,12 @@ class TestA14TechDisruption:
     def test_detect_new_tech(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "AI技术快速迭代", "value": "高"}}
-        assert ae._detect_tech_disruption(facts, {}, [])
+        assert detect_tech_disruption(ae, facts, {}, [])
 
     def test_detect_disruption_keyword(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "颠覆传统零售", "value": "冲击"}}
-        assert ae._detect_tech_disruption(facts, {}, [])
+        assert detect_tech_disruption(ae, facts, {}, [])
 
     def test_detect_new_and_old(self):
         ae = AnalyticsEngine()
@@ -1342,12 +1372,12 @@ class TestA14TechDisruption:
             "D-F1": {"desc": "智能化转型加速", "value": "高"},
             "D-F2": {"desc": "传统业务稳定", "value": "成熟"},
         }
-        assert ae._detect_tech_disruption(facts, {}, [])
+        assert detect_tech_disruption(ae, facts, {}, [])
 
     def test_detect_no_match(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "日常运营", "value": "正常"}}
-        assert not ae._detect_tech_disruption(facts, {}, [])
+        assert not detect_tech_disruption(ae, facts, {}, [])
 
     def test_analyze_high_threat(self):
         ae = AnalyticsEngine()
@@ -1356,7 +1386,7 @@ class TestA14TechDisruption:
             "D-F2": {"desc": "数字化颠覆传统", "value": "冲击"},
             "D-F3": {"desc": "传统零售下降", "value": "低"},
         }
-        results = ae._analyze_tech_disruption(facts, {}, [], None)
+        results = analyze_tech_disruption(ae, facts, {}, [], None)
         assert len(results) >= 1
         assert any("压力" in r["conclusion"] for r in results)
         assert any("高" in r["conclusion"] or "中" in r["conclusion"] for r in results)
@@ -1364,12 +1394,12 @@ class TestA14TechDisruption:
     def test_analyze_low_threat(self):
         ae = AnalyticsEngine()
         facts = {"D-F1": {"desc": "传统业务", "value": "稳定"}}
-        results = ae._analyze_tech_disruption(facts, {}, [], None)
+        results = analyze_tech_disruption(ae, facts, {}, [], None)
         assert len(results) >= 1
         assert any("低" in r["conclusion"] for r in results)
 
     def test_analyze_empty_facts(self):
         ae = AnalyticsEngine()
-        results = ae._analyze_tech_disruption({}, {}, [], None)
+        results = analyze_tech_disruption(ae, {}, {}, [], None)
         assert len(results) >= 1
         assert any("低" in r["conclusion"] for r in results)

@@ -1,12 +1,13 @@
 """Tests for RuleReasoner — 规则推导引擎"""
 
 from engine.reasoners.reasoner import RuleReasoner
+from engine.reasoners.reasoner_utils import default_rules
 
 
 def test_default_rules_loaded():
     r = RuleReasoner()
     assert len(r.rules) >= 5
-    assert r._default_rules()[0].name == "numeric_comparison"
+    assert default_rules()[0].name == "numeric_comparison"
 
 
 def test_derive_empty_inputs():
