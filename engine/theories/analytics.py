@@ -15,6 +15,16 @@ from dataclasses import dataclass
 
 from engine.foundation.semantic import SemanticMatcher
 
+from .analytics_constants import (
+    _DISRUPTION_KW,
+    _HISTORY_KW,
+    _INERTIA_KW,
+    _MARKET_KW,
+    _RESOURCE_KW,
+    _TECH_NEW_KW,
+    _TECH_OLD_KW,
+)
+
 
 @dataclass
 class AnalyticalPattern:
@@ -521,40 +531,13 @@ class AnalyticsEngine:
 
     # ═══ A6: 市场结构分析 ═══
 
-    _MARKET_KW = (
-        "份额",
-        "占比",
-        "集中度",
-        "CR",
-        "寡头",
-        "垄断",
-        "竞争格局",
-        "玩家",
-        "市场占有率",
-        "渗透率",
-        "市占",
-        "HHI",
-        "CR3",
-        "CR5",
-    )
-
-    # A13: 组织惯性关键词
-    _INERTIA_KW = ("转型", "惯性", "路径依赖", "沉没成本", "变革", "组织僵化", "体系庞大")
-    _HISTORY_KW = ("成立于", "运营", "年限", "历史", "悠久")
-    _RESOURCE_KW = ("投入", "资产", "投资", "预算", "员工数")
-
-    # A14: 技术颠覆关键词
-    _TECH_NEW_KW = ("AI", "数字化", "智能化", "云", "区块链", "量子", "自动化", "新技术")
-    _TECH_OLD_KW = ("传统", "成熟", "稳定", "已有", "现有", "现成")
-    _DISRUPTION_KW = ("颠覆", "替代", "冲击", "淘汰")
-
     def _detect_market_structure(self, facts, entities, relations):
         """检测: ≥3实体 或 存在市场份额关键词"""
         n_entities = len(entities) if isinstance(entities, dict) else len(entities)
         if n_entities >= 3:
             return True
         for _, info in _iter_facts(facts):
-            if any(kw in info.get("desc", "") for kw in self._MARKET_KW):
+            if any(kw in info.get("desc", "") for kw in _MARKET_KW):
                 return True
         return False
 
@@ -565,7 +548,7 @@ class AnalyticsEngine:
         shares = []
         for fid, info in _iter_facts(facts):
             desc = info.get("desc", "")
-            if any(kw in desc for kw in self._MARKET_KW):
+            if any(kw in desc for kw in _MARKET_KW):
                 shares.append(_extract_num(info.get("value", "")))
         if not shares:
             return results
@@ -818,7 +801,7 @@ class AnalyticsEngine:
         if len(entities or {}) >= 3 or len(relations or []) >= 4:
             return True
         for _, info in _iter_facts(facts):
-            if any(k in info.get("desc", "") for k in self._INERTIA_KW):
+            if any(k in info.get("desc", "") for k in _INERTIA_KW):
                 return True
         return False
 
@@ -835,9 +818,9 @@ class AnalyticsEngine:
         resource_lock = 0
         for _, info in _iter_facts(facts):
             desc = info.get("desc", "")
-            if any(k in desc for k in self._HISTORY_KW):
+            if any(k in desc for k in _HISTORY_KW):
                 history_signals += 1
-            if any(k in desc for k in self._RESOURCE_KW):
+            if any(k in desc for k in _RESOURCE_KW):
                 resource_lock += 1
 
         inertia_index = complexity * (1 + history_signals) * (1 + resource_lock)
@@ -870,11 +853,11 @@ class AnalyticsEngine:
         has_old = False
         for _, info in _iter_facts(facts):
             desc = info.get("desc", "")
-            if any(k in desc for k in self._DISRUPTION_KW):
+            if any(k in desc for k in _DISRUPTION_KW):
                 return True
-            if any(k in desc for k in self._TECH_NEW_KW):
+            if any(k in desc for k in _TECH_NEW_KW):
                 has_new = True
-            if any(k in desc for k in self._TECH_OLD_KW):
+            if any(k in desc for k in _TECH_OLD_KW):
                 has_old = True
         return has_new or has_old
 
@@ -887,11 +870,11 @@ class AnalyticsEngine:
         old_entities = []
         for fid, info in _iter_facts(facts):
             desc = info.get("desc", "")
-            new_signals += sum(1 for k in self._TECH_NEW_KW if k in desc)
-            old_lock += sum(1 for k in self._TECH_OLD_KW if k in desc)
-            if any(k in desc for k in self._TECH_NEW_KW):
+            new_signals += sum(1 for k in _TECH_NEW_KW if k in desc)
+            old_lock += sum(1 for k in _TECH_OLD_KW if k in desc)
+            if any(k in desc for k in _TECH_NEW_KW):
                 new_entities.append(fid)
-            if any(k in desc for k in self._TECH_OLD_KW):
+            if any(k in desc for k in _TECH_OLD_KW):
                 old_entities.append(fid)
 
         disruption_pressure = new_signals / max(old_lock, 1)
