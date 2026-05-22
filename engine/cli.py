@@ -29,6 +29,8 @@ def main():
     # init
     p_init = sub.add_parser("init", help="初始化新项目")
     p_init.add_argument("name", help="项目名称")
+    p_init.add_argument("--template", choices=["default", "market", "tech", "org"],
+        default="default", help="项目模板类型")
 
     # derive
     p_derive = sub.add_parser("derive", help="正向推导")
@@ -86,28 +88,50 @@ def main():
 
     # 路由到对应功能
     if args.command == "init":
-        from engine.core.derive import OntoDerive
+        from engine.foundation.templates import TEMPLATES
 
         root = Path(args.name)
+        tmpl_name = getattr(args, "template", "default")
+        tmpl = TEMPLATES.get(tmpl_name, TEMPLATES["default"])
+
         for d in ["facts", "entities", "inferences", "protocols", "scheme", "_logs"]:
             (root / d).mkdir(parents=True, exist_ok=True)
-        (root / "facts" / "data.md").write_text(
-            "| 编号 | 数据 | 数值 | 来源 |\n|------|------|------|------|\n| D-F1 | 待填充 | — | — |\n"
-        )
-        (root / "facts" / "policy.md").write_text(
-            "| 编号 | 政策 | 发布主体 | 日期 |\n|------|------|---------|------|\n| P-F1 | 待填充 | — | — |\n"
-        )
-        (root / "entities" / "actors.md").write_text(
-            "| 实体 | 类型 | 角色 |\n|------|------|------|\n| ORG-待填充 | 组织 | — |\n"
-        )
-        (root / "inferences" / "analysis.md").write_text("## INF-L1：待推导\n\n- derives_from: [D-F1]\n")
-        (root / "scheme" / "report.md").write_text("# 分析报告\n\n待补充。\n")
+
+        # 事实
+        facts_lines = "| 编号 | 数据 | 数值 | 来源 |\n|------|------|------|------|\n"
+        for fid, desc, val, src in tmpl["facts"]:
+            facts_lines += f"| {fid} | {desc} | {val} | {src} |\n"
+        (root / "facts" / "data.md").write_text(facts_lines)
+
+        # 政策
+        policy_lines = "| 编号 | 政策 | 发布主体 | 日期 |\n|------|------|---------|------|\n"
+        for pid, desc, subj, date in tmpl["policy"]:
+            policy_lines += f"| {pid} | {desc} | {subj} | {date} |\n"
+        (root / "facts" / "policy.md").write_text(policy_lines)
+
+        # 实体
+        entity_lines = "| 实体 | 类型 | 角色 |\n|------|------|------|\n"
+        for eid, etype, role in tmpl["entities"]:
+            entity_lines += f"| {eid} | {etype} | {role} |\n"
+        (root / "entities" / "actors.md").write_text(entity_lines)
+
+        # 推论
+        inf_lines = ""
+        for inf in tmpl["inferences"]:
+            df = ", ".join(inf["derives_from"])
+            inf_lines += f"## {inf['id']}：{inf['title']}\n\n{inf['content']}\n\n- derives_from: [{df}]\n\n"
+        (root / "inferences" / "analysis.md").write_text(inf_lines.strip())
+
+        # 方案
+        (root / "scheme" / "report.md").write_text(tmpl["scheme"])
+
         (root / "README.md").write_text(
-            f"# {args.name}\n\n> OntoDerive v3.5.0\n\n"
+            f"# {args.name}\n\n> OntoDerive v3.6.1\n\n"
             "```bash\nontoderive derive --project .\n"
             "ontoderive check --project .\n```\n"
         )
-        print(f"✅ 项目 '{args.name}' 已初始化")
+        print(f"项目 {args.name} 已初始化 (模板: {tmpl_name})")
+
 
     elif args.command in ("derive", "check", "rounds", "generate", "analyze"):
         from engine.core.derive import OntoDerive
