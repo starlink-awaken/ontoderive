@@ -67,3 +67,24 @@ def cmd_rounds(project, n):
     """多轮迭代"""
     od = OntoDerive(project)
     od.run_rounds(n)
+
+def cmd_generate(project, export):
+    """生成推导报告"""
+    from engine.core.derive import OntoDerive
+    od = OntoDerive(project)
+    if export:
+        r = od.derive()
+        try:
+            if export == "html":
+                from engine.core.export import to_html
+                output = to_html(r, project)
+                Path(project + "/export.html").write_text(output)
+            elif export == "json":
+                import json
+                Path(project + "/export.json").write_text(json.dumps(r, ensure_ascii=False))
+            else:
+                print(f"[export] 格式 {export} 暂不支持")
+        except Exception as e:
+            print(f"[export] ❌ {e}")
+    else:
+        od.generate_report()
