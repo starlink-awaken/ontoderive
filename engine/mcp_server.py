@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OntoDerive Unified MCP Server v3.5
+OntoDerive Unified MCP Server v3.6.4
 ====================================
 统一入口：17工具 (推导5 + 匹配3 + 分析3 + 导出2 + 配置1 + 写入3)
 协议：JSON-RPC 2.0 over stdio

@@ -1,4 +1,4 @@
-"""OntoDerive — 渊衍框架 v3.5
+"""OntoDerive — 渊衍框架 v3.6.4
 
 知识工程分析平台。三模式：结构分析 | 规则推理 | 形式推理。
 物理五层架构 + ToolForge工具匹配 + 分析模式引擎 + 连续推理谱系。
@@ -10,7 +10,7 @@
 
 __all__ = []
 
-__version__ = "3.6.0"
+__version__ = "3.6.4"
 
 # 顶层 re-export — 保持向后兼容
 from engine.core.derive import VERSION as _VERSION

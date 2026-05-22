@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OntoDerive 分析引擎 v3.4
+OntoDerive 分析引擎 v3.6.4
 ========================
 知识工程质量分析引擎。双模式运行:
 - 规则引擎模式: 结构分析(文件扫描/计数/格式检查), 始终可用
@@ -23,7 +23,7 @@ try:
 except ImportError:
     from engine.foundation.utils import rf, wf, all_md, load_json, save_json  # noqa
 
-VERSION = "3.6.0"
+VERSION = "3.6.4"
 
 try:
     from .protocols import DeriveInterface
