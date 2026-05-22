@@ -40,7 +40,7 @@ def test_zpark_check_snapshot():
     from engine.core.derive import OntoDerive
 
     results = OntoDerive(ZPARK).check()
-    assert len(results) == 12
+    assert len(results) == 13
     passed = sum(1 for r in results if r["passed"])
     assert passed >= 10, f"z-park规约通过率异常: {passed}/12"
 
@@ -50,7 +50,7 @@ def test_demo_check_snapshot():
     from engine.core.derive import OntoDerive
 
     results = OntoDerive(DEMO).check()
-    assert len(results) == 12
+    assert len(results) == 13
     passed = sum(1 for r in results if r["passed"])
     assert passed >= 10, f"demo-product规约通过率异常: {passed}/12"
 

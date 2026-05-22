@@ -5,6 +5,7 @@ from engine.core.check_theory import (
     THEORY_CHECKS,
     check_bayesian,
     check_metrics,
+    check_ontolang,
     check_pid,
     check_turing,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "THEORY_CHECKS",
     "check_bayesian",
     "check_metrics",
+    "check_ontolang",
     "check_pid",
     "check_turing",
     "DerivePipeline",

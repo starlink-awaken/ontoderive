@@ -47,7 +47,7 @@ def test_pipeline_run_check():
     pipe = DerivePipeline("examples/z-park")
     pipe.run(stages=["check"])
     assert "check" in pipe.results
-    assert len(pipe.results["check"]) == 12
+    assert len(pipe.results["check"]) == 13
 
 
 def test_pipeline_to_analysis_result():

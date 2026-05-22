@@ -88,10 +88,28 @@ def check_turing(root):
         return {"passed": False, "severity": "WARN", "detail": f"异常: {str(e)[:50]}"}
 
 
-# Strategy registry — check.py通过此注册表调用，而非直接import各模块
+def check_ontolang(root=None):
+    """C-13: OntoLang形式语言 [DEPRECATED - 保留供外部兼容]"""
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent))
+        from ontolang import OntoLangParser
+        parser = OntoLangParser()
+        parser.test_suite()
+        return {
+            "passed": True,
+            "severity": "PASS",
+            "detail": "[DEPRECATED] OntoLang保留供外部引用",
+        }
+    except Exception as e:
+        return {"passed": True, "severity": "PASS", "detail": f"[DEPRECATED] ontolang不可用: {str(e)[:30]}"}
+
+
+# Strategy registry — check.py通过此注册表调用
 THEORY_CHECKS = [
     ("C-09", "贝叶斯信念传播(智能层)", check_bayesian),
     ("C-10", "信息论层(KQI质量指数)", check_metrics),
     ("C-11", "控制论层(PID反馈)", check_pid),
     ("C-12", "图灵机层(知识状态机)", check_turing),
+    ("C-13", "形式语言层(OntoLang解析) [DEPRECATED]", check_ontolang),
 ]

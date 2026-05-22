@@ -106,9 +106,7 @@ class EntailmentGraph:
             '  <graph id="entailment" edgedefault="directed">',
         ]
         for nid, info in self.nodes.items():
-            lines.append(
-                f'    <node id="{nid}"><data key="label">{info["label"]}</data><data key="type">{info["type"]}</data></node>'
-            )
+            lines.append(f'    <node id="{nid}"><data key="label">{info["label"]}</data><data key="type">{info["type"]}</data></node>')
         edge_id = 0
         for u in self.nodes:
             for v in self.edges.get(u, []):

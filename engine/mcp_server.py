@@ -105,7 +105,10 @@ TOOL_DEFS = [
     # ── 分析模式 (v3.5 NEW) ──
     {
         "name": "ontoderive_analytics",
-        "description": "运行分析模式(A1-A9): 供给弹性/风险传导/代理问题/激励相容/补救规划/市场结构/博弈均衡/策略空间/信息生态",
+        "description": (
+            "运行分析模式(A1-A9): 供给弹性/风险传导/代理问题/激励相容/"
+            "补救规划/市场结构/博弈均衡/策略空间/信息生态"
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {

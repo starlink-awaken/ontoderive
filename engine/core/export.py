@@ -46,9 +46,15 @@ def to_html(summary: dict, project_name: str = "") -> str:
 body{{font:14px/1.6 -apple-system,BlinkMacSystemFont,sans-serif;background:#f8fafc;color:#1e293b;padding:20px}}
 h1{{font-size:20px;margin-bottom:8px}}h2{{font-size:16px;margin:20px 0 8px;color:#64748b}}
 .stats{{display:flex;gap:16px;margin:12px 0;flex-wrap:wrap}}
-.stat{{background:#fff;border-radius:8px;padding:12px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}}
+.stat{{
+  background:#fff;border-radius:8px;padding:12px 18px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06)
+}}
 .stat b{{display:block;font-size:22px;color:#2563eb}}.stat s{{font-size:11px;color:#94a3b8}}
-table{{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}}
+table{{
+  width:100%;border-collapse:collapse;background:#fff;border-radius:8px;
+  overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)
+}}
 th{{background:#f1f5f9;text-align:left;padding:8px 12px;font-size:12px;color:#64748b}}
 td{{padding:8px 12px;border-top:1px solid #f1f5f9;font-size:13px}}
 .src{{width:80px;color:#6366f1;font-size:11px}}

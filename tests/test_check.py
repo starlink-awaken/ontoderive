@@ -18,7 +18,7 @@ def test_run_check_zpark(z_park_path):
         root / "scheme",
         root / "_derivation_logs",
     )
-    assert len(results) == 12
+    assert len(results) == 13
     assert counts["PASS"] >= 8
 
 
@@ -36,7 +36,7 @@ def test_run_check_empty(tmp_path):
         tmp_path / "scheme",
         tmp_path / "_derivation_logs",
     )
-    assert len(results) == 12
+    assert len(results) == 13
     # 空项目应有BLOCKER
     assert counts["BLOCKER"] >= 1
 
@@ -73,4 +73,4 @@ def test_derive_delegates_to_check(z_park_path):
 
     od = OntoDerive(z_park_path)
     results = od.check()
-    assert len(results) == 12
+    assert len(results) == 13

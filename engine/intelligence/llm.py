@@ -174,7 +174,11 @@ class LLMEnhancer:
 {inferences_text[:1500]}"""
         result = self._call(prompt, "你是知识工程分析专家。简洁输出。", 0.3)
         if result:
-            lines = [l.strip("- 1234567890.*# ") for l in result.split("\n") if l.strip() and len(l.strip()) > 4]
+            lines = [
+                line.strip("- 1234567890.*# ")
+                for line in result.split("\n")
+                if line.strip() and len(line.strip()) > 4
+            ]
             return existing_hints + lines[:2]
         return existing_hints
 

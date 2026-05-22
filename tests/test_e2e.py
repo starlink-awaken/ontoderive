@@ -18,7 +18,7 @@ def test_e2e_derive_check_roundtrip():
     assert s["facts"] >= 2
     assert "confidence_distribution" in s
     results = od.check()
-    assert len(results) == 12
+    assert len(results) == 13
     report = od.generate_report()
     assert "事实数" in report
 
@@ -65,7 +65,7 @@ def test_e2e_mcp_analyze():
     )
     result = json.loads(resp) if isinstance(resp, str) else resp
     assert "result" in result
-    assert result["result"]["checks_total"] == 12
+    assert result["result"]["checks_total"] == 13
 
 
 def test_e2e_typesystem_pipeline():

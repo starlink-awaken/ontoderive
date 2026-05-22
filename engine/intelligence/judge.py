@@ -162,6 +162,14 @@ class OntoDeriveJudge:
                 "rule_engine_only": True,
             }
 
+        facts_sample = json.dumps(
+            {k: v["desc"][:40] for k, v in list(ctx["facts"].items())[:10]}, ensure_ascii=False
+        )
+        inferences_sample = json.dumps(
+            {k: {"derives_from": v.get("derives_from", [])} for k, v in list(ctx["inferences"].items())[:8]},
+            ensure_ascii=False,
+        )
+
         prompt = f"""你是知识工程质量评审专家。评估以下项目的知识工程质量。
 
 项目概况:
@@ -170,10 +178,10 @@ class OntoDeriveJudge:
 - 方案数: {len(ctx["schemes"])}
 
 事实:
-{json.dumps({k: v["desc"][:40] for k, v in list(ctx["facts"].items())[:10]}, ensure_ascii=False)}
+{facts_sample}
 
 推论摘要:
-{json.dumps({k: {"derives_from": v.get("derives_from", [])} for k, v in list(ctx["inferences"].items())[:8]}, ensure_ascii=False)}
+{inferences_sample}
 
 请给出项目整体质量评分(1-10)和三条最关键改善建议。
 输出JSON: {{"score": 7, "strengths": [...], "weaknesses": [...], "recommendations": [...], "verdict": "..."}}"""

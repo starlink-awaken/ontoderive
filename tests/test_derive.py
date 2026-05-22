@@ -21,7 +21,7 @@ def test_derive(z_park_path):
 def test_check(z_park_path):
     od = OntoDerive(z_park_path)
     results = od.check()
-    assert len(results) == 12
+    assert len(results) == 13
 
 
 def test_generate_report(z_park_path):

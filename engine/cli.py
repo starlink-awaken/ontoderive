@@ -96,7 +96,9 @@ def main():
         (root / "inferences" / "analysis.md").write_text("## INF-L1：待推导\n\n- derives_from: [D-F1]\n")
         (root / "scheme" / "report.md").write_text("# 分析报告\n\n待补充。\n")
         (root / "README.md").write_text(
-            f"# {args.name}\n\n> OntoDerive v3.5.0\n\n```bash\nontoderive derive --project .\nontoderive check --project .\n```\n"
+            f"# {args.name}\n\n> OntoDerive v3.5.0\n\n"
+            "```bash\nontoderive derive --project .\n"
+            "ontoderive check --project .\n```\n"
         )
         print(f"✅ 项目 '{args.name}' 已初始化")
 
@@ -133,7 +135,7 @@ def main():
                 Path(args.pipeline_output).write_text(json.dumps(result, indent=2))
                 print(f"Output → {args.pipeline_output}")
                 return
-            results = od.derive()
+            od.derive()
         elif args.command == "check":
             od.check()
         elif args.command == "rounds":

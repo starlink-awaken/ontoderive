@@ -1,7 +1,7 @@
 """
 OntoDerive 规约检查引擎 — 从derive.py拆分
 ===========================================
-12条规约检查(C-01~C-12)，独立模块。
+13条规约检查(C-01~C-13)，独立模块。
 """
 
 import datetime
@@ -181,7 +181,7 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
 
     type_errors = []
     ids_found = set()
-    SKIP_PREFIXES = ("C-", "P-", "ISC-", "F", "v", "v2", "v3", "E", "e")
+    skip_prefixes = ("C-", "P-", "ISC-", "F", "v", "v2", "v3", "E", "e")
     try:
         from engine.foundation.typesystem import TypeValidator
 
@@ -190,7 +190,7 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
             raw_id = m.group(0)
             if "-" not in raw_id or len(raw_id) < 3:
                 continue
-            if any(raw_id.startswith(p) for p in SKIP_PREFIXES):
+            if any(raw_id.startswith(p) for p in skip_prefixes):
                 continue
             if raw_id in ids_found:
                 continue
@@ -220,7 +220,7 @@ def run_check(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_dir
         f"引擎: {script_path.name}",
     )
 
-    # C9~C12: 委theory_check_registry（策略模式解耦）
+    # C9~C13: 委theory_check_registry（策略模式解耦）
     try:
         from .check_theory import THEORY_CHECKS, check_bayesian
     except ImportError:

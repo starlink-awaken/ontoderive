@@ -99,25 +99,25 @@ def detect_cycles(nodes, edges):
     返回检测到的环列表。
     """
     node_ids = set(nodes.keys()) if isinstance(nodes, dict) else set(nodes)
-    WHITE, GRAY, BLACK = 0, 1, 2
-    color = {n: WHITE for n in node_ids}
+    white, gray, black = 0, 1, 2
+    color = {n: white for n in node_ids}
     cycles = []
 
     def dfs(u, path):
-        color[u] = GRAY
+        color[u] = gray
         path.append(u)
         for v in edges.get(u, []):
             if v not in color:
                 continue
-            if color[v] == GRAY:
+            if color[v] == gray:
                 cycle_start = path.index(v)
                 cycles.append(path[cycle_start:] + [v])
-            elif color[v] == WHITE:
+            elif color[v] == white:
                 dfs(v, path)
         path.pop()
-        color[u] = BLACK
+        color[u] = black
 
     for n in node_ids:
-        if color.get(n) == WHITE:
+        if color.get(n) == white:
             dfs(n, [])
     return cycles

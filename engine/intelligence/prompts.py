@@ -125,7 +125,10 @@ CHECK_CONTRADICTION = PromptTemplate(
     version="1.0.0",
     purpose="语义级别判断两个推论是否存在实质性矛盾",
     domain="general",
-    system_prompt="你是逻辑分析专家。判断两个命题是否存在实质性矛盾。注意区分: 真矛盾(无法同时为真)、伪矛盾(表面冲突但可调和)、互补(不同角度)。",
+    system_prompt=(
+        "你是逻辑分析专家。判断两个命题是否存在实质性矛盾。注意区分: "
+        "真矛盾(无法同时为真)、伪矛盾(表面冲突但可调和)、互补(不同角度)。"
+    ),
     user_prompt_template="""判断以下两个推论是否存在实质性矛盾。
 
 ## 推论A: {inf_a_title}

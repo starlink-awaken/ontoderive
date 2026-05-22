@@ -229,7 +229,8 @@ class BayesianLayer:
         dot = bn.to_dot()
         wf(self.log_dir / "bayesian-network.dot", dot)
         print(
-            f"[bayesian] ✅ DAG: {len(bn.nodes)}节点, {sum(len(v) for v in bn.edges.values())}边, {result.get('iterations', 0)}轮收敛"
+            f"[bayesian] ✅ DAG: {len(bn.nodes)}节点, {sum(len(v) for v in bn.edges.values())}边, "
+            f"{result.get('iterations', 0)}轮收敛"
         )
         print(f"[bayesian]    DOT: {self.log_dir / 'bayesian-network.dot'}")
 
@@ -308,7 +309,10 @@ generated: {datetime.datetime.now().isoformat()}
         report += "| 推论 | 原始标签 | 传播后置信度 | derives_from |\n"
         report += "|------|---------|-------------|-------------|\n"
         for name, info in sorted(inferences.items()):
-            report += f"| {name[:40]} | {info['raw_confidence']} | {info['propagated_confidence']:.2f} | {', '.join(info['derives_from'][:5])} |\n"
+            report += (
+                f"| {name[:40]} | {info['raw_confidence']} | {info['propagated_confidence']:.2f} | "
+                f"{', '.join(info['derives_from'][:5])} |\n"
+            )
 
         all_confs = [i["propagated_confidence"] for i in inferences.values()] + [
             f["confidence"] for f in facts.values()

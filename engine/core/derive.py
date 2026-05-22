@@ -230,10 +230,7 @@ class OntoDerive(DeriveInterface):
         v3.2: 形式化推理 — 四阶段管线。
         Phase1: LLM提取(降级规则) → Phase2: 符号化 → Phase3: 形式推理 → Phase4: 解读
         """
-        try:
-            from .pipeline_v4 import FormalPipeline
-        except ImportError:
-            from engine.pipeline_v4 import FormalPipeline
+        from engine.reasoners.pipeline_v4 import FormalPipeline
         enhancer = self._try_llm()
         pipeline = FormalPipeline(enhancer=enhancer)
         if text:
@@ -345,7 +342,7 @@ def main():
     try:
         from .cli import main as _main
     except ImportError:
-        from cli import main as _main  # noqa
+        from cli import main as _main
     _main()
 
 

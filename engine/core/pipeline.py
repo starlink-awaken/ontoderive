@@ -41,9 +41,9 @@ class LoadStage(PipelineStage):
 
     def run(self, ctx):
         try:
-            from .derive import OntoDerive as _OD
+            from .derive import OntoDerive as _OD  # noqa: N814
         except ImportError:
-            from engine.core.derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa: N814
         od = _OD(ctx["project_root"])
         summary = od.derive()
         return {"derive_summary": summary}
@@ -58,9 +58,9 @@ class DeriveStage(PipelineStage):
         if cached:
             return cached
         try:
-            from .derive import OntoDerive as _OD
+            from .derive import OntoDerive as _OD  # noqa: N814
         except ImportError:
-            from engine.core.derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa: N814
         od = _OD(ctx["project_root"])
         result = od.derive()
         ctx["_derive_result"] = result
@@ -72,9 +72,9 @@ class CheckStage(PipelineStage):
 
     def run(self, ctx):
         try:
-            from .derive import OntoDerive as _OD
+            from .derive import OntoDerive as _OD  # noqa: N814
         except ImportError:
-            from engine.core.derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa: N814
         od = _OD(ctx["project_root"])
         return od.check()
 
@@ -84,9 +84,9 @@ class ResolveStage(PipelineStage):
 
     def run(self, ctx):
         try:
-            from .derive import OntoDerive as _OD
+            from .derive import OntoDerive as _OD  # noqa: N814
         except ImportError:
-            from engine.core.derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa: N814
         od = _OD(ctx["project_root"])
         return {"fixed": od.resolve()}
 
@@ -96,9 +96,9 @@ class ReportStage(PipelineStage):
 
     def run(self, ctx):
         try:
-            from .derive import OntoDerive as _OD
+            from .derive import OntoDerive as _OD  # noqa: N814
         except ImportError:
-            from engine.core.derive import OntoDerive as _OD  # noqa
+            from engine.core.derive import OntoDerive as _OD  # noqa: N814
         od = _OD(ctx["project_root"])
         return {"report": od.generate_report()}
 

@@ -295,11 +295,11 @@ class InsightEngine:
         if not initial.get("score"):
             return initial
         for i in range(max_refinements):
-            reflection = self._call(
-                f"反思你的评审(评分{initial.get('score')}): {initial.get('verdict', '')[:200]}。是否有遗漏？修正评分(1-10):",
-                "你是善于自我反思的评审专家。",
-                0.3,
+            prompt = (
+                f"反思你的评审(评分{initial.get('score')}): "
+                f"{initial.get('verdict', '')[:200]}。是否有遗漏？修正评分(1-10):"
             )
+            reflection = self._call(prompt, "你是善于自我反思的评审专家。", 0.3)
             if not reflection:
                 break
             m = re.search(r"(\d+)\s*分", reflection)

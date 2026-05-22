@@ -452,8 +452,11 @@ class AnalyticsEngine:
         results.append(
             {
                 "type": "analytics",
-                "conclusion": f"整改可行性: {remaining_tasks}问题/{team_size}人/{months}月=人均{feasibility:.1f}个/月→{status}"
-                f"{' 需增加人力或延长时间窗口' if feasibility > 1.0 else ''}",
+                "conclusion": (
+                    f"整改可行性: {remaining_tasks}问题/{team_size}人/{months}月="
+                    f"人均{feasibility:.1f}个/月→{status}"
+                    f"{' 需增加人力或延长时间窗口' if feasibility > 1.0 else ''}"
+                ),
                 "derives_from": [
                     fid
                     for fid, _ in _iter_facts(facts)
