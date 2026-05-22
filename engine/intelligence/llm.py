@@ -125,7 +125,7 @@ class LLMEnhancer:
             payload["system_prompt"] = system
         try:
             req = urllib.request.Request(
-                self.base_url or os.environ.get("ONTODERIVE_LLM_BASE_URL", "http://localhost:11434"),
+                self.base_url or os.environ.get("ONTODERIVE_LLM_URL", "http://localhost:11434"),
                 data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"},
             )

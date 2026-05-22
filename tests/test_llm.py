@@ -12,12 +12,10 @@ class TestLLMEnhancerInit:
         assert not e.available
 
     def test_unknown_backend(self):
-        """未知backend不抛异常"""
         e = LLMEnhancer(backend="nonexistent")
         assert e.backend == "nonexistent"
 
     def test_openai_backend_without_key(self):
-        """指定openai但无API key时不可用"""
         with patch.dict(os.environ, {}, clear=True):
             e = LLMEnhancer(backend="openai")
             assert e.backend == "openai"
@@ -32,7 +30,6 @@ class TestLLMEnhancerInit:
 
 class TestLLMEnhancerDetect:
     def test_detect_openai_with_key(self):
-        """有OPENAI_API_KEY时自检到openai"""
         with patch.dict(os.environ, {"ONTODERIVE_LLM_BACKEND": "auto", "OPENAI_API_KEY": "sk-test"}):
             with patch("subprocess.run", side_effect=FileNotFoundError):
                 with patch("urllib.request.urlopen", side_effect=OSError):
@@ -47,7 +44,6 @@ class TestLLMEnhancerDetect:
                     assert e.backend == "anthropic"
 
     def test_detect_none_when_no_backend(self):
-        """无任何LLM可用时返回none"""
         with patch.dict(os.environ, {}, clear=True):
             with patch("subprocess.run", side_effect=FileNotFoundError):
                 with patch("urllib.request.urlopen", side_effect=OSError):
@@ -56,7 +52,6 @@ class TestLLMEnhancerDetect:
                     assert not e.available
 
     def test_detect_ollama_with_models(self):
-        """ollama list成功时检测到ollama"""
         mock_run = MagicMock()
         mock_run.returncode = 0
         mock_run.stdout = "NAME\tID\tSIZE\nqwen3.5:4b\tabc\t3.5GB\n"
@@ -74,7 +69,6 @@ class TestLLMEnhancerCall:
         assert result is None
 
     def test_ollama_call_timeout(self):
-        """ollama调用超时返回None"""
         e = LLMEnhancer(backend="ollama", model="test-model")
         e.available = True
         with patch("subprocess.run", side_effect=TimeoutError):
@@ -82,7 +76,6 @@ class TestLLMEnhancerCall:
             assert result is None
 
     def test_local_call_timeout(self):
-        """本地API调用超时返回None"""
         e = LLMEnhancer(backend="local", model="test-model", base_url="http://localhost:1234")
         e.available = True
         with patch("urllib.request.urlopen", side_effect=OSError):
@@ -141,7 +134,6 @@ class TestLLMEnhancerMockCall:
             assert ids == ["M-001", "S-002", "T-003"]
 
     def test_call_dispatch_openai(self):
-        """_call正确分发到openai后端"""
         e = LLMEnhancer(backend="openai")
         e.available = True
         with patch.object(e, "_call_openai", return_value="response") as mock:
@@ -168,7 +160,6 @@ class TestLLMEnhancerMockCall:
 
 class TestLLMEnhancerEdgeCases:
     def test_model_selection_from_env(self):
-        """从环境变量读取模型"""
         with patch.dict(os.environ, {"ONTODERIVE_LLM_MODEL": "gpt-4"}):
             e = LLMEnhancer(backend="openai")
             assert e.model == "gpt-4"
@@ -179,17 +170,15 @@ class TestLLMEnhancerEdgeCases:
             assert e.base_url == "http://my-proxy:8080"
 
     def test_ollama_probe_model_not_found(self):
-        """ollama有但指定模型不存在时不可用"""
         mock_run = MagicMock()
         mock_run.returncode = 0
         mock_run.stdout = "NAME\tID\tSIZE\nother-model\tabc\t3.5GB\n"
-        with patch("subprocess.run", return_value=mock_run):
-            e = LLMEnhancer(backend="auto", model="qwen3.5:4b")
-            # detect should return ollama, probe should fail because model not in list
-            assert not e.available
+        with patch.dict(os.environ, {"ONTODERIVE_LLM_BACKEND": "auto"}):
+            with patch("subprocess.run", return_value=mock_run):
+                e = LLMEnhancer(backend="auto", model="qwen3.5:4b")
+                assert not e.available
 
     def test_probe_exception_returns_false(self):
-        """探测异常时available为False"""
         with patch("subprocess.run", side_effect=FileNotFoundError):
             e = LLMEnhancer(backend="ollama", model="test")
             assert not e.available

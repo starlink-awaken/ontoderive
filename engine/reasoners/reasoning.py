@@ -236,14 +236,3 @@ class ReasoningSelector:
         return "\n".join(lines)
 
 
-# ═══ 后续TODO ═══
-
-REMAINING_TODOS = [
-    {"pattern": "马尔可夫链", "reason": "需状态转移矩阵 + numpy, 当前场景需求不明确", "priority": "P3"},
-    {"pattern": "证据合成(Dempster-Shafer)", "reason": "需要多个独立证据源, 当前推论体系不满足前提", "priority": "P3"},
-    {"pattern": "Allen区间代数", "reason": "需完整时态逻辑库, 当前事实时间戳标注不完整", "priority": "P2"},
-    {"pattern": "区间算术", "reason": "事实多为单点值非区间, 场景有限", "priority": "P3"},
-    {"pattern": "依赖图重算(完整版)", "reason": "需增量更新算法, 当前topo排序已覆盖基础场景", "priority": "P2"},
-    {"pattern": "案例推理(CBR)引擎化", "reason": "当前仅LLM驱动, 可加TF-IDF案例匹配", "priority": "P2"},
-    {"pattern": "溯因推理(Abduction)引擎化", "reason": "需因果模型, 当前仅LLM驱动", "priority": "P2"},
-]
