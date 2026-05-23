@@ -56,6 +56,7 @@ def mock_inferences():
 
 class _MockEnhancer:
     """模拟LLMEnhancer，返回固定结果，无需LLM连接"""
+
     available = True
     backend = "mock"
     model = "mock-model"

@@ -89,10 +89,10 @@ for _parent, _subs in ONTOLOGY_HIERARCHY.items():
         _PREFIX_TO_PARENT[_sub] = _parent
 
 
-
 # =============================================
 # 模块级函数
 # =============================================
+
 
 def detect_domain(engine, value, label):
     """从值和标签中检测语义域, 优先用值的显式单位"""
@@ -104,6 +104,7 @@ def detect_domain(engine, value, label):
         if any(kw in label for kw in keywords):
             return domain
     return None
+
 
 _STOP_CHARS = set("的是在与和及年第个月日一二三四五六七八九十前后")
 
@@ -146,6 +147,7 @@ def find_chain(engine, node, inferences, visited):
                 longest = [node] + parent_chain
     return longest
 
+
 # ═══ R15: 变化检测 (Change Detection / 时态推理) ═══
 
 
@@ -186,6 +188,7 @@ def closest_known(engine, prefix):
             best = kp
     return best
 
+
 # ═══ R10: 影响传播 (Influence Analysis) ═══
 
 
@@ -200,6 +203,7 @@ def calc_depth(engine, node, inferences, depths, visited):
             max_parent = max(max_parent, calc_depth(engine, parent, inferences, depths, visited))
     depths[node] = max_parent + 1
     return depths[node]
+
 
 # ═══ R19: 案例推理 CBR (Case-Based Reasoning) ═══
 
@@ -229,10 +233,7 @@ def disjunctive_syllogism(engine, inferences):
                         results.append(
                             {
                                 "type": "disjunctive_syllogism",
-                                "conclusion": (
-                                    f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), "
-                                    "需明确优先级"
-                                ),
+                                "conclusion": (f"'{a_id[:25]}'和'{b_id[:25]}'构成选言结构({w1} vs {w2}), 需明确优先级"),
                                 "derived_from": list(shared),
                                 "confidence": 0.70,
                                 "method": "rule_engine",
@@ -240,6 +241,7 @@ def disjunctive_syllogism(engine, inferences):
                         )
                         break
     return results
+
 
 # ═══ R14: 假言三段论 (Hypothetical Syllogism Chain) ═══
 
@@ -285,6 +287,7 @@ def change_detection(engine, facts):
             }
         )
     return results
+
 
 # ═══ R16: 一致性分析 (Consistency Analysis) ═══
 
@@ -332,6 +335,7 @@ def consistency_analysis(engine, inferences, facts):
             )
     return results
 
+
 # ═══ R17: 结构洞检测 (Structural Holes) ═══
 
 
@@ -362,6 +366,7 @@ def structural_holes(engine, inferences):
                 }
             )
     return results
+
 
 # ═══ R19: 关系推理 (Relation Reasoning) ═══
 
@@ -457,8 +462,7 @@ def relation_reasoning(engine, relations):
                     {
                         "type": "relation_range",
                         "conclusion": (
-                            f"域约束: {r_type}的range应为{exp_rng}, "
-                            f"但object'{rel.get('object')}'前缀为'{obj_prefix}'"
+                            f"域约束: {r_type}的range应为{exp_rng}, 但object'{rel.get('object')}'前缀为'{obj_prefix}'"
                         ),
                         "derived_from": [rel.get("object", "")],
                         "confidence": 0.70,
@@ -467,6 +471,7 @@ def relation_reasoning(engine, relations):
                 )
 
     return results
+
 
 # ═══ R18: 约束传播 (Constraint Propagation) ═══
 
@@ -495,8 +500,7 @@ def constraint_propagation(engine, inferences, facts):
                 {
                     "type": "constraint_violation",
                     "conclusion": (
-                        f"断言追溯率{rate:.0%}低于50%阈值(C-05), "
-                        f"建议为{total_assertions - traced}个断言标注事实引用"
+                        f"断言追溯率{rate:.0%}低于50%阈值(C-05), 建议为{total_assertions - traced}个断言标注事实引用"
                     ),
                     "derived_from": [],
                     "confidence": 0.90,
@@ -504,6 +508,7 @@ def constraint_propagation(engine, inferences, facts):
                 }
             )
     return results
+
 
 # ═══ R7: 假言推理 (Modus Ponens/Tollens) ═══
 
@@ -537,6 +542,7 @@ def modus_ponens_check(engine, inferences, facts):
             )
     return results
 
+
 # ═══ R8: 传递推理 (Transitive Closure) ═══
 
 
@@ -558,16 +564,14 @@ def transitive_closure(engine, inferences, facts):
             results.append(
                 {
                     "type": "transitive_dependency",
-                    "conclusion": (
-                        f"推论'{title[:30]}'间接依赖{len(indirect_deps)}个前提: "
-                        f"{list(indirect_deps)[:5]}"
-                    ),
+                    "conclusion": (f"推论'{title[:30]}'间接依赖{len(indirect_deps)}个前提: {list(indirect_deps)[:5]}"),
                     "derived_from": list(indirect_deps),
                     "confidence": 0.75,
                     "method": "rule_engine",
                 }
             )
     return results
+
 
 # ═══ R9: 包含推理 (Ontology Subsumption) ═══
 
@@ -694,6 +698,7 @@ def influence_analysis(engine, inferences, facts):
         )
     return results
 
+
 # ═══ R11: 冗余检测 (Redundancy Check) ═══
 
 
@@ -717,6 +722,7 @@ def redundancy_check(engine, inferences):
                     }
                 )
     return results
+
 
 # ═══ R12: 覆盖度分析 (Coverage Analysis) ═══
 
@@ -767,8 +773,7 @@ def numeric_derive(engine, facts):
                     {
                         "type": "numeric_comparison",
                         "conclusion": (
-                            f"{a['label']}({a['value']})是{b['label']}({b['value']})的"
-                            f"{a['value'] / b['value']:.1f}倍"
+                            f"{a['label']}({a['value']})是{b['label']}({b['value']})的{a['value'] / b['value']:.1f}倍"
                         ),
                         "derived_from": [ids[i], ids[j]],
                         "confidence": 0.95,
@@ -791,10 +796,7 @@ def shared_premise_check(engine, inferences):
                 results.append(
                     {
                         "type": "shared_premise",
-                        "conclusion": (
-                            f"推论'{a_id[:30]}'和'{b_id[:30]}'共享{len(shared)}个前提"
-                            f"({list(shared)[:3]})"
-                        ),
+                        "conclusion": (f"推论'{a_id[:30]}'和'{b_id[:30]}'共享{len(shared)}个前提({list(shared)[:3]})"),
                         "derived_from": list(shared),
                         "confidence": 0.75,
                         "method": "rule_engine",
@@ -902,4 +904,3 @@ def chain_integrity_check(engine, inferences):
             }
         )
     return results
-

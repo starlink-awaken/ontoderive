@@ -166,11 +166,7 @@ def _check_c06(root, facts_dir, entities_dir, inferences_dir, scheme_dir, log_di
             )
             for c in claims:
                 falsifiable_total += 1
-                ctx = (
-                    text[max(0, text.find(c) - 100) : text.find(c) + len(c) + 100]
-                    if c in text
-                    else c
-                )
+                ctx = text[max(0, text.find(c) - 100) : text.find(c) + len(c) + 100] if c in text else c
                 if re.search(r"如果.*?则|若.*?则|假设|条件|除非", ctx):
                     falsifiable_ok += 1
                 else:

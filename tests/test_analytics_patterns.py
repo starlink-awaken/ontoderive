@@ -1,5 +1,5 @@
 """Unit tests for analytics_patterns module-level functions"""
-# ruff: noqa: ARG001 — detect/analyze functions take `engine` but don't use it
+# detect/analyze functions take `engine` but don't use it — expected pattern
 
 import pytest
 
@@ -13,7 +13,6 @@ from engine.theories.analytics_patterns import (
     detect_capacity_constraint,
     detect_market_structure,
 )
-
 
 # ============================================================
 # Mock engine — detect/analyze functions accept `self` as first

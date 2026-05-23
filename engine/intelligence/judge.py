@@ -162,9 +162,7 @@ class OntoDeriveJudge:
                 "rule_engine_only": True,
             }
 
-        facts_sample = json.dumps(
-            {k: v["desc"][:40] for k, v in list(ctx["facts"].items())[:10]}, ensure_ascii=False
-        )
+        facts_sample = json.dumps({k: v["desc"][:40] for k, v in list(ctx["facts"].items())[:10]}, ensure_ascii=False)
         inferences_sample = json.dumps(
             {k: {"derives_from": v.get("derives_from", [])} for k, v in list(ctx["inferences"].items())[:8]},
             ensure_ascii=False,

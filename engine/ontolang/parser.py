@@ -1,4 +1,5 @@
 """OntoLang 词法+语法解析器 — 手写递归下降"""
+
 import re
 
 from .ast import (
@@ -54,7 +55,7 @@ class Lexer:
         while self.pos < len(self.source):
             matched = False
             for kind, pattern in self.TOKENS:
-                m = re.match(pattern, self.source[self.pos:])
+                m = re.match(pattern, self.source[self.pos :])
                 if m:
                     val = m.group(0)
                     if kind not in ("WS", "COMMENT", "NEWLINE"):
@@ -70,7 +71,7 @@ class Lexer:
             if not matched:
                 # 处理中文字符
                 ch = self.source[self.pos]
-                if re.match(r'[一-鿿　-〿＀-￯]', ch):
+                if re.match(r"[一-鿿　-〿＀-￯]", ch):
                     if not tokens or tokens[-1].kind != "CN_TEXT":
                         tokens.append(Token("CN_TEXT", ch, self.line, self.col))
                     else:
@@ -101,11 +102,13 @@ class Parser:
     def consume(self, kind=None):
         t = self.peek()
         if kind and t.kind != kind:
-            self.errors.append(ParseError(
-                f"期望 {kind}，得到 {t.kind}('{t.value}')",
-                SourcePos(t.line, t.col, self.filename),
-                f"在{t.value}前插入 {kind}"
-            ))
+            self.errors.append(
+                ParseError(
+                    f"期望 {kind}，得到 {t.kind}('{t.value}')",
+                    SourcePos(t.line, t.col, self.filename),
+                    f"在{t.value}前插入 {kind}",
+                )
+            )
         self.idx += 1
         return t
 
@@ -149,17 +152,16 @@ class Parser:
                     # 跳过非声明行
                     self.idx += 1
                 else:
-                    self.errors.append(ParseError(
-                        f"意外的token: {t.kind}('{t.value}')",
-                        SourcePos(t.line, t.col, self.filename),
-                        "期望 entity/fact/inference/protocol/relation 声明"
-                    ))
+                    self.errors.append(
+                        ParseError(
+                            f"意外的token: {t.kind}('{t.value}')",
+                            SourcePos(t.line, t.col, self.filename),
+                            "期望 entity/fact/inference/protocol/relation 声明",
+                        )
+                    )
                     self.idx += 1
             except Exception as e:
-                self.errors.append(ParseError(
-                    f"解析错误: {e}",
-                    SourcePos(t.line, t.col, self.filename)
-                ))
+                self.errors.append(ParseError(f"解析错误: {e}", SourcePos(t.line, t.col, self.filename)))
                 self.idx += 1
 
         return ast
@@ -249,8 +251,9 @@ class Parser:
         if isinstance(df, str):
             df = [df]
         conclusion = str(props.pop("conclusion", ""))
-        return InferenceDef(id=decl_id, inference_type=decl_type, derives_from=df,
-                            conclusion=conclusion, properties=props, pos=pos)
+        return InferenceDef(
+            id=decl_id, inference_type=decl_type, derives_from=df, conclusion=conclusion, properties=props, pos=pos
+        )
 
     def _parse_protocol(self):
         r = self._parse_common("PROTOCOL", "Constraint")
@@ -258,25 +261,24 @@ class Parser:
             return None
         decl_id, decl_type, props, pos = r
         constraint = str(props.pop("constraint", ""))
-        return ProtocolDef(id=decl_id, constraint_type=decl_type, constraint=constraint,
-                           properties=props, pos=pos)
+        return ProtocolDef(id=decl_id, constraint_type=decl_type, constraint=constraint, properties=props, pos=pos)
 
     # 关系词汇表: 关系名 → (domain, range)
     RELATION_VOCAB = {
-        "cooperates_with":  ("DOMAIN", "DOMAIN"),
-        "competes_with":    ("DOMAIN", "DOMAIN"),
-        "part_of":          ("DOMAIN", "DOMAIN"),
-        "contains":         ("DOMAIN", "DOMAIN"),
-        "employs":          ("ORG", "ROL"),
-        "belongs_to":       ("DOMAIN", "DOMAIN"),
-        "depends_on":       ("DOMAIN", "DOMAIN"),
-        "causes":           ("FACT", "FACT"),
-        "influences":       ("DOMAIN", "DOMAIN"),
-        "precedes":         ("DOMAIN", "DOMAIN"),
-        "authored_by":      ("DOCUMENT", "DOMAIN"),
-        "references":       ("DOMAIN", "DOMAIN"),
-        "derives_from":     ("INFERENCE", "FACT"),
-        "maps_to":          ("DOMAIN", "DOMAIN"),
+        "cooperates_with": ("DOMAIN", "DOMAIN"),
+        "competes_with": ("DOMAIN", "DOMAIN"),
+        "part_of": ("DOMAIN", "DOMAIN"),
+        "contains": ("DOMAIN", "DOMAIN"),
+        "employs": ("ORG", "ROL"),
+        "belongs_to": ("DOMAIN", "DOMAIN"),
+        "depends_on": ("DOMAIN", "DOMAIN"),
+        "causes": ("FACT", "FACT"),
+        "influences": ("DOMAIN", "DOMAIN"),
+        "precedes": ("DOMAIN", "DOMAIN"),
+        "authored_by": ("DOCUMENT", "DOMAIN"),
+        "references": ("DOMAIN", "DOMAIN"),
+        "derives_from": ("INFERENCE", "FACT"),
+        "maps_to": ("DOMAIN", "DOMAIN"),
     }
 
     def _parse_relation(self):

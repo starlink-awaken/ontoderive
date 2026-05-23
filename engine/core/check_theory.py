@@ -92,8 +92,10 @@ def check_ontolang(root=None):
     """C-13: OntoLang形式语言 [DEPRECATED - 保留供外部兼容]"""
     try:
         import sys
+
         sys.path.insert(0, str(Path(__file__).parent))
         from ontolang import OntoLangParser
+
         parser = OntoLangParser()
         parser.test_suite()
         return {

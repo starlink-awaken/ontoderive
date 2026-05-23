@@ -90,10 +90,14 @@ class RuleReasoner:
         "shallow_chain": "R6",
     }
 
-
     def __init__(self, loaded_rules: list = None):
         self.rules: list[DerivationRule] = self._default_rules()
-        self._loaded_rules = loaded_rules or []
+        self._rule_loader = RuleLoader()
+        if loaded_rules is not None:
+            self._loaded_rules = loaded_rules
+        else:
+            # 自动从 YAML 规则目录加载
+            self._loaded_rules = self._rule_loader.load_all()
         self.state = "idle"
 
     def _default_rules(self):
@@ -216,15 +220,10 @@ class RuleReasoner:
             trail = f"{rule_id}: {'→'.join(deps[:4])}" if deps else f"{rule_id}"
             r["derivation_trail"] = trail
 
-        # v3.6: YAML规则执行 — 声明式规则产生产出
+        # v3.6: YAML规则执行 — 前提匹配+声明式产出
         if self._loaded_rules:
-            for rule in self._loaded_rules:
-                try:
-                    c = RuleLoader.to_conclusion(rule)
-                    if c and c.get("conclusion"):
-                        results.append(c)
-                except Exception:
-                    pass
+            yaml_results = self._rule_loader.evaluate_all(facts, inferences)
+            results.extend(yaml_results)
 
         self.state = "done"
         return results

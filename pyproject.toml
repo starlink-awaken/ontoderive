@@ -29,6 +29,7 @@ dependencies = ["pyyaml"]
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "ruff"]
 llm = ["openai"]
+web = ["fastapi", "uvicorn"]
 
 [project.scripts]
 ontoderive = "engine.cli:main"

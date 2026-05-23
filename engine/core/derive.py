@@ -231,6 +231,7 @@ class OntoDerive(DeriveInterface):
         Phase1: LLM提取(降级规则) → Phase2: 符号化 → Phase3: 形式推理 → Phase4: 解读
         """
         from engine.reasoners.pipeline_v4 import FormalPipeline
+
         enhancer = self._try_llm()
         pipeline = FormalPipeline(enhancer=enhancer)
         if text:

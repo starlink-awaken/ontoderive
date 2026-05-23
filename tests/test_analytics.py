@@ -1,6 +1,5 @@
 """AnalyticsEngine 测试 --- A1~A12 全分析模式 + 辅助函数"""
 
-
 from engine.theories.analytics import (
     AnalyticalPattern,
     AnalyticsEngine,
@@ -662,7 +661,7 @@ class TestA6MarketStructure:
         """HHI <= 1000 -> 分散"""
         ae = AnalyticsEngine()
         facts = {f"D-F{i}": {"desc": "份额", "value": "4"} for i in range(1, 13)}
-        entities = {f"E-{chr(65+i)}": {} for i in range(12)}
+        entities = {f"E-{chr(65 + i)}": {} for i in range(12)}
         results = analyze_market_structure(ae, facts, entities, [], None)
         assert any("分散" in r["conclusion"] for r in results)
 

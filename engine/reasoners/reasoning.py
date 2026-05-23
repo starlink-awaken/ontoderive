@@ -234,5 +234,3 @@ class ReasoningSelector:
             f"激活规则: {len(selected)}种 — {', '.join(selected[:8])}",
         ]
         return "\n".join(lines)
-
-

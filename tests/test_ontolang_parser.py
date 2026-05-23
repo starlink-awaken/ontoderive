@@ -9,7 +9,6 @@ Covers:
 - Error handling (malformed input, invalid prefixes, missing fields)
 """
 
-
 from engine.ontolang.ast import (
     AST,
     EntityDef,
@@ -27,6 +26,7 @@ from engine.ontolang.semantic import SemanticAnalyzer
 # =============================================================================
 # Lexer Tests
 # =============================================================================
+
 
 class TestLexer:
     def test_empty_source(self):
@@ -83,7 +83,7 @@ class TestLexer:
         assert tokens[2].value == "3.14"
 
     def test_symbol_tokens(self):
-        lexer = Lexer(': { } [ ] ,')
+        lexer = Lexer(": { } [ ] ,")
         tokens = lexer.tokenize()
         kinds = [t.kind for t in tokens[:-1]]
         assert kinds == ["COLON", "LBRACE", "RBRACE", "LBRACKET", "RBRACKET", "COMMA"]
@@ -121,6 +121,7 @@ class TestLexer:
 # =============================================================================
 # Parser Tests
 # =============================================================================
+
 
 class TestParser:
     def test_parse_empty(self):
@@ -400,6 +401,7 @@ fact D-F1 : Data {}
 # SemanticAnalyzer Tests
 # =============================================================================
 
+
 class TestSemanticAnalyzer:
     def make_ast(self, entities=None, facts=None, inferences=None, protocols=None):
         return AST(
@@ -415,8 +417,10 @@ class TestSemanticAnalyzer:
             facts=[FactDef(id="D-F1", fact_type="Data", pos=SourcePos(2, 1))],
             inferences=[
                 InferenceDef(
-                    id="INF-L1", inference_type="Test",
-                    derives_from=["D-F1"], conclusion="ok",
+                    id="INF-L1",
+                    inference_type="Test",
+                    derives_from=["D-F1"],
+                    conclusion="ok",
                     pos=SourcePos(3, 1),
                 )
             ],
@@ -428,17 +432,13 @@ class TestSemanticAnalyzer:
 
     def test_valid_entity_prefixes(self):
         for prefix in ("ORG", "ROL", "PRJ", "POL", "DAT"):
-            ast = self.make_ast(
-                entities=[EntityDef(id=f"{prefix}-Test", entity_type="T", pos=SourcePos(1, 1))]
-            )
+            ast = self.make_ast(entities=[EntityDef(id=f"{prefix}-Test", entity_type="T", pos=SourcePos(1, 1))])
             sa = SemanticAnalyzer()
             errors = sa.analyze(ast)
             assert errors == [], f"prefix {prefix} should be valid"
 
     def test_invalid_entity_prefix(self):
-        ast = self.make_ast(
-            entities=[EntityDef(id="BAD-xxx", entity_type="BadType", pos=SourcePos(1, 1))]
-        )
+        ast = self.make_ast(entities=[EntityDef(id="BAD-xxx", entity_type="BadType", pos=SourcePos(1, 1))])
         sa = SemanticAnalyzer()
         errors = sa.analyze(ast)
         assert len(errors) == 1
@@ -447,9 +447,7 @@ class TestSemanticAnalyzer:
 
     def test_entity_no_prefix(self):
         """Entity ID without a hyphen should be checked against the single token"""
-        ast = self.make_ast(
-            entities=[EntityDef(id="NoHyphen", entity_type="T", pos=SourcePos(1, 1))]
-        )
+        ast = self.make_ast(entities=[EntityDef(id="NoHyphen", entity_type="T", pos=SourcePos(1, 1))])
         sa = SemanticAnalyzer()
         errors = sa.analyze(ast)
         assert len(errors) == 1
@@ -473,9 +471,7 @@ class TestSemanticAnalyzer:
             assert errors == [], f"fact id {fid} should be valid"
 
     def test_invalid_fact_id(self):
-        ast = self.make_ast(
-            facts=[FactDef(id="BAD-F1", fact_type="Bad", pos=SourcePos(1, 1))]
-        )
+        ast = self.make_ast(facts=[FactDef(id="BAD-F1", fact_type="Bad", pos=SourcePos(1, 1))])
         sa = SemanticAnalyzer()
         errors = sa.analyze(ast)
         assert len(errors) == 1
@@ -496,8 +492,10 @@ class TestSemanticAnalyzer:
         ast = self.make_ast(
             inferences=[
                 InferenceDef(
-                    id="INF-L1", inference_type="T",
-                    derives_from=["D-F1"], conclusion="ok",
+                    id="INF-L1",
+                    inference_type="T",
+                    derives_from=["D-F1"],
+                    conclusion="ok",
                     pos=SourcePos(1, 1),
                 )
             ],
@@ -511,8 +509,10 @@ class TestSemanticAnalyzer:
         ast = self.make_ast(
             inferences=[
                 InferenceDef(
-                    id="BAD-L1", inference_type="T",
-                    derives_from=["D-F1"], conclusion="ok",
+                    id="BAD-L1",
+                    inference_type="T",
+                    derives_from=["D-F1"],
+                    conclusion="ok",
                     pos=SourcePos(1, 1),
                 )
             ],
@@ -523,11 +523,7 @@ class TestSemanticAnalyzer:
         assert any("INF-" in getattr(e, "hint", "") or "INF-" in e.msg for e in errors)
 
     def test_inference_missing_derives_from(self):
-        ast = self.make_ast(
-            inferences=[
-                InferenceDef(id="INF-L1", inference_type="T", pos=SourcePos(1, 1))
-            ]
-        )
+        ast = self.make_ast(inferences=[InferenceDef(id="INF-L1", inference_type="T", pos=SourcePos(1, 1))])
         sa = SemanticAnalyzer()
         errors = sa.analyze(ast)
         assert any("derives_from" in e.msg for e in errors)
@@ -537,8 +533,10 @@ class TestSemanticAnalyzer:
         ast = self.make_ast(
             inferences=[
                 InferenceDef(
-                    id="INF-L1", inference_type="T",
-                    derives_from=["UNDECLARED"], conclusion="ok",
+                    id="INF-L1",
+                    inference_type="T",
+                    derives_from=["UNDECLARED"],
+                    conclusion="ok",
                     pos=SourcePos(1, 1),
                 )
             ]
@@ -578,9 +576,7 @@ class TestSemanticAnalyzer:
         ast = self.make_ast(
             entities=[EntityDef(id="BAD-xxx", entity_type="T", pos=SourcePos(1, 1))],
             facts=[FactDef(id="BAD-F1", fact_type="T", pos=SourcePos(2, 1))],
-            inferences=[
-                InferenceDef(id="INF-L1", inference_type="T", pos=SourcePos(3, 1))
-            ],
+            inferences=[InferenceDef(id="INF-L1", inference_type="T", pos=SourcePos(3, 1))],
         )
         sa = SemanticAnalyzer()
         errors = sa.analyze(ast)
@@ -591,9 +587,7 @@ class TestSemanticAnalyzer:
         """Verify all prefixes in VALID_ENTITY_PREFIXES are accepted"""
         sa = SemanticAnalyzer()
         for prefix in sa.VALID_ENTITY_PREFIXES:
-            ast = self.make_ast(
-                entities=[EntityDef(id=f"{prefix}-X", entity_type="T", pos=SourcePos(1, 1))]
-            )
+            ast = self.make_ast(entities=[EntityDef(id=f"{prefix}-X", entity_type="T", pos=SourcePos(1, 1))])
             errors = sa.analyze(ast)
             entity_errors = [e for e in errors if "实体" in e.msg]
             assert entity_errors == [], f"prefix {prefix} should not produce entity errors"
@@ -611,6 +605,7 @@ class TestSemanticAnalyzer:
 # =============================================================================
 # Integration Tests (Parsing + Semantic Analysis round-trip)
 # =============================================================================
+
 
 class TestIntegration:
     def test_parse_and_validate_valid(self):

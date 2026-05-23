@@ -1,6 +1,5 @@
 """Reasoner utility functions — self-free helpers extracted from RuleReasoner"""
 
-
 import re
 
 
@@ -83,10 +82,7 @@ def project_profile(project):
     n_f = len(facts)
     n_i = len(infs)
     avg_df = sum(len(i.get("derives_from", [])) for i in infs.values()) / max(n_i, 1)
-    num_ratio = (
-        sum(1 for f in facts.values() for v in [str(f.get("value", ""))] if re.search(r"\d", v))
-        / max(n_f, 1)
-    )
+    num_ratio = sum(1 for f in facts.values() for v in [str(f.get("value", ""))] if re.search(r"\d", v)) / max(n_f, 1)
     pol_ratio = sum(1 for f in facts.values() if "政策" in str(f.get("desc", ""))) / max(n_f, 1)
     return [n_f / 20, n_i / 10, avg_df / 5, num_ratio, pol_ratio]
 

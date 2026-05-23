@@ -5,8 +5,11 @@ OntoDerive LLM增强层 — 零依赖降级 + 本地模型增强
 支持的LLM后端：ollama(本地), openai API, anthropic API
 """
 
-import json
+from __future__ import annotations
+
 import os
+
+from .providers import BACKENDS, BaseProvider, detect_backend
 
 
 class LLMEnhancer:
@@ -22,141 +25,35 @@ class LLMEnhancer:
     def __init__(self, backend="auto", model=None, base_url=None):
         if backend == "auto":
             backend = os.environ.get("ONTODERIVE_LLM_BACKEND", "auto")
-        self.backend = self._detect_backend(backend)
+        if backend == "auto":
+            backend_name, auto_model = detect_backend()
+            self.backend = backend_name
+            if auto_model and not model:
+                model = auto_model
+        else:
+            self.backend = backend
+
         self.model = model or os.environ.get("ONTODERIVE_LLM_MODEL", "")
         self.base_url = base_url or os.environ.get("ONTODERIVE_LLM_URL", "")
-        self.available = self._probe()
+        self._provider = self._build_provider()
+        self.available = self._provider.probe()
 
-    def _detect_backend(self, backend):
-        if backend != "auto":
-            return backend
-        # 1) ollama CLI (最常见)
-        try:
-            import subprocess
-
-            r = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=3)
-            if r.returncode == 0:
-                return "ollama"
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
-        # 2) 本地OpenAI兼容API
-        try:
-            import urllib.request
-
-            url = os.environ.get("ONTODERIVE_LLM_URL", "http://localhost:11434")
-            req = urllib.request.Request(url, method="GET")
-            with urllib.request.urlopen(req, timeout=3):
-                self.base_url = url
-                return "local"
-        except OSError:
-            pass
-        # 3) openai API key
-        if os.environ.get("OPENAI_API_KEY"):
-            return "openai"
-        # 4) anthropic API key
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            return "anthropic"
-        return "none"
-
-    def _probe(self):
-        if self.backend == "ollama":
-            try:
-                import subprocess
-
-                r = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=3)
-                if r.returncode != 0:
-                    return False
-                models = r.stdout
-                if self.model and self.model not in models:
-                    return False
-                if not self.model:
-                    # 自动选模型：优先中文能力强的小模型
-                    for m in ["qwen3.5:4b", "qwen2.5:7b", "qwen2.5:3b", "gemma4:e2b", "qwen2.5:1.5b", "llama3.2:3b"]:
-                        if m in models:
-                            self.model = m
-                            return True
-                    # fallback: 用第一个可用模型
-                    first_line = models.strip().split("\n")[1] if "\n" in models else ""
-                    if first_line:
-                        self.model = first_line.split()[0]
-                        return True
-                return self.model in models
-            except (FileNotFoundError, subprocess.TimeoutExpired):
-                return False
-        if self.backend == "local":
-            return True  # 自动检测时已验证连接
-        if self.backend in ("openai", "anthropic"):
-            return bool(os.environ.get(f"{self.backend.upper()}_API_KEY"))
-        return False
-
-    def _call_ollama(self, prompt, system="", temperature=0.3):
-        import subprocess
-
-        full_prompt = f"{system}\n\n{prompt}" if system else prompt
-        r = subprocess.run(["ollama", "run", self.model, full_prompt], capture_output=True, text=True, timeout=15)
-        if r.returncode != 0:
-            return None
-        return r.stdout.strip()
-
-    def _call_openai(self, prompt, system="", temperature=0.3):
-        try:
-            from openai import OpenAI
-
-            client = OpenAI(base_url=self.base_url or None)
-            resp = client.chat.completions.create(
-                model=self.model or os.environ.get("ONTODERIVE_LLM_MODEL", "gpt-4o-mini"),
-                messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-                temperature=temperature,
-                max_tokens=500,
-            )
-            return resp.choices[0].message.content
-        except Exception as e:
-            import sys
-
-            print(f"[llm] OpenAI调用失败: {e}", file=sys.stderr)
-            return None
-
-    def _call_local(self, prompt, system="", temperature=0.3):
-        """本地OpenAI兼容API (localhost:1234, input/output格式)"""
-        import urllib.request
-
-        payload = {"model": self.model, "input": prompt}
-        if system:
-            payload["system_prompt"] = system
-        try:
-            req = urllib.request.Request(
-                self.base_url or os.environ.get("ONTODERIVE_LLM_URL", "http://localhost:11434"),
-                data=json.dumps(payload).encode(),
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read())
-            for item in data.get("output", []):
-                if item.get("type") == "message":
-                    return item.get("content", "").strip()
-            return None
-        except (json.JSONDecodeError, OSError, ValueError) as e:
-            import sys
-
-            print(f"[llm] 本地API调用失败: {e}", file=sys.stderr)
-            return None
+    def _build_provider(self) -> BaseProvider:
+        cls = BACKENDS.get(self.backend)
+        if cls is None:
+            return BACKENDS["none"]()
+        return cls(model=self.model, base_url=self.base_url)
 
     def _call(self, prompt, system="", temperature=0.3):
         if not self.available:
             return None
         try:
-            if self.backend == "ollama":
-                return self._call_ollama(prompt, system, temperature)
-            elif self.backend == "openai":
-                return self._call_openai(prompt, system, temperature)
-            elif self.backend == "local":
-                return self._call_local(prompt, system, temperature)
+            return self._provider.call(prompt, system, temperature)
         except Exception as e:
             import sys
 
             print(f"[llm] 调用失败: {e}", file=sys.stderr)
             return None
-        return None
 
     # ── 三个增强入口 ──
 
@@ -172,9 +69,7 @@ class LLMEnhancer:
         result = self._call(prompt, "你是知识工程分析专家。简洁输出。", 0.3)
         if result:
             lines = [
-                line.strip("- 1234567890.*# ")
-                for line in result.split("\n")
-                if line.strip() and len(line.strip()) > 4
+                line.strip("- 1234567890.*# ") for line in result.split("\n") if line.strip() and len(line.strip()) > 4
             ]
             return existing_hints + lines[:2]
         return existing_hints

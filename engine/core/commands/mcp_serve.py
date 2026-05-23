@@ -18,9 +18,24 @@ def cmd_serve(
     interval: int = 5,
     auto: bool = False,
     no_mcp: bool = False,
+    http: bool = False,
+    host: str = "127.0.0.1",
+    port: int = 8080,
 ) -> None:
-    """启动开发服务: MCP + 文件监听 + LLM(可选)"""
+    """启动开发服务: MCP + 文件监听 + Web仪表盘(可选)
+
+    Args:
+        http: 启动 Web 仪表盘 (FastAPI) + MCP over HTTP
+        host: Web 服务绑定地址
+        port: Web 服务端口
+    """
     enable_mcp = not no_mcp
+
+    if http:
+        from engine.web_server import serve
+
+        serve(project=project, host=host, port=port, watch=watch_enabled)
+        return
 
     print(f"{'=' * 50}")
     print("  OntoDerive Serve — 开发服务")

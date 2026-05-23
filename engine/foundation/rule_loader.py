@@ -3,7 +3,7 @@
 =====================================
 从YAML/JSON声明文件加载推理规则，使规则可插拔而不需改源码。
 
-格式示例 (YAML):
+支持格式:
   id: R22
   name: trend_detection
   type: threshold_alert
@@ -13,20 +13,39 @@
   conclusion_template: "{desc}从{old}变为{new}, 变化{change}%, 趋势{trend}"
   confidence: 0.75
   method: rule_loader
-
-支持规则类型: threshold_alert | numeric_comparison | evidence_gap | shared_premise
 """
 
 import json
+import re
 from pathlib import Path
+
+_RULES_DIR = Path(__file__).parent / "rules"
+_HAS_NUM_RE = re.compile(r"\d+\.?\d*")
+_NUM_CMP_RE = re.compile(r"(\w+)\s*(>=|<=|>|<|==|!=)\s*(\d+)")
 
 
 class RuleLoader:
     """从YAML/JSON声明文件加载推理规则"""
 
     def __init__(self, rules_dir: str = None):
-        self.rules_dir = Path(rules_dir) if rules_dir else None
+        self.rules_dir = Path(rules_dir) if rules_dir else _RULES_DIR
         self.rules: list[dict] = []
+        self._loaded = False
+
+    def load_all(self) -> list[dict]:
+        """自动扫描 rules/ 目录加载所有 YAML 规则文件"""
+        if self._loaded:
+            return self.rules
+        self._loaded = True
+        self.rules = []
+        if not self.rules_dir.is_dir():
+            return []
+        for f in sorted(self.rules_dir.glob("*.yaml")):
+            try:
+                self.load_yaml(str(f))
+            except Exception as e:
+                print(f"[RuleLoader] 加载 {f.name} 失败: {e}")
+        return self.rules
 
     def load_json(self, path: str) -> list[dict]:
         """从JSON文件加载规则"""
@@ -39,10 +58,10 @@ class RuleLoader:
         """从YAML文件加载规则"""
         try:
             import yaml
+
+            data = yaml.safe_load(Path(path).read_text())
         except ImportError:
-            # fallback: 使用内置解析器处理简单YAML结构
-            return self._load_yaml_simple(path)
-        data = yaml.safe_load(Path(path).read_text())
+            data = self._load_yaml_simple(path)
         loaded = data if isinstance(data, list) else [data]
         self.rules.extend(self._validate(loaded))
         return loaded
@@ -95,6 +114,109 @@ class RuleLoader:
 
     def get_by_category(self, category: str) -> list[dict]:
         return [r for r in self.rules if r.get("category") == category]
+
+    # ── 前提匹配 ──
+
+    def match_premises(self, rule: dict, facts: dict, inferences: dict) -> bool:
+        """评估规则的前提是否满足当前事实/推论"""
+        premises = rule.get("premises", [])
+        if not premises:
+            return True  # 无前提 → 总是触发
+
+        n_facts = len(facts)
+        n_infs = len(inferences)
+
+        for p in premises:
+            if not self._eval_premise(p, facts, inferences, n_facts, n_infs):
+                return False
+        return True
+
+    _HAS_NUM = _HAS_NUM_RE  # 向后兼容引用
+
+    def _eval_premise(self, premise: str, facts: dict, inferences: dict, n_facts: int, n_infs: int) -> bool:
+        """评估单条前提"""
+        p = premise.strip()
+
+        # 无前提
+        if not p:
+            return True
+
+        # 硬编码前提
+        if p == "has_numeric_value":
+            return any(self._HAS_NUM.search(str(v.get("value", ""))) for v in facts.values())
+        if p == "same_domain":
+            return n_facts >= 2
+        if p in ("shared_premises >= 2",):
+            return n_infs >= 2
+        if p == "referenced_id_not_found":
+            return n_infs > 0
+        if p in ("premise_count < 3", "premise_count < 2"):
+            return n_facts < 3
+        if p == "value > threshold":
+            return n_facts > 0
+        if p == "derivation_chain_incomplete":
+            return n_infs > 0
+        if p == "all_premises_valid":
+            return n_facts > 0 and n_infs > 0
+        if p == "depends_on_chain":
+            return n_infs >= 2
+        if p == "id_prefix_in_hierarchy":
+            return bool(facts) or bool(inferences)
+        if p == "has_reference_count":
+            return n_infs > 0
+        if p in ("similar_conclusions >= 2", "shared_premises >= 2"):
+            return n_infs >= 2
+        if p == "fact_references_count":
+            return n_facts > 0 and n_infs > 0
+        if p in ("divergent_conclusions",):
+            return n_infs >= 2
+        if p in ("inference_chain_length >= 2",):
+            return n_infs >= 2
+
+        # 数值比较前提: "key > N", "key < N" 等
+        m = _NUM_CMP_RE.match(p)
+        if m:
+            key, op, val_str = m.group(1), m.group(2), m.group(3)
+            val = float(val_str)
+            actual = {"n_facts": n_facts, "n_infs": n_infs}.get(key)
+            if actual is None:
+                return True  # unknown key → skip
+            if op == ">=":
+                return actual >= val
+            if op == ">":
+                return actual > val
+            if op == "<=":
+                return actual <= val
+            if op == "<":
+                return actual < val
+            if op == "==":
+                return actual == val
+            if op == "!=":
+                return actual != val
+
+        return True  # unknown premise → pass through
+
+    # ── 规则执行 ──
+
+    def evaluate(self, rule: dict, facts: dict, inferences: dict, **kwargs) -> dict | None:
+        """完整规则评估: 前提匹配 → 模板化 → 结论"""
+        if not self.match_premises(rule, facts, inferences):
+            return None
+        return self.to_conclusion(rule, **kwargs)
+
+    def evaluate_all(self, facts: dict, inferences: dict, **kwargs) -> list[dict]:
+        """评估所有已加载规则, 返回匹配的结论列表"""
+        results = []
+        for rule in self.rules:
+            try:
+                c = self.evaluate(rule, facts, inferences, **kwargs)
+                if c:
+                    results.append(c)
+            except Exception as e:
+                import sys
+                print(f"[RuleLoader] evaluate {rule.get('id', '?')} 失败: {e}", file=sys.stderr)
+                continue
+        return results
 
     @staticmethod
     def to_conclusion(rule: dict, **kwargs) -> dict:

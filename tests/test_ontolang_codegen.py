@@ -1,4 +1,5 @@
 """Tests for OntoLang code generator"""
+
 from engine.ontolang.ast import AST, EntityDef
 from engine.ontolang.codegen import to_json, to_legacy_ast, to_markdown
 

@@ -17,6 +17,7 @@ from .analytics_constants import (
 # Helpers
 #############################################
 
+
 def _is_dict(val):
     return isinstance(val, dict)
 
@@ -62,6 +63,7 @@ def _find_entity_for_fact(fid, desc, entities, matcher=None):
 
 # Pattern functions
 #############################################
+
 
 def detect_capacity_constraint(engine, facts, entities, relations):
     """检测: 利用率>90%供给紧张 或 利用率<60%产能过剩 或 库存偏离基准"""
@@ -131,6 +133,7 @@ def analyze_capacity(engine, facts, entities, relations, enhancer):
                         )
     return results
 
+
 # ═══ A2: 供应链风险放大 ═══
 
 
@@ -187,6 +190,7 @@ def analyze_supply_chain(engine, facts, entities, relations, enhancer):
                     )
     return results
 
+
 # ═══ A3: 代理问题 ═══
 
 
@@ -235,6 +239,7 @@ def analyze_agency(engine, facts, entities, relations, enhancer):
                     }
                 )
     return results
+
 
 # ═══ A4: 激励不相容 ═══
 
@@ -289,6 +294,7 @@ def analyze_incentive(engine, facts, entities, relations, enhancer):
                         }
                     )
     return results
+
 
 # ═══ A5: 补救规划 ═══
 
@@ -380,6 +386,7 @@ def analyze_remediation(engine, facts, entities, relations, enhancer):
             pass
     return results
 
+
 # ═══ A6: 市场结构分析 ═══
 
 
@@ -420,6 +427,7 @@ def analyze_market_structure(engine, facts, entities, relations, enhancer):
     )
     return results
 
+
 # ═══ A7: 博弈均衡检测 ═══
 
 
@@ -456,6 +464,7 @@ def analyze_game_equilibrium(engine, facts, entities, relations, enhancer):
             }
         )
     return results
+
 
 # ═══ A8: 策略选项生成 ═══
 
@@ -509,6 +518,7 @@ def analyze_strategic_options(engine, facts, entities, relations, enhancer):
     )
     return results
 
+
 # ═══ A9: 信息生态健康度 (v3.5) ═══
 
 
@@ -551,6 +561,7 @@ def analyze_info_ecology(engine, facts, entities, relations, enhancer):
     )
     return results
 
+
 # ═══ A10: 因果链分析 (v3.6) ═══
 
 
@@ -588,6 +599,7 @@ def analyze_causal_chain(engine, facts, entities, relations, enhancer):
                                 }
                             )
     return results
+
 
 # ═══ A11: 情景规划 (v3.6) ═══
 
@@ -629,6 +641,7 @@ def analyze_scenario_planning(engine, facts, entities, relations, enhancer):
     )
     return results
 
+
 # ═══ A12: 权力地图 (v3.6) ═══
 
 
@@ -658,6 +671,7 @@ def analyze_power_map(engine, facts, entities, relations, enhancer):
         }
     )
     return results
+
 
 # ═══ A13: 组织惯性分析 (v3.6) ═══
 
@@ -712,6 +726,7 @@ def analyze_organizational_inertia(engine, facts, entities, relations, enhancer)
     )
     return results
 
+
 # ═══ A14: 技术颠覆风险 (v3.6) ═══
 
 
@@ -750,8 +765,7 @@ def analyze_tech_disruption(engine, facts, entities, relations, enhancer):
     threat_level = "高" if disruption_pressure >= 2 else ("中" if disruption_pressure >= 1 else "低")
 
     conclusion = (
-        f"技术颠覆风险: 压力={disruption_pressure:.1f}({threat_level}), "
-        f"新技术信号={new_signals}, 现有锁定={old_lock}, "
+        f"技术颠覆风险: 压力={disruption_pressure:.1f}({threat_level}), 新技术信号={new_signals}, 现有锁定={old_lock}, "
     )
     if threat_level == "高":
         conclusion += "警告: 新技术威胁显著, 建议制定转型路线图"
@@ -769,5 +783,3 @@ def analyze_tech_disruption(engine, facts, entities, relations, enhancer):
         }
     )
     return results
-
-

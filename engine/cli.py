@@ -29,8 +29,9 @@ def main():
     # init
     p_init = sub.add_parser("init", help="初始化新项目")
     p_init.add_argument("name", help="项目名称")
-    p_init.add_argument("--template", choices=["default", "market", "tech", "org"],
-        default="default", help="项目模板类型")
+    p_init.add_argument(
+        "--template", choices=["default", "market", "tech", "org"], default="default", help="项目模板类型"
+    )
 
     # derive
     p_derive = sub.add_parser("derive", help="正向推导")
@@ -91,6 +92,9 @@ def main():
     p_serve.add_argument("--interval", type=int, default=5, help="监听间隔(秒)")
     p_serve.add_argument("--auto", action="store_true", help="自动检测LLM并增强分析")
     p_serve.add_argument("--no-mcp", action="store_true", help="不启动MCP server")
+    p_serve.add_argument("--http", action="store_true", help="启动Web仪表盘(FastAPI) + MCP over HTTP")
+    p_serve.add_argument("--host", default="127.0.0.1", help="Web服务绑定地址")
+    p_serve.add_argument("--port", type=int, default=8080, help="Web服务端口")
 
     # got (v3.6)
     p_got = sub.add_parser("got", help="GoT图思维推理(需LLM, 蕴含图上游走推理)")
@@ -157,7 +161,6 @@ def main():
             "ontoderive check --project .\n```\n"
         )
         print(f"项目 {args.name} 已初始化 (模板: {tmpl_name})")
-
 
     elif args.command in ("derive", "check", "rounds", "generate", "analyze"):
         from engine.core.derive import OntoDerive
@@ -231,8 +234,12 @@ def main():
                 od.generate_report()
 
     elif args.command == "toolforge":
-        cmd_toolforge(args.goal, getattr(args, "context", ""),
-                   getattr(args, "inference_guide", False), getattr(args, "json", False))
+        cmd_toolforge(
+            args.goal,
+            getattr(args, "context", ""),
+            getattr(args, "inference_guide", False),
+            getattr(args, "json", False),
+        )
 
     elif args.command == "formal":
         from engine.core.derive import OntoDerive
@@ -250,13 +257,12 @@ def main():
         w.watch(interval=args.interval, auto_run=True)
 
     elif args.command == "extract":
-        cmd_extract(source=args.source,
-                   to_path=getattr(args, "to", "facts/data.md"),
-                   project=getattr(args, "project", "."))
+        cmd_extract(
+            source=args.source, to_path=getattr(args, "to", "facts/data.md"), project=getattr(args, "project", ".")
+        )
 
     elif args.command == "mcp":
         cmd_mcp(port=getattr(args, "port", 0))
-
 
     elif args.command == "got":
         print("[got] GoT图思维推理...")
@@ -269,46 +275,16 @@ def main():
         print("[react] 或配置 ONTODERIVE_LLM_BACKEND=auto")
 
     elif args.command == "serve":
-        import threading
+        from engine.core.commands.mcp_serve import cmd_serve
+        cmd_serve(project=getattr(args, "project", "."),
+                  watch_enabled=getattr(args, "watch", True),
+                  interval=getattr(args, "interval", 5),
+                  auto=getattr(args, "auto", False),
+                  no_mcp=getattr(args, "no_mcp", False),
+                  http=getattr(args, "http", False),
+                  host=getattr(args, "host", "127.0.0.1"),
+                  port=getattr(args, "port", 8080))
 
-        project = getattr(args, "project", ".")
-        auto_llm = getattr(args, "auto", False)
-        enable_watch = getattr(args, "watch", True)
-        enable_mcp = not getattr(args, "no_mcp", False)
-
-        print(f"{'=' * 50}")
-        print("  OntoDerive Serve — 开发服务")
-        print(f"  项目: {project}")
-        print(f"  工具: {17} MCP | LLM={'auto' if auto_llm else 'off'}")
-        print(f"{'=' * 50}")
-
-        threads = []
-
-        # MCP server thread (stdio, 供agentmesh消费)
-        if enable_mcp:
-            from engine.mcp_server import main as mcp_main
-            t = threading.Thread(target=mcp_main, daemon=True)
-            t.start()
-            threads.append(t)
-            print("  [mcp]    ✅ 已启动 (stdin/stdout)")
-
-        # 文件监听
-        if enable_watch:
-            from engine.watcher import FileWatcher
-            w = FileWatcher(project)
-            print(f"  [watch]  👀 监听中... (间隔{getattr(args, 'interval', 5)}秒)")
-            w.watch(interval=getattr(args, "interval", 5))
-
-        elif enable_mcp and not enable_watch:
-            # 只启动MCP时保持主线程存活
-            try:
-                while True:
-                    import time
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                pass
-
-        print("[serve] 🛑 服务已停止")
 
 
 if __name__ == "__main__":

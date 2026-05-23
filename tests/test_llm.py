@@ -1,4 +1,5 @@
 """LLM增强层测试 — 后端检测 + 增强入口 + 错误处理"""
+
 import os
 from unittest.mock import MagicMock, patch
 
@@ -136,7 +137,7 @@ class TestLLMEnhancerMockCall:
     def test_call_dispatch_openai(self):
         e = LLMEnhancer(backend="openai")
         e.available = True
-        with patch.object(e, "_call_openai", return_value="response") as mock:
+        with patch.object(e._provider, "call", return_value="response") as mock:
             result = e._call("prompt", "system", 0.3)
             assert result == "response"
             mock.assert_called_once()
@@ -144,7 +145,7 @@ class TestLLMEnhancerMockCall:
     def test_call_dispatch_ollama(self):
         e = LLMEnhancer(backend="ollama", model="qwen3.5:4b")
         e.available = True
-        with patch.object(e, "_call_ollama", return_value="response") as mock:
+        with patch.object(e._provider, "call", return_value="response") as mock:
             result = e._call("prompt", "system", 0.3)
             assert result == "response"
             mock.assert_called_once()
@@ -152,7 +153,7 @@ class TestLLMEnhancerMockCall:
     def test_call_dispatch_local(self):
         e = LLMEnhancer(backend="local", model="test")
         e.available = True
-        with patch.object(e, "_call_local", return_value="response") as mock:
+        with patch.object(e._provider, "call", return_value="response") as mock:
             result = e._call("prompt", "system", 0.3)
             assert result == "response"
             mock.assert_called_once()
@@ -185,12 +186,14 @@ class TestLLMEnhancerEdgeCases:
 
     def test_get_enhancer_returns_singleton(self):
         from engine.intelligence.llm import get_enhancer
+
         e1 = get_enhancer()
         e2 = get_enhancer()
         assert e1 is e2
 
     def test_get_enhancer_force(self):
         from engine.intelligence.llm import get_enhancer
+
         e1 = get_enhancer()
         e2 = get_enhancer(force=True)
         assert e1 is not e2

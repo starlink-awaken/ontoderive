@@ -1,6 +1,5 @@
 """Tests for ReAct (Reasoning + Acting) — 推理行动引擎"""
 
-
 from engine.intelligence.react import ReActEngine
 
 
@@ -63,7 +62,7 @@ class TestReActEngine:
 
     def test_parse_result_with_arg(self):
         eng = ReActEngine("/tmp", None)
-        text = 'Thought: 查一下\nAction: read_inference(INF-L1)'
+        text = "Thought: 查一下\nAction: read_inference(INF-L1)"
         thought, action, arg = eng._parse_result(text)
         assert action == "read_inference"
         assert arg == "INF-L1"

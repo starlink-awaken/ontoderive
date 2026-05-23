@@ -1,4 +1,5 @@
 """OntoLang AST → Markdown/JSON 代码生成"""
+
 from .ast import AST
 
 
@@ -50,9 +51,7 @@ def to_markdown(ast: AST) -> str:
 
 def to_json(ast: AST) -> dict:
     return {
-        "entities": [
-            {"id": e.id, "type": e.entity_type, "properties": e.properties} for e in ast.entities
-        ],
+        "entities": [{"id": e.id, "type": e.entity_type, "properties": e.properties} for e in ast.entities],
         "facts": [{"id": f.id, "type": f.fact_type, "properties": f.properties} for f in ast.facts],
         "inferences": [
             {
@@ -75,13 +74,9 @@ def to_legacy_ast(ast: AST) -> dict:
     """转换为兼容原 ontolang.py 的 dict 格式"""
     return {
         "entities": [
-            {"id": e.id, "type": e.entity_type, "line": e.pos.line if e.pos else 0, "raw": ""}
-            for e in ast.entities
+            {"id": e.id, "type": e.entity_type, "line": e.pos.line if e.pos else 0, "raw": ""} for e in ast.entities
         ],
-        "facts": [
-            {"id": f.id, "type": f.fact_type, "line": f.pos.line if f.pos else 0, "raw": ""}
-            for f in ast.facts
-        ],
+        "facts": [{"id": f.id, "type": f.fact_type, "line": f.pos.line if f.pos else 0, "raw": ""} for f in ast.facts],
         "inferences": [
             {
                 "id": inf.id,

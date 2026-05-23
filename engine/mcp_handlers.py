@@ -105,8 +105,7 @@ TOOL_DEFS = [
     {
         "name": "ontoderive_analytics",
         "description": (
-            "运行分析模式(A1-A9): 供给弹性/风险传导/代理问题/激励相容/"
-            "补救规划/市场结构/博弈均衡/策略空间/信息生态"
+            "运行分析模式(A1-A9): 供给弹性/风险传导/代理问题/激励相容/补救规划/市场结构/博弈均衡/策略空间/信息生态"
         ),
         "inputSchema": {
             "type": "object",
@@ -383,9 +382,7 @@ def _handle_write_fact(args, req_id):
     prefix = "D" if fid.startswith("D-F") else "P"
     file_path = facts_dir / f"{prefix}.md"
     if not file_path.exists():
-        file_path.write_text(
-            "| 编号 | 数据 | 数值 | 来源 |\n|------|------|------|------|\n"
-        )
+        file_path.write_text("| 编号 | 数据 | 数值 | 来源 |\n|------|------|------|------|\n")
     old = file_path.read_text()
     if fid in old:
         # 替换已有行

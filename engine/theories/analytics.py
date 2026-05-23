@@ -66,8 +66,6 @@ class AnalyticalPattern:
     requires_llm: bool = False  # 向后兼容, 等同于 semantic_depth >= 4
 
 
-
-
 class AnalyticsEngine:
     """Analytical Pattern Engine"""
 

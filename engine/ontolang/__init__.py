@@ -100,7 +100,7 @@ class OntoLangParser:
             if "derives_from" not in check_text and not inf.get("derives_from"):
                 errors.append(f"E{inf.get('line', 0)}: '{inf['id']}' 缺少derives_from声明")
         for f in ast.get("facts", []):
-            if not re.match(r'^(D-F|P-F)\d+', f["id"]):
+            if not re.match(r"^(D-F|P-F)\d+", f["id"]):
                 errors.append(f"E{f.get('line', 0)}: '{f['id']}' 事实ID格式无效")
         return errors
 

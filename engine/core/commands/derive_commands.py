@@ -10,10 +10,10 @@ def _run_toolforge(project: str, goal: str, tool_context: str) -> None:
     from engine.toolforge import ToolForge
 
     tf = ToolForge()
-    print(f'\n{"━" * 50}')
+    print(f"\n{'━' * 50}")
     print("  🧰 ToolForge 前置匹配")
     print(f"     目标: {goal or '(未指定)'}")
-    print(f'{"━" * 50}')
+    print(f"{'━' * 50}")
     guide = tf.to_inference_guide(goal, tool_context)
     guide_path = Path(project) / "inferences" / "_toolforge_guide.md"
     guide_path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,6 +48,7 @@ def cmd_analyze(project, force):
     """全量分析: 推导+LLM洞察(自动检测)"""
     print("[analyze] 全量分析: 结构推导 + LLM洞察(自动检测LLM)...")
     from engine.intelligence.llm import get_enhancer
+
     od = OntoDerive(project)
     enhancer = get_enhancer(force)
     if enhancer.available:
@@ -68,19 +69,23 @@ def cmd_rounds(project, n):
     od = OntoDerive(project)
     od.run_rounds(n)
 
+
 def cmd_generate(project, export):
     """生成推导报告"""
     from engine.core.derive import OntoDerive
+
     od = OntoDerive(project)
     if export:
         r = od.derive()
         try:
             if export == "html":
                 from engine.core.export import to_html
+
                 output = to_html(r, project)
                 Path(project + "/export.html").write_text(output)
             elif export == "json":
                 import json
+
                 Path(project + "/export.json").write_text(json.dumps(r, ensure_ascii=False))
             else:
                 print(f"[export] 格式 {export} 暂不支持")

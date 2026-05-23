@@ -5,6 +5,7 @@ from engine.intelligence.got import GraphOfThoughts
 
 class MockGraph:
     """模拟蕴含图"""
+
     def __init__(self):
         self.nodes = {
             "D-F1": {"type": "fact", "label": "事实1"},

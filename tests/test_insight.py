@@ -84,6 +84,7 @@ class TestInsightCache:
         """Default cache_dir falls back to _derivation_logs"""
         orig_cwd = Path.cwd()
         import os
+
         os.chdir(tmp_path)
         try:
             cache = InsightCache()
@@ -234,11 +235,14 @@ class TestInsightEngine:
 
     def test_available_missing_attr(self):
         """Enhancer without 'available' attribute raises AttributeError"""
+
         class BareEnhancer:
             def _call(self, prompt, system="", temperature=0.3):
                 return "test"
+
         engine = InsightEngine(enhancer=BareEnhancer())
         import pytest
+
         with pytest.raises(AttributeError):
             _ = engine.available
 
