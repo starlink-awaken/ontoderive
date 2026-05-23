@@ -1,6 +1,6 @@
 # OntoDerive v3.6.4 — 功能架构详解
 
-> 知识工程分析平台。665+ 测试, 0 ruff 错误, 5层架构, 57模块。
+> 知识工程分析平台。**747+ 测试**, 0 ruff 错误, 5层架构, 70+模块。
 > 三模式：结构分析(无LLM) | 规则推理(无LLM) | 形式推理(需LLM Phase1)
 
 ---
@@ -43,17 +43,21 @@
 engine/
 ├── core/           核心引擎    derive/check/check_theory/pipeline
 ├── reasoners/      推理引擎    RuleReasoner(21规则+YAML23)+FormalReasoner(4)
-│                               +UnifiedReasoner(统一输出)
+│                               +UnifiedReasoner+reasoning_rules+reasoner_utils(统一输出)
 ├── theories/       六论模块    bayesian/metrics/controller/logic/
-│                               turing_k/ontolang
-├── intelligence/   LLM智能     llm/insight/judge/prompts/got/react
+│                               turing_k/ontolang/analytics_patterns/analytics_constants
+├── intelligence/   LLM智能     llm/insight/judge/prompts/got/react/providers
 ├── foundation/     基础设施    typesystem/models/constants/utils/
 │                               config/protocols
 ├── toolforge/      工具匹配    TF-IDF+keyword+hybrid (73工具)
 ├── watcher.py      文件监听    自动重推导
 ├── extractor.py    文本提取    从自然语言提取事实
-├── cli.py          CLI入口     12子命令
-└── mcp_server.py   MCP入口    17工具
+├── cli.py          CLI入口     14子命令
+├── mcp_server.py   MCP入口    17工具
+├── mcp_handlers.py MCP处理    17工具+Web仪表盘
+├── web_server.py   Web仪表盘   FastAPI + MCP/HTTP
+├── formalize.py    符号化      LLM提取+规则降级
+└── pipeline_v4.py  管线        四阶段推理管线
 ```
 
 ---
@@ -102,6 +106,8 @@ UnifiedReasoner — 统一推理入口
 │   ├── transitivity (传递推理)
 │   ├── constraint (约束传播)
 │   └── classification (实例归类)
+├── reasoning_rules.py   23条推理函数(从reasoner.py提取)
+├── reasoner_utils.py    5个纯工具函数
 └── 输出: UnifiedConclusion (certainty + derives_from + confidence)
 ```
 
@@ -138,6 +144,7 @@ intelligence/
 ├── judge.py     LLM质量评估 (1-10分)
 ├── prompts.py   提示词模板 (4模板 + 4领域预设)
 ├── got.py       思维图谱 (Graph of Thoughts)
+├── providers.py LLM Provider抽象(5后端+自动检测)
 └── react.py     推理+行动 (7 Action原语)
 ```
 
