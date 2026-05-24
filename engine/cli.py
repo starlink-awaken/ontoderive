@@ -16,6 +16,28 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 
+FORMAT_VERSION = "ontoderive-v1"
+"""CLI 输出格式版本。
+
+消费者 (pallas/agora) 应检查此版本头以检测格式不兼容。
+变更此版本号 = 契约断裂, 需同步更新所有消费者。
+"""
+
+
+def _json_output(status: str, data: dict = None, error: str = None) -> str:
+    """生成带有版本头的 JSON 输出。"""
+    import json
+    payload = {
+        "format_version": FORMAT_VERSION,
+        "status": status,
+    }
+    if data is not None:
+        payload["data"] = data
+    if error is not None:
+        payload["error"] = error
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
 def main():
     """统一 CLI 入口"""
     import argparse
