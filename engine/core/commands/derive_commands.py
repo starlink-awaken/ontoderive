@@ -24,9 +24,17 @@ def _run_toolforge(project: str, goal: str, tool_context: str) -> None:
             print(f"      {t['id']} {t['name']} (匹配度:{t['score']})")
 
 
-def cmd_derive(project, auto, with_tools, goal, tool_context, pipeline_output):
-    """正向推导"""
+def cmd_derive(project, auto, with_tools, goal, tool_context, pipeline_input, pipeline_output):
+    """正向推导 (pipeline:json 感知)"""
     od = OntoDerive(project)
+
+    # Pipeline 输入: 读取上游 JSON, 提取 data/目标
+    if pipeline_input:
+        raw = json.loads(Path(pipeline_input).read_text(encoding="utf-8"))
+        data = raw.get("data", raw)
+        if not goal and isinstance(data, dict):
+            goal = data.get("goal") or data.get("query") or goal
+        print(f"[derive] pipeline-input: {pipeline_input}, goal: {goal}")
 
     # ToolForge 前置
     if with_tools:
@@ -36,8 +44,26 @@ def cmd_derive(project, auto, with_tools, goal, tool_context, pipeline_output):
         print("[derive] --auto: 自动检测LLM并执行全量分析...")
         od.analyze()
     elif pipeline_output:
+        import datetime
         result = {"derived": True, "count": 0, "items": []}
-        Path(pipeline_output).write_text(json.dumps(result, indent=2))
+        pipeline_result = {
+            "pipeline": {
+                "version": "1.1",
+                "tool": "ontoderive",
+                "action": "derive",
+                "timestamp": datetime.datetime.now().isoformat(),
+            },
+            "meta_type": "INFERENCE",
+            "data": result,
+            "provenance": {
+                "source": f"pipeline://{pipeline_input}" if pipeline_input else "cli:derive",
+                "confidence": 0.0,
+                "pipeline_input": pipeline_input,
+            },
+        }
+        Path(pipeline_output).write_text(
+            json.dumps(pipeline_result, ensure_ascii=False, indent=2)
+        )
         print(f"Output -> {pipeline_output}")
         return
     else:
